@@ -1,0 +1,61 @@
+// types/subscription.ts
+
+export interface SubscriptionPlan {
+    id: string;
+    slug: 'free' | 'basic' | 'pro' | 'team';
+    display_name: string;
+    price_monthly: number;
+    price_yearly: number;
+    max_analyses: number;      // -1 = unlimited
+    max_file_size_mb: number;  // -1 = unlimited
+    max_customers: number;     // -1 = unlimited
+    history_days: number;      // -1 = unlimited
+    features: PlanFeatures;
+    sort_order: number;
+}
+
+export interface PlanFeatures {
+    disclosure_analysis: boolean;
+    product_match: boolean;
+    claim_analysis: boolean;
+    pdf_export: boolean;
+    custom_product_db: boolean;
+    priority_support: boolean;
+    team_dashboard?: boolean;
+}
+
+export interface Subscription {
+    id: string;
+    user_id: string;
+    plan_id: string;
+    status: 'active' | 'cancelled' | 'past_due';
+    billing_cycle: 'monthly' | 'yearly';
+    current_period_start: string;
+    current_period_end: string;
+    payment_provider?: string;
+    payment_key?: string;
+    cancelled_at?: string;
+    created_at: string;
+    updated_at: string;
+    // Joined
+    plan?: SubscriptionPlan;
+}
+
+export interface UsageTracking {
+    id: string;
+    user_id: string;
+    period_start: string;
+    period_end: string;
+    analyses_used: number;
+    analyses_limit: number;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface SubscriptionWithUsage {
+    subscription: Subscription;
+    plan: SubscriptionPlan;
+    usage: UsageTracking;
+    canAnalyze: boolean;
+    remainingAnalyses: number;  // -1 = unlimited
+}
