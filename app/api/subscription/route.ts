@@ -15,30 +15,29 @@ export async function GET() {
         .select('*, plan:subscription_plans(*)')
         .eq('user_id', user.id)
         .eq('status', 'active')
-        .single();
+        .maybeSingle();
 
     if (subError && subError.code !== 'PGRST116') {
         return NextResponse.json({ error: subError.message }, { status: 500 });
     }
 
-    // Fetch current month usage
+    // Fetch current month usage (use local date to avoid timezone issues)
     const now = new Date();
-    const periodStart = new Date(now.getFullYear(), now.getMonth(), 1)
-        .toISOString()
-        .split('T')[0];
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const periodStart = `${year}-${month}-01`;
 
     let { data: usage } = await supabase
         .from('usage_tracking')
         .select('*')
         .eq('user_id', user.id)
         .eq('period_start', periodStart)
-        .single();
+        .maybeSingle();
 
     // If no usage record for this month, create one
     if (!usage) {
-        const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-            .toISOString()
-            .split('T')[0];
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const periodEnd = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
 
         const limit = subscription?.plan?.max_analyses ?? 3;
 

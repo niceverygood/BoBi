@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { SubscriptionPlan, Subscription, UsageTracking, SubscriptionWithUsage } from '@/types/subscription';
 
@@ -43,6 +43,7 @@ export function useSubscription() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const supabase = createClient();
+    const hasFetched = useRef(false);
 
     const fetchSubscription = useCallback(async () => {
         try {
@@ -59,7 +60,7 @@ export function useSubscription() {
                 .select('*, plan:subscription_plans(*)')
                 .eq('user_id', user.id)
                 .eq('status', 'active')
-                .single();
+                .maybeSingle();
 
             if (subData) {
                 setSubscription(subData as unknown as Subscription);
@@ -68,18 +69,18 @@ export function useSubscription() {
                 }
             }
 
-            // Fetch current month usage
+            // Fetch current month usage (use local date to avoid timezone issues)
             const now = new Date();
-            const periodStart = new Date(now.getFullYear(), now.getMonth(), 1)
-                .toISOString()
-                .split('T')[0];
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const periodStart = `${year}-${month}-01`;
 
             const { data: usageData } = await supabase
                 .from('usage_tracking')
                 .select('*')
                 .eq('user_id', user.id)
                 .eq('period_start', periodStart)
-                .single();
+                .maybeSingle();
 
             if (usageData) {
                 setUsage(usageData as UsageTracking);
@@ -92,7 +93,10 @@ export function useSubscription() {
     }, [supabase]);
 
     useEffect(() => {
-        fetchSubscription();
+        if (!hasFetched.current) {
+            hasFetched.current = true;
+            fetchSubscription();
+        }
     }, [fetchSubscription]);
 
     const canAnalyze = plan.max_analyses === -1 || usage.analyses_used < usage.analyses_limit;
