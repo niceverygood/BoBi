@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Shield, Users, FileText, CreditCard, Activity, BarChart3, TrendingUp, AlertCircle } from 'lucide-react';
+import { Shield, Users, FileText, CreditCard, Activity, BarChart3, TrendingUp, AlertCircle, Search, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +37,36 @@ export default function AdminPage() {
     const [stats, setStats] = useState<AdminStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    // Plan change state
+    const [planEmail, setPlanEmail] = useState('');
+    const [planSlug, setPlanSlug] = useState('basic');
+    const [planUpdating, setPlanUpdating] = useState(false);
+    const [planMessage, setPlanMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    const handlePlanChange = async () => {
+        if (!planEmail.trim()) {
+            setPlanMessage({ type: 'error', text: '이메일을 입력해주세요.' });
+            return;
+        }
+        setPlanUpdating(true);
+        setPlanMessage(null);
+        try {
+            const res = await fetch('/api/admin/update-plan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ targetEmail: planEmail.trim(), planSlug }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            setPlanMessage({ type: 'success', text: data.message });
+            setPlanEmail('');
+        } catch (err) {
+            setPlanMessage({ type: 'error', text: (err as Error).message });
+        } finally {
+            setPlanUpdating(false);
+        }
+    };
 
     useEffect(() => {
         if (!adminLoading && !isAdmin) {
@@ -166,6 +196,67 @@ export default function AdminPage() {
                             </CardContent>
                         </Card>
                     </div>
+
+                    {/* Plan Change Section */}
+                    <Card className="border-0 shadow-md mb-8">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <CreditCard className="w-4 h-4" />
+                                사용자 플랜 변경
+                            </CardTitle>
+                        </CardHeader>
+                        <Separator />
+                        <CardContent className="pt-4">
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <div className="flex-1">
+                                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">대상 이메일</label>
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                        <input
+                                            type="email"
+                                            placeholder="user@example.com"
+                                            value={planEmail}
+                                            onChange={(e) => setPlanEmail(e.target.value)}
+                                            className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="sm:w-40">
+                                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">변경할 플랜</label>
+                                    <select
+                                        value={planSlug}
+                                        onChange={(e) => setPlanSlug(e.target.value)}
+                                        className="w-full px-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                    >
+                                        <option value="free">무료</option>
+                                        <option value="basic">베이직</option>
+                                        <option value="pro">프로</option>
+                                        <option value="team">팀</option>
+                                    </select>
+                                </div>
+                                <div className="sm:self-end">
+                                    <Button
+                                        onClick={handlePlanChange}
+                                        disabled={planUpdating}
+                                        className="w-full sm:w-auto"
+                                    >
+                                        {planUpdating ? '변경 중...' : '플랜 변경'}
+                                    </Button>
+                                </div>
+                            </div>
+                            {planMessage && (
+                                <div className={`mt-3 p-3 rounded-lg flex items-center gap-2 text-sm ${planMessage.type === 'success'
+                                        ? 'bg-green-50 text-green-700 border border-green-200'
+                                        : 'bg-red-50 text-red-700 border border-red-200'
+                                    }`}>
+                                    {planMessage.type === 'success'
+                                        ? <CheckCircle2 className="w-4 h-4 shrink-0" />
+                                        : <AlertCircle className="w-4 h-4 shrink-0" />}
+                                    {planMessage.text}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Recent Users */}
