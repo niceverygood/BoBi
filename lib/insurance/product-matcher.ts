@@ -1,6 +1,6 @@
 // lib/insurance/product-matcher.ts
 import type { AnalysisResult, ProductResult } from '@/types/analysis';
-import { callClaude } from '@/lib/ai/claude';
+import { callOpenAI } from '@/lib/ai/openai';
 import { STEP2_PRODUCT_PROMPT } from '@/lib/ai/prompts';
 import { parseAIResponse } from '@/lib/ai/parser';
 
@@ -10,6 +10,6 @@ export async function matchProducts(analysisResult: AnalysisResult): Promise<Pro
         JSON.stringify(analysisResult, null, 2)
     );
 
-    const response = await callClaude({ prompt, maxTokens: 4096 });
+    const response = await callOpenAI({ prompt, maxTokens: 4096 });
     return parseAIResponse<ProductResult>(response);
 }

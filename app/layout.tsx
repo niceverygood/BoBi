@@ -18,7 +18,7 @@ export default function RootLayout({
       <head>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
       </head>
-      <body className="font-sans antialiased">
+      <body className="font-sans antialiased" suppressHydrationWarning>
         {children}
         <Toaster position="top-right" richColors />
       </body>

@@ -1,6 +1,6 @@
 // lib/insurance/claim-analyzer.ts
 import type { ClaimResult } from '@/types/analysis';
-import { callClaude } from '@/lib/ai/claude';
+import { callOpenAI } from '@/lib/ai/openai';
 import { STEP3_CLAIMS_PROMPT } from '@/lib/ai/prompts';
 import { parseAIResponse } from '@/lib/ai/parser';
 
@@ -12,6 +12,6 @@ export async function analyzeClaims(
         .replace('{MEDICAL_HISTORY}', medicalHistory)
         .replace('{INSURANCE_CLAUSES}', insuranceClauses);
 
-    const response = await callClaude({ prompt, maxTokens: 4096 });
+    const response = await callOpenAI({ prompt, maxTokens: 4096 });
     return parseAIResponse<ClaimResult>(response);
 }

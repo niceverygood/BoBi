@@ -1,7 +1,7 @@
 // app/api/analyze/route.ts
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { callClaude } from '@/lib/ai/claude';
+import { callOpenAI } from '@/lib/ai/openai';
 import { STEP1_ANALYSIS_PROMPT } from '@/lib/ai/prompts';
 import { parseAIResponse, validateAnalysisResult } from '@/lib/ai/parser';
 import type { AnalysisResult } from '@/types/analysis';
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
 
         // Call Claude AI
         const prompt = STEP1_ANALYSIS_PROMPT.replace('{PDF_TEXT}', combinedText);
-        const aiResponse = await callClaude({ prompt, maxTokens: 4096 });
+        const aiResponse = await callOpenAI({ prompt, maxTokens: 4096 });
         const result = parseAIResponse<AnalysisResult>(aiResponse);
 
         if (!validateAnalysisResult(result as unknown as Record<string, unknown>)) {
