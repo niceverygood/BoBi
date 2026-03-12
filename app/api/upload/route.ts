@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { extractPdfText, structureExtractedText } from '@/lib/pdf/extractor';
 
+// Increase body size limit to 50MB for PDF uploads
+export const maxDuration = 60; // seconds
 export async function POST(request: Request) {
     try {
         const supabase = await createClient();

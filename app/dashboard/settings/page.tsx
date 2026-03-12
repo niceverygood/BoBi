@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { User, Building, Crown, CheckCircle2, X, Loader2, Sparkles, Zap } from 'lucide-react';
+import { User, Building, Crown, CheckCircle2, X, Loader2, Sparkles, Zap, Tag, AlertCircle } from 'lucide-react';
 import { PLAN_LIMITS, type PlanSlug } from '@/lib/utils/constants';
 import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
@@ -23,8 +23,37 @@ const PLAN_BADGE_COLORS: Record<PlanSlug, string> = {
 export default function SettingsPage() {
     const [name, setName] = useState('');
     const [company, setCompany] = useState('');
+    const [discountCode, setDiscountCode] = useState('');
+    const [discountLoading, setDiscountLoading] = useState(false);
+    const [discountMessage, setDiscountMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const { plan, usage, loading, remainingAnalyses } = useSubscription();
     const currentSlug = (plan.slug || 'free') as PlanSlug;
+
+    const handleApplyDiscount = async () => {
+        if (!discountCode.trim()) {
+            setDiscountMessage({ type: 'error', text: '할인코드를 입력해주세요.' });
+            return;
+        }
+        setDiscountLoading(true);
+        setDiscountMessage(null);
+        try {
+            const res = await fetch('/api/discount/apply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: discountCode.trim() }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            setDiscountMessage({ type: 'success', text: data.message });
+            setDiscountCode('');
+            // Refresh page to update plan info
+            setTimeout(() => window.location.reload(), 1500);
+        } catch (err) {
+            setDiscountMessage({ type: 'error', text: (err as Error).message });
+        } finally {
+            setDiscountLoading(false);
+        }
+    };
 
     const usagePercent = plan.max_analyses === -1
         ? 0
@@ -177,6 +206,48 @@ export default function SettingsPage() {
                             </div>
                         ))}
                     </div>
+                </CardContent>
+            </Card>
+
+            <Separator />
+
+            {/* Discount Code */}
+            <Card className="border-0 shadow-sm">
+                <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <Tag className="w-5 h-5 text-primary" />
+                        할인코드
+                    </CardTitle>
+                    <CardDescription>할인코드가 있으시면 입력해주세요.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                    <div className="flex gap-2">
+                        <Input
+                            placeholder="할인코드 입력"
+                            value={discountCode}
+                            onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                            onKeyDown={(e) => e.key === 'Enter' && handleApplyDiscount()}
+                            className="font-mono tracking-wider uppercase"
+                        />
+                        <Button
+                            onClick={handleApplyDiscount}
+                            disabled={discountLoading}
+                            className="bg-gradient-primary hover:opacity-90 shrink-0"
+                        >
+                            {discountLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : '적용'}
+                        </Button>
+                    </div>
+                    {discountMessage && (
+                        <div className={`p-3 rounded-lg flex items-center gap-2 text-sm ${discountMessage.type === 'success'
+                                ? 'bg-green-50 text-green-700 border border-green-200'
+                                : 'bg-red-50 text-red-700 border border-red-200'
+                            }`}>
+                            {discountMessage.type === 'success'
+                                ? <CheckCircle2 className="w-4 h-4 shrink-0" />
+                                : <AlertCircle className="w-4 h-4 shrink-0" />}
+                            {discountMessage.text}
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
