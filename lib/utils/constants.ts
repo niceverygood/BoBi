@@ -2,6 +2,9 @@
 
 export type PlanSlug = 'free' | 'basic' | 'pro' | 'team';
 
+// 관리자 이메일 목록
+export const ADMIN_EMAILS = ['niceverygood1@gmail.com'] as const;
+
 export interface PlanInfo {
     name: string;
     slug: PlanSlug;

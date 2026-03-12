@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Shield, LayoutDashboard, FileSearch, History, Settings, ChevronLeft, Crown, CreditCard } from 'lucide-react';
+import { Shield, LayoutDashboard, FileSearch, History, Settings, ChevronLeft, Crown, CreditCard, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useAdmin } from '@/hooks/useAdmin';
 
 const navItems = [
     { title: '대시보드', href: '/dashboard', icon: LayoutDashboard },
@@ -24,6 +25,11 @@ interface SidebarProps {
 export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
     const pathname = usePathname();
     const { plan, remainingAnalyses, loading } = useSubscription();
+    const { isAdmin } = useAdmin();
+
+    const allNavItems = isAdmin
+        ? [...navItems, { title: '관리자', href: '/admin', icon: ShieldCheck }]
+        : navItems;
 
     const displayRemaining = remainingAnalyses === -1 ? '무제한' : `${remainingAnalyses}건`;
 
@@ -60,7 +66,7 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
 
             {/* Navigation */}
             <nav className="flex-1 px-3 py-4 space-y-1">
-                {navItems.map((item) => {
+                {allNavItems.map((item) => {
                     const isActive = pathname === item.href ||
                         (item.href !== '/dashboard' && pathname.startsWith(item.href));
                     const Icon = item.icon;

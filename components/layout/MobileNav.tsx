@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Shield, LayoutDashboard, FileSearch, History, Settings, Menu } from 'lucide-react';
+import { Shield, LayoutDashboard, FileSearch, History, Settings, Menu, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
 import { useState } from 'react';
+import { useAdmin } from '@/hooks/useAdmin';
 
 const navItems = [
     { title: '대시보드', href: '/dashboard', icon: LayoutDashboard },
@@ -19,6 +20,11 @@ const navItems = [
 export default function MobileNav() {
     const pathname = usePathname();
     const [open, setOpen] = useState(false);
+    const { isAdmin } = useAdmin();
+
+    const allNavItems = isAdmin
+        ? [...navItems, { title: '관리자', href: '/admin', icon: ShieldCheck }]
+        : navItems;
 
     return (
         <div className="lg:hidden">
@@ -38,7 +44,7 @@ export default function MobileNav() {
                     </div>
                     <Separator />
                     <nav className="px-3 py-4 space-y-1">
-                        {navItems.map((item) => {
+                        {allNavItems.map((item) => {
                             const isActive = pathname === item.href ||
                                 (item.href !== '/dashboard' && pathname.startsWith(item.href));
                             const Icon = item.icon;
