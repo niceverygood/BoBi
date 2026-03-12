@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Upload, FileText, X, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PDF_FILE_TYPES } from '@/lib/utils/constants';
+import { createClient } from '@/lib/supabase/client';
 
 interface UploadedFile {
     id?: string;
@@ -27,25 +28,53 @@ export default function PdfUploader({ onFilesUploaded, customerId }: PdfUploader
     const [isDragOver, setIsDragOver] = useState(false);
 
     const uploadFile = async (file: File): Promise<UploadedFile> => {
-        const formData = new FormData();
-        formData.append('file', file);
-        if (customerId) {
-            formData.append('customerId', customerId);
-        }
-
         try {
-            const response = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData,
-            });
+            // Step 1: Upload directly to Supabase Storage (bypasses Vercel 4.5MB limit)
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
 
-            if (!response.ok) {
-                const error = await response.json();
+            if (!user) {
+                return { file, fileType: 'unknown', status: 'error', error: '로그인이 필요합니다.' };
+            }
+
+            const filePath = `${user.id}/${Date.now()}_${file.name}`;
+            const { error: storageError } = await supabase.storage
+                .from('pdfs')
+                .upload(filePath, file, {
+                    contentType: 'application/pdf',
+                    cacheControl: '3600',
+                });
+
+            if (storageError) {
+                console.error('Direct storage upload error:', storageError);
                 return {
                     file,
                     fileType: 'unknown',
                     status: 'error',
-                    error: error.error || '업로드 실패',
+                    error: `스토리지 업로드 실패: ${storageError.message}`,
+                };
+            }
+
+            // Step 2: Call API to extract text and create DB record (only sends file path, not file)
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    filePath,
+                    fileName: file.name,
+                    customerId: customerId || null,
+                }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                // Clean up storage on API error
+                await supabase.storage.from('pdfs').remove([filePath]);
+                return {
+                    file,
+                    fileType: 'unknown',
+                    status: 'error',
+                    error: error.error || '텍스트 추출 실패',
                 };
             }
 
@@ -57,23 +86,32 @@ export default function PdfUploader({ onFilesUploaded, customerId }: PdfUploader
                 status: 'success',
                 textPreview: data.textPreview,
             };
-        } catch {
+        } catch (err) {
+            console.error('Upload error:', err);
             return {
                 file,
                 fileType: 'unknown',
                 status: 'error',
-                error: '네트워크 오류가 발생했습니다.',
+                error: '파일 업로드 중 오류가 발생했습니다.',
             };
         }
     };
 
     const handleFiles = useCallback(async (newFiles: FileList | File[]) => {
-        const pdfFiles = Array.from(newFiles).filter((f) => f.type === 'application/pdf');
+        const pdfFiles = Array.from(newFiles).filter((f) =>
+            f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
+        );
 
         if (pdfFiles.length === 0) return;
 
+        // Limit to 3 files total
+        const remainingSlots = 3 - files.filter((f) => f.status === 'success').length;
+        const filesToUpload = pdfFiles.slice(0, Math.max(0, remainingSlots));
+
+        if (filesToUpload.length === 0) return;
+
         // Add files as uploading
-        const uploadingFiles: UploadedFile[] = pdfFiles.map((file) => ({
+        const uploadingFiles: UploadedFile[] = filesToUpload.map((file) => ({
             file,
             fileType: 'unknown',
             status: 'uploading' as const,
@@ -81,16 +119,24 @@ export default function PdfUploader({ onFilesUploaded, customerId }: PdfUploader
 
         setFiles((prev) => [...prev, ...uploadingFiles]);
 
-        // Upload each file
-        const results = await Promise.all(pdfFiles.map(uploadFile));
+        // Upload each file sequentially to avoid overwhelming
+        const results: UploadedFile[] = [];
+        for (const file of filesToUpload) {
+            const result = await uploadFile(file);
+            results.push(result);
 
-        setFiles((prev) => {
-            const updated = prev.filter((f) => f.status !== 'uploading');
-            return [...updated, ...results];
-        });
+            // Update UI as each file completes
+            setFiles((prev) => {
+                const updated = prev.map((f) =>
+                    f.status === 'uploading' && f.file.name === file.name ? result : f
+                );
+                return updated;
+            });
+        }
 
         onFilesUploaded(results.filter((r) => r.status === 'success'));
-    }, [customerId, onFilesUploaded]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [files, customerId, onFilesUploaded]);
 
     const handleDrop = useCallback((e: React.DragEvent) => {
         e.preventDefault();
@@ -189,6 +235,9 @@ export default function PdfUploader({ onFilesUploaded, customerId }: PdfUploader
                                     )}
                                     {f.status === 'error' && (
                                         <p className="text-xs text-destructive mt-1">{f.error}</p>
+                                    )}
+                                    {f.status === 'uploading' && (
+                                        <p className="text-xs text-muted-foreground mt-1">업로드 중...</p>
                                     )}
                                 </div>
 

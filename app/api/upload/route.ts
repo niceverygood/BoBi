@@ -3,8 +3,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { extractPdfText, structureExtractedText } from '@/lib/pdf/extractor';
 
-// Increase body size limit to 50MB for PDF uploads
-export const maxDuration = 60; // seconds
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
     try {
         const supabase = await createClient();
@@ -14,6 +14,58 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
         }
 
+        const contentType = request.headers.get('content-type') || '';
+
+        // Method 1: JSON body (client already uploaded to Storage)
+        if (contentType.includes('application/json')) {
+            const { filePath, fileName, customerId } = await request.json();
+
+            if (!filePath || !fileName) {
+                return NextResponse.json({ error: '파일 경로가 없습니다.' }, { status: 400 });
+            }
+
+            // Download from Supabase Storage to extract text
+            const { data: fileData, error: downloadError } = await supabase.storage
+                .from('pdfs')
+                .download(filePath);
+
+            if (downloadError || !fileData) {
+                console.error('Storage download error:', downloadError);
+                return NextResponse.json({ error: '파일 다운로드에 실패했습니다.' }, { status: 500 });
+            }
+
+            const buffer = Buffer.from(await fileData.arrayBuffer());
+            const { text, fileType, pageCount } = await extractPdfText(buffer);
+            const structuredText = structureExtractedText(text, fileType);
+
+            // Save upload record
+            const { data: upload, error: dbError } = await supabase
+                .from('uploads')
+                .insert({
+                    user_id: user.id,
+                    customer_id: customerId || null,
+                    file_name: fileName,
+                    file_path: filePath,
+                    file_type: fileType === 'unknown' ? 'basic_info' : fileType,
+                    raw_text: structuredText,
+                })
+                .select()
+                .single();
+
+            if (dbError) {
+                console.error('DB insert error:', dbError);
+                return NextResponse.json({ error: '업로드 기록 저장에 실패했습니다.' }, { status: 500 });
+            }
+
+            return NextResponse.json({
+                upload,
+                fileType,
+                pageCount,
+                textPreview: structuredText.substring(0, 500),
+            });
+        }
+
+        // Method 2: FormData (legacy, for small files < 4.5MB)
         const formData = await request.formData();
         const file = formData.get('file') as File;
         const customerId = formData.get('customerId') as string | null;
@@ -26,14 +78,10 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'PDF 파일만 업로드 가능합니다.' }, { status: 400 });
         }
 
-        // Read file buffer
         const buffer = Buffer.from(await file.arrayBuffer());
-
-        // Extract and detect PDF type
         const { text, fileType, pageCount } = await extractPdfText(buffer);
         const structuredText = structureExtractedText(text, fileType);
 
-        // Upload to Supabase Storage
         const filePath = `${user.id}/${Date.now()}_${file.name}`;
         const { error: uploadError } = await supabase.storage
             .from('pdfs')
@@ -46,7 +94,6 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: '파일 업로드에 실패했습니다.' }, { status: 500 });
         }
 
-        // Save upload record
         const { data: upload, error: dbError } = await supabase
             .from('uploads')
             .insert({
