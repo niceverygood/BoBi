@@ -31,8 +31,8 @@ export const PLAN_LIMITS: Record<PlanSlug, PlanInfo> = {
         maxFileSizeMb: -1,
         maxCustomers: 3,
         historyDays: 7,
-        features: ['AI 고지사항 분석', '월 3건 분석', 'PDF 5MB 이하'],
-        lockedFeatures: ['가입가능 상품 매칭', '보험금 청구 분석', '결과 PDF 다운로드'],
+        features: ['AI 고지사항 분석', '월 3건 분석', 'PDF 용량 무제한'],
+        lockedFeatures: ['가입가능 상품 매칭', '약관 기반 청구 분석', '결과 PDF 다운로드'],
     },
     basic: {
         name: '베이직',
@@ -45,8 +45,8 @@ export const PLAN_LIMITS: Record<PlanSlug, PlanInfo> = {
         maxCustomers: 50,
         historyDays: 90,
         recommended: true,
-        features: ['AI 고지사항 분석', '가입가능 상품 매칭', '월 30건 분석', 'PDF 20MB 이하', '결과 PDF 다운로드', '분석 이력 90일 보관'],
-        lockedFeatures: ['보험금 청구 분석', '맞춤 보험사 상품DB'],
+        features: ['AI 고지사항 분석', '가입가능 상품 매칭', '월 30건 분석', 'PDF 용량 무제한', '결과 PDF 다운로드', '분석 이력 90일 보관'],
+        lockedFeatures: ['약관 기반 청구 분석', '맞춤 보험사 상품DB'],
     },
     pro: {
         name: '프로',
@@ -58,7 +58,7 @@ export const PLAN_LIMITS: Record<PlanSlug, PlanInfo> = {
         maxFileSizeMb: -1,
         maxCustomers: -1,
         historyDays: -1,
-        features: ['AI 고지사항 분석', '가입가능 상품 매칭', '보험금 청구 분석', '월 100건 분석', 'PDF 50MB 이하', '결과 PDF 다운로드', '분석 이력 무제한 보관', '맞춤 보험사 상품DB (3개사)', '카톡 채널 우선 지원'],
+        features: ['AI 고지사항 분석', '가입가능 상품 매칭', '약관 기반 청구 분석', '월 100건 분석', 'PDF 용량 무제한', '결과 PDF 다운로드', '분석 이력 무제한 보관', '맞춤 보험사 상품DB (3개사)', '카톡 채널 우선 지원'],
         lockedFeatures: [],
     },
     team: {

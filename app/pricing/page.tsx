@@ -22,7 +22,8 @@ const PLAN_COLORS: Record<PlanSlug, string> = {
 const FEATURE_COMPARISON = [
     { label: 'AI 고지사항 분석', free: true, basic: true, pro: true, team: true },
     { label: '가입가능 상품 매칭', free: false, basic: true, pro: true, team: true },
-    { label: '보험금 청구 분석', free: false, basic: false, pro: true, team: true },
+    { label: '약관 기반 청구 분석', free: false, basic: false, pro: true, team: true },
+    { label: 'PDF 용량 무제한', free: true, basic: true, pro: true, team: true },
     { label: '결과 PDF 다운로드', free: false, basic: true, pro: true, team: true },
     { label: '맞춤 보험사 상품DB', free: false, basic: false, pro: true, team: true },
     { label: '팀 관리 대시보드', free: false, basic: false, pro: false, team: true },
@@ -120,8 +121,8 @@ export default function PricingPage() {
                                     <Link href="/auth/signup">
                                         <Button
                                             className={`w-full ${isRecommended
-                                                    ? 'bg-gradient-primary hover:opacity-90'
-                                                    : ''
+                                                ? 'bg-gradient-primary hover:opacity-90'
+                                                : ''
                                                 }`}
                                             variant={isRecommended ? 'default' : 'outline'}
                                         >
