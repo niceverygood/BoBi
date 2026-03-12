@@ -6,6 +6,21 @@ import { STEP1_ANALYSIS_PROMPT } from '@/lib/ai/prompts';
 import { parseAIResponse, validateAnalysisResult } from '@/lib/ai/parser';
 import type { AnalysisResult } from '@/types/analysis';
 
+// Truncate text to stay within OpenAI token limits
+// ~4 chars per token, keep under 24K chars total (~6K tokens)
+const MAX_CHARS_PER_FILE = 8000;
+const MAX_TOTAL_CHARS = 24000;
+
+function truncateText(text: string, maxChars: number): string {
+    if (text.length <= maxChars) return text;
+    const halfMax = Math.floor(maxChars / 2);
+    return (
+        text.slice(0, halfMax) +
+        '\n\n... (중간 생략) ...\n\n' +
+        text.slice(-halfMax)
+    );
+}
+
 export async function POST(request: Request) {
     try {
         const supabase = await createClient();
@@ -47,11 +62,12 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: '업로드된 파일을 찾을 수 없습니다.' }, { status: 404 });
         }
 
-        // Combine texts
+        // Combine texts with truncation to stay under token limits
         const combinedText = uploads
-            .map((u) => u.raw_text || '')
+            .map((u) => truncateText(u.raw_text || '', MAX_CHARS_PER_FILE))
             .filter(Boolean)
-            .join('\n\n---\n\n');
+            .join('\n\n---\n\n')
+            .slice(0, MAX_TOTAL_CHARS);
 
         if (!combinedText.trim()) {
             return NextResponse.json({ error: 'PDF에서 텍스트를 추출할 수 없었습니다.' }, { status: 400 });

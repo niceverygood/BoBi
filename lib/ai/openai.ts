@@ -30,7 +30,7 @@ export async function callOpenAI({
     for (let attempt = 0; attempt <= retries; attempt++) {
         try {
             const response = await getOpenAI().chat.completions.create({
-                model: 'gpt-4o',
+                model: 'gpt-4o-mini',
                 max_tokens: maxTokens,
                 temperature,
                 messages: [
@@ -55,6 +55,12 @@ export async function callOpenAI({
         } catch (error) {
             lastError = error as Error;
             console.error(`OpenAI API attempt ${attempt + 1} failed:`, error);
+
+            // Don't retry on rate limit (429) or auth errors
+            const errorMessage = (error as Error).message || '';
+            if (errorMessage.includes('429') || errorMessage.includes('401')) {
+                break;
+            }
 
             if (attempt < retries) {
                 await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
