@@ -28,12 +28,43 @@ export async function POST(request: Request) {
     }
 
     try {
-        // Find user by email using admin API
-        const { data: usersData } = await supabase.auth.admin.listUsers({ perPage: 50 });
-        const targetUser = usersData?.users?.find((u) => u.email === targetEmail);
+        // Find user by email - try profiles table first, then service role admin API
+        let targetUserId: string | null = null;
 
-        if (!targetUser) {
-            return NextResponse.json({ error: `사용자를 찾을 수 없습니다: ${targetEmail}` }, { status: 404 });
+        // Method 1: Look up in profiles table (has email field)
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, email')
+            .eq('email', targetEmail)
+            .maybeSingle();
+
+        if (profile) {
+            targetUserId = profile.id;
+        }
+
+        // Method 2: If profiles doesn't have email, try via service role
+        if (!targetUserId && process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY !== 'your_service_role_key') {
+            const { createClient: createAdminClient } = await import('@supabase/supabase-js');
+            const adminSupabase = createAdminClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.SUPABASE_SERVICE_ROLE_KEY!,
+            );
+            const { data: usersData } = await adminSupabase.auth.admin.listUsers({ perPage: 100 });
+            const targetUser = usersData?.users?.find((u) => u.email === targetEmail);
+            if (targetUser) {
+                targetUserId = targetUser.id;
+            }
+        }
+
+        // Method 3: If still not found, check if the admin's own email matches (for self-test)
+        if (!targetUserId && user.email === targetEmail) {
+            targetUserId = user.id;
+        }
+
+        if (!targetUserId) {
+            return NextResponse.json({
+                error: `사용자를 찾을 수 없습니다: ${targetEmail}. profiles 테이블에 email 필드가 있는지 확인하거나, SUPABASE_SERVICE_ROLE_KEY를 설정해주세요.`,
+            }, { status: 404 });
         }
 
         // Get the target plan
@@ -59,7 +90,7 @@ export async function POST(request: Request) {
         const { data: existingSub } = await supabase
             .from('subscriptions')
             .select('id')
-            .eq('user_id', targetUser.id)
+            .eq('user_id', targetUserId)
             .eq('status', 'active')
             .maybeSingle();
 
@@ -79,7 +110,7 @@ export async function POST(request: Request) {
             await supabase
                 .from('subscriptions')
                 .insert({
-                    user_id: targetUser.id,
+                    user_id: targetUserId,
                     plan_id: plan.id,
                     status: 'active',
                     billing_cycle: 'monthly',
@@ -94,7 +125,7 @@ export async function POST(request: Request) {
         const { data: existingUsage } = await supabase
             .from('usage_tracking')
             .select('id')
-            .eq('user_id', targetUser.id)
+            .eq('user_id', targetUserId)
             .eq('period_start', periodStart)
             .maybeSingle();
 
@@ -110,7 +141,7 @@ export async function POST(request: Request) {
             await supabase
                 .from('usage_tracking')
                 .insert({
-                    user_id: targetUser.id,
+                    user_id: targetUserId,
                     period_start: periodStart,
                     period_end: periodEnd,
                     analyses_used: 0,
@@ -121,7 +152,7 @@ export async function POST(request: Request) {
         return NextResponse.json({
             success: true,
             message: `${targetEmail}의 플랜이 ${plan.display_name}(으)로 변경되었습니다.`,
-            user: { id: targetUser.id, email: targetEmail },
+            user: { id: targetUserId, email: targetEmail },
             plan: { slug: planSlug, name: plan.display_name },
         });
     } catch (error) {
