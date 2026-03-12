@@ -32,10 +32,22 @@ export interface RiskFlag {
     recommendation: string;
 }
 
+export interface DiseaseSummary {
+    diseaseName: string;
+    diseaseCode: string;
+    firstDate: string;
+    lastDate: string;
+    totalVisits: string;
+    treatmentPeriod: string;
+    status: string;
+    hospitals: string[];
+}
+
 export interface AnalysisResult {
     analysisDate: string;
     dataRange: string;
     items: AnalysisItem[];
+    diseaseSummary?: DiseaseSummary[];
     riskFlags: RiskFlag[];
     overallSummary: string;
 }
@@ -50,13 +62,26 @@ export interface ProductEligibility {
     productType: 'simple' | 'mild' | 'standard';
     productName: string;
     eligible: 'O' | 'X' | '△';
-    eligibleText: '가입가능' | '가입불가' | '조건부(심사필요)';
+    eligibleText: string;
     reasons: ProductReason[];
     recommendation: string;
 }
 
+export interface SimpleInsuranceType {
+    type: string;
+    nYears: string;
+    eligible: 'O' | 'X' | '△';
+    reason: string;
+}
+
 export interface ProductResult {
     products: ProductEligibility[];
+    simpleInsuranceDetail?: {
+        availableTypes: SimpleInsuranceType[];
+        bestType: string;
+        note: string;
+    };
+    exceptionDiseaseNote?: string;
     bestOption: string;
     tips: string;
 }

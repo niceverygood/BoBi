@@ -27,6 +27,14 @@ export const DISCOUNT_CODES: Record<string, DiscountCode> = {
         maxUses: -1,
         active: true,
     },
+    'BOBI-ALL': {
+        code: 'BOBI-ALL',
+        description: 'BoBi 종합분석 프로모션 (프로 월 60,000원)',
+        planSlug: 'pro',
+        priceOverride: 60000,
+        maxUses: -1,
+        active: true,
+    },
 };
 
 export function validateDiscountCode(code: string): DiscountCode | null {

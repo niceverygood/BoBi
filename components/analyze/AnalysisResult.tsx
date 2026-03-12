@@ -78,6 +78,41 @@ export default function AnalysisResultView({ result }: AnalysisResultProps) {
                 </div>
             )}
 
+            {/* Disease Summary */}
+            {result.diseaseSummary && result.diseaseSummary.length > 0 && (
+                <Card className="border-0 shadow-sm">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            📊 질병별 치료 요약
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            {result.diseaseSummary.map((d, i) => (
+                                <div key={i} className="rounded-lg border p-4 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-medium text-sm">{d.diseaseName}</span>
+                                        <Badge variant="outline" className="text-xs font-mono">{d.diseaseCode}</Badge>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
+                                        <span>최초: {d.firstDate}</span>
+                                        <span>최근: {d.lastDate}</span>
+                                        <span>방문: {d.totalVisits}회</span>
+                                        <span>기간: {d.treatmentPeriod}</span>
+                                    </div>
+                                    <Badge variant={d.status === '현재 치료중' ? 'destructive' : 'secondary'} className="text-xs">
+                                        {d.status}
+                                    </Badge>
+                                    {d.hospitals && d.hospitals.length > 0 && (
+                                        <p className="text-xs text-muted-foreground">🏥 {d.hospitals.join(', ')}</p>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
             {/* Analysis Items Accordion */}
             <Card className="border-0 shadow-sm">
                 <CardHeader>
