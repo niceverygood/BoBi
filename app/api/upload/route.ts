@@ -82,7 +82,8 @@ export async function POST(request: Request) {
         const { text, fileType, pageCount } = await extractPdfText(buffer);
         const structuredText = structureExtractedText(text, fileType);
 
-        const filePath = `${user.id}/${Date.now()}_${file.name}`;
+        const safeFileName = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.pdf`;
+        const filePath = `${user.id}/${safeFileName}`;
         const { error: uploadError } = await supabase.storage
             .from('pdfs')
             .upload(filePath, buffer, {

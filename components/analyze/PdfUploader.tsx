@@ -37,7 +37,9 @@ export default function PdfUploader({ onFilesUploaded, customerId }: PdfUploader
                 return { file, fileType: 'unknown', status: 'error', error: '로그인이 필요합니다.' };
             }
 
-            const filePath = `${user.id}/${Date.now()}_${file.name}`;
+            // Use safe ASCII-only filename (Supabase Storage doesn't support Korean in keys)
+            const safeFileName = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.pdf`;
+            const filePath = `${user.id}/${safeFileName}`;
             const { error: storageError } = await supabase.storage
                 .from('pdfs')
                 .upload(filePath, file, {
