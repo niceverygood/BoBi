@@ -2,12 +2,14 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AlertTriangle, CheckCircle2, XCircle, Info, Shield } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, XCircle, Info, Shield, Download } from 'lucide-react';
 import type { AnalysisResult } from '@/types/analysis';
 import { getCategoryLabel } from '@/lib/utils/format';
 import { cn } from '@/lib/utils';
+import { downloadReportPdf } from '@/lib/pdf/report-generator';
 
 interface AnalysisResultProps {
     result: AnalysisResult;
@@ -23,8 +25,19 @@ export default function AnalysisResultView({ result }: AnalysisResultProps) {
                         <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                             <Shield className="w-6 h-6 text-primary" />
                         </div>
-                        <div>
-                            <h3 className="font-semibold text-lg mb-2">분석 요약</h3>
+                        <div className="flex-1">
+                            <div className="flex items-center justify-between mb-2">
+                                <h3 className="font-semibold text-lg">분석 요약</h3>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-2 text-xs"
+                                    onClick={() => downloadReportPdf(result)}
+                                >
+                                    <Download className="w-3.5 h-3.5" />
+                                    PDF 다운로드
+                                </Button>
+                            </div>
                             <p className="text-muted-foreground leading-relaxed">{result.overallSummary}</p>
                             <div className="flex gap-4 mt-3 text-xs text-muted-foreground">
                                 <span>분석일: {result.analysisDate}</span>
