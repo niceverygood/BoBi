@@ -3,7 +3,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { CheckCircle2, XCircle, DollarSign, FileText } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertCircle, FileText } from 'lucide-react';
 import type { ClaimableItem } from '@/types/analysis';
 import { cn } from '@/lib/utils';
 
@@ -11,8 +11,24 @@ interface ClaimResultProps {
     items: ClaimableItem[];
 }
 
+function getClaimIcon(claimable: string) {
+    if (claimable === 'O') return <CheckCircle2 className="w-4 h-4 text-green-500" />;
+    if (claimable === 'X') return <XCircle className="w-4 h-4 text-red-500" />;
+    return <AlertCircle className="w-4 h-4 text-amber-500" />;
+}
+
+function getClaimBadge(claimable: string, claimableText: string) {
+    if (claimable === 'O') {
+        return <Badge className="text-xs bg-green-500">청구가능</Badge>;
+    }
+    if (claimable === 'X') {
+        return <Badge variant="secondary" className="text-xs">청구불가</Badge>;
+    }
+    return <Badge className="text-xs bg-amber-500">{claimableText || '확인필요'}</Badge>;
+}
+
 export default function ClaimResultView({ items }: ClaimResultProps) {
-    if (items.length === 0) {
+    if (!items || items.length === 0) {
         return (
             <p className="text-center text-muted-foreground py-8">
                 청구 가능한 항목이 없습니다.
@@ -31,53 +47,49 @@ export default function ClaimResultView({ items }: ClaimResultProps) {
                                 <p className="text-xs text-muted-foreground">{item.treatmentDate}</p>
                                 <h4 className="font-medium">{item.diagnosis}</h4>
                                 <p className="text-xs text-muted-foreground">{item.hospital}</p>
+                                {item.diagnosisCode && (
+                                    <p className="text-xs text-muted-foreground/60">코드: {item.diagnosisCode}</p>
+                                )}
                             </div>
-                            <Badge variant="outline">{item.treatmentType}</Badge>
+                            <div className="flex flex-col items-end gap-1">
+                                <Badge variant="outline">{item.treatmentType}</Badge>
+                                {item.surgeryGrade && (
+                                    <Badge variant="outline" className="text-xs">{item.surgeryGrade}</Badge>
+                                )}
+                            </div>
                         </div>
 
-                        {/* Applicable Clauses */}
-                        <Accordion>
-                            {item.applicableClauses.map((clause, cIndex) => (
-                                <AccordionItem key={cIndex} value={`clause-${cIndex}`} className="border rounded-lg px-3 mb-2">
-                                    <AccordionTrigger className="py-3 hover:no-underline">
-                                        <div className="flex items-center gap-2">
-                                            {clause.claimable ? (
-                                                <CheckCircle2 className="w-4 h-4 text-green-500" />
-                                            ) : (
-                                                <XCircle className="w-4 h-4 text-red-500" />
-                                            )}
-                                            <span className="text-sm font-medium">{clause.clauseType}</span>
-                                            <Badge
-                                                variant={clause.claimable ? 'default' : 'secondary'}
-                                                className={cn('text-xs', clause.claimable && 'bg-green-500')}
-                                            >
-                                                {clause.claimable ? '청구 가능' : '청구 불가'}
-                                            </Badge>
-                                        </div>
-                                    </AccordionTrigger>
-                                    <AccordionContent className="pb-3">
-                                        <div className="space-y-2 text-sm">
-                                            <div className="flex items-start gap-2">
-                                                <FileText className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-                                                <p className="text-muted-foreground">{clause.reason}</p>
+                        {/* Claim Results */}
+                        {item.claimResults && item.claimResults.length > 0 && (
+                            <Accordion>
+                                {item.claimResults.map((result, cIndex) => (
+                                    <AccordionItem key={cIndex} value={`clause-${index}-${cIndex}`} className="border rounded-lg px-3 mb-2">
+                                        <AccordionTrigger className="py-3 hover:no-underline">
+                                            <div className="flex items-center gap-2">
+                                                {getClaimIcon(result.claimable)}
+                                                <span className="text-sm font-medium">{result.clauseType}</span>
+                                                {getClaimBadge(result.claimable, result.claimableText)}
                                             </div>
-                                            {clause.estimatedAmount && (
-                                                <div className="flex items-center gap-2">
-                                                    <DollarSign className="w-4 h-4 text-green-500 shrink-0" />
-                                                    <p className="font-medium">예상 청구 금액: {clause.estimatedAmount}</p>
+                                        </AccordionTrigger>
+                                        <AccordionContent className="pb-3">
+                                            <div className="space-y-2 text-sm">
+                                                <div className="flex items-start gap-2">
+                                                    <FileText className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                                                    <p className="text-muted-foreground">{result.reason}</p>
                                                 </div>
-                                            )}
-                                            {clause.howToClaim && (
-                                                <div className="bg-muted/50 p-3 rounded-lg">
-                                                    <p className="text-xs font-semibold mb-1">청구 방법</p>
-                                                    <p className="text-xs text-muted-foreground">{clause.howToClaim}</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </AccordionContent>
-                                </AccordionItem>
-                            ))}
-                        </Accordion>
+                                                {result.excludedBy && (
+                                                    <div className="bg-red-50 dark:bg-red-950/20 p-2 rounded-md">
+                                                        <p className="text-xs text-red-600 dark:text-red-400">
+                                                            보상제외: {result.excludedBy}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                ))}
+                            </Accordion>
+                        )}
                     </CardContent>
                 </Card>
             ))}

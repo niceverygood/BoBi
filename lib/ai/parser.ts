@@ -60,7 +60,8 @@ export function validateProductResult(result: Record<string, unknown>): boolean 
 export function validateClaimResult(result: Record<string, unknown>): boolean {
     return (
         Array.isArray(result.claimableItems) &&
-        typeof result.totalClaimable === 'string' &&
-        typeof result.summary === 'string'
+        typeof result.claimSummary === 'object' &&
+        typeof result.summary === 'string' &&
+        Array.isArray(result.importantNotes)
     );
 }

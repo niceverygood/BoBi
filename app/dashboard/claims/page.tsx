@@ -5,7 +5,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Lightbulb, Loader2 } from 'lucide-react';
 import StepIndicator from '@/components/common/StepIndicator';
 import ClaimResultView from '@/components/claims/ClaimResult';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
@@ -107,22 +107,59 @@ function ClaimsContent() {
                                 <div className="w-12 h-12 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">
                                     <CheckCircle className="w-6 h-6 text-violet-500" />
                                 </div>
-                                <div>
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <h3 className="font-semibold text-lg">청구 가능 항목</h3>
-                                        <Badge className="bg-violet-500">{result.totalClaimable}</Badge>
-                                    </div>
+                                <div className="flex-1">
+                                    <h3 className="font-semibold text-lg mb-2">청구 분석 결과</h3>
+                                    {result.claimSummary && (
+                                        <div className="flex flex-wrap gap-2 mb-3">
+                                            <Badge className="bg-violet-500">
+                                                전체 {result.claimSummary.totalItems}건
+                                            </Badge>
+                                            <Badge className="bg-green-500">
+                                                청구가능 {result.claimSummary.claimableCount}건
+                                            </Badge>
+                                            <Badge variant="secondary">
+                                                청구불가 {result.claimSummary.notClaimableCount}건
+                                            </Badge>
+                                            {result.claimSummary.needCheckCount && result.claimSummary.needCheckCount !== '0' && (
+                                                <Badge className="bg-amber-500">
+                                                    확인필요 {result.claimSummary.needCheckCount}건
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    )}
                                     <p className="text-muted-foreground text-sm leading-relaxed">{result.summary}</p>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
+                    {/* Key Findings */}
+                    {result.keyFindings && result.keyFindings.length > 0 && (
+                        <Card className="border-0 shadow-sm bg-blue-50 dark:bg-blue-950/20">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                                    <Lightbulb className="w-4 h-4" />
+                                    핵심 발견사항
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <ul className="space-y-3">
+                                    {result.keyFindings.map((kf, index) => (
+                                        <li key={index} className="text-sm">
+                                            <p className="font-medium text-foreground">{kf.finding}</p>
+                                            <p className="text-muted-foreground text-xs mt-0.5">→ {kf.action}</p>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </CardContent>
+                        </Card>
+                    )}
+
                     {/* Claim Items */}
                     <ClaimResultView items={result.claimableItems} />
 
                     {/* Important Notes */}
-                    {result.importantNotes.length > 0 && (
+                    {result.importantNotes && result.importantNotes.length > 0 && (
                         <Card className="border-0 shadow-sm bg-amber-50 dark:bg-amber-950/20">
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-sm flex items-center gap-2 text-amber-700 dark:text-amber-400">

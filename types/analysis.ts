@@ -86,25 +86,41 @@ export interface ProductResult {
     tips: string;
 }
 
-export interface ApplicableClause {
+export interface ClaimResultItem {
     clauseType: string;
-    claimable: boolean;
+    claimable: string; // "O" | "X" | "△"
+    claimableText: string;
     reason: string;
-    estimatedAmount?: string;
-    howToClaim?: string;
+    excludedBy?: string;
 }
 
 export interface ClaimableItem {
     treatmentDate: string;
     hospital: string;
     diagnosis: string;
+    diagnosisCode?: string;
     treatmentType: '외래' | '입원' | '수술';
-    applicableClauses: ApplicableClause[];
+    surgeryCode?: string;
+    surgeryGrade?: string;
+    claimResults: ClaimResultItem[];
+}
+
+export interface ClaimSummary {
+    totalItems: string;
+    claimableCount: string;
+    notClaimableCount: string;
+    needCheckCount: string;
+}
+
+export interface KeyFinding {
+    finding: string;
+    action: string;
 }
 
 export interface ClaimResult {
     claimableItems: ClaimableItem[];
-    totalClaimable: string;
+    claimSummary: ClaimSummary;
+    keyFindings: KeyFinding[];
     summary: string;
     importantNotes: string[];
 }
