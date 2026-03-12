@@ -71,6 +71,7 @@ export async function POST(request: Request) {
         });
     } catch (error) {
         console.error('Upload error:', error);
-        return NextResponse.json({ error: '파일 처리 중 오류가 발생했습니다.' }, { status: 500 });
+        const message = error instanceof Error ? error.message : '알 수 없는 오류';
+        return NextResponse.json({ error: `파일 처리 중 오류가 발생했습니다: ${message}` }, { status: 500 });
     }
 }

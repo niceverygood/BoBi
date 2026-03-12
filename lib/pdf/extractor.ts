@@ -1,6 +1,4 @@
 // lib/pdf/extractor.ts
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require('pdf-parse');
 
 export type PdfFileType = 'basic_info' | 'prescription' | 'detail_treatment' | 'unknown';
 
@@ -14,15 +12,22 @@ interface ExtractedPdfData {
  * Extract text from a PDF buffer and detect the file type
  */
 export async function extractPdfText(buffer: Buffer): Promise<ExtractedPdfData> {
-    const data = await pdfParse(buffer);
-    const text = data.text;
-    const fileType = detectFileType(text);
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pdfParse = (await import('pdf-parse' as any)).default;
+        const data = await pdfParse(buffer);
+        const text = data.text;
+        const fileType = detectFileType(text);
 
-    return {
-        text,
-        fileType,
-        pageCount: data.numpages,
-    };
+        return {
+            text,
+            fileType,
+            pageCount: data.numpages,
+        };
+    } catch (error) {
+        console.error('PDF parse error:', error);
+        throw new Error(`PDF 파싱 실패: ${(error as Error).message}`);
+    }
 }
 
 /**
