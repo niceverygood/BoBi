@@ -9,6 +9,45 @@ import { cn } from '@/lib/utils';
 import { PDF_FILE_TYPES } from '@/lib/utils/constants';
 import { createClient } from '@/lib/supabase/client';
 
+/**
+ * Render PDF pages to base64 PNG images using pdfjs-dist
+ * Used as fallback when text extraction fails (image-based PDFs)
+ */
+async function renderPdfToImages(file: File, maxPages = 10): Promise<string[]> {
+    try {
+        const pdfjsLib = await import('pdfjs-dist');
+        // Set worker source
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const numPages = Math.min(pdf.numPages, maxPages);
+        const images: string[] = [];
+
+        for (let i = 1; i <= numPages; i++) {
+            const page = await pdf.getPage(i);
+            const scale = 1.5; // Good quality for OCR
+            const viewport = page.getViewport({ scale });
+
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) continue;
+
+            await page.render({ canvasContext: ctx, viewport }).promise;
+            // Convert to base64 with moderate quality to keep size manageable
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            images.push(dataUrl);
+        }
+
+        return images;
+    } catch (err) {
+        console.error('PDF to image conversion error:', err);
+        return [];
+    }
+}
+
 interface UploadedFile {
     id?: string;
     file: File;
@@ -81,6 +120,48 @@ export default function PdfUploader({ onFilesUploaded, customerId }: PdfUploader
             }
 
             const data = await response.json();
+
+            // Check if OCR is needed (image-based PDF)
+            if (data.ocrNeeded) {
+                // Render PDF pages to images using pdfjs-dist
+                const pageImages = await renderPdfToImages(file);
+                if (pageImages.length === 0) {
+                    return {
+                        file, fileType: 'unknown', status: 'error',
+                        error: 'PDF 페이지를 이미지로 변환할 수 없습니다.',
+                    };
+                }
+
+                // Send images to OCR endpoint
+                const ocrResponse = await fetch('/api/upload/ocr', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        pageImages,
+                        filePath: data.filePath,
+                        fileName: file.name,
+                        customerId: customerId || null,
+                    }),
+                });
+
+                if (!ocrResponse.ok) {
+                    const ocrErr = await ocrResponse.json();
+                    return {
+                        file, fileType: 'unknown', status: 'error',
+                        error: ocrErr.error || 'OCR 처리 실패',
+                    };
+                }
+
+                const ocrData = await ocrResponse.json();
+                return {
+                    id: ocrData.upload.id,
+                    file,
+                    fileType: ocrData.fileType,
+                    status: 'success',
+                    textPreview: ocrData.textPreview,
+                };
+            }
+
             return {
                 id: data.upload.id,
                 file,

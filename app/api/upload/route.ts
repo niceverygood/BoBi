@@ -35,8 +35,27 @@ export async function POST(request: Request) {
             }
 
             const buffer = Buffer.from(await fileData.arrayBuffer());
-            const { text, fileType, pageCount } = await extractPdfText(buffer);
-            const structuredText = structureExtractedText(text, fileType);
+
+            let text: string, fileType: string, pageCount: number;
+            try {
+                const result = await extractPdfText(buffer);
+                text = result.text;
+                fileType = result.fileType;
+                pageCount = result.pageCount;
+            } catch (extractError) {
+                const msg = (extractError as Error).message;
+                if (msg === 'OCR_NEEDED') {
+                    // Image-based PDF - tell client to use OCR
+                    return NextResponse.json({
+                        ocrNeeded: true,
+                        filePath,
+                        fileName,
+                        message: '이미지 기반 PDF입니다. OCR로 텍스트를 추출합니다...',
+                    }, { status: 200 });
+                }
+                throw extractError;
+            }
+            const structuredText = structureExtractedText(text, fileType as import('@/lib/pdf/extractor').PdfFileType);
 
             // Save upload record
             const { data: upload, error: dbError } = await supabase

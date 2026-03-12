@@ -51,9 +51,9 @@ export async function extractPdfText(buffer: Buffer): Promise<ExtractedPdfData> 
             throw new Error('비밀번호가 설정된 PDF 파일입니다. 비밀번호를 해제한 후 다시 업로드해주세요.');
         }
 
-        // No text extracted (image-only PDF)
+        // No text extracted (image-only PDF) - trigger OCR fallback
         if (msg === 'NO_TEXT_EXTRACTED') {
-            throw new Error('PDF에서 텍스트를 추출할 수 없습니다. 이미지로만 구성된 PDF이거나 비밀번호가 설정되어 있을 수 있습니다. 비밀번호를 해제하거나 텍스트가 포함된 PDF를 업로드해주세요.');
+            throw new Error('OCR_NEEDED');
         }
 
         console.error('PDF parse error:', error);
