@@ -58,12 +58,21 @@ export interface ProductReason {
     detail: string;
 }
 
+export interface ExceptionDiseaseCheck {
+    insurer: string;
+    isException: boolean;
+    matchedDisease?: string;
+    conditions?: string;
+    result: string;
+}
+
 export interface ProductEligibility {
     productType: 'simple' | 'mild' | 'standard';
     productName: string;
     eligible: 'O' | 'X' | '△';
     eligibleText: string;
     reasons: ProductReason[];
+    exceptionDiseaseCheck?: ExceptionDiseaseCheck[];
     recommendation: string;
 }
 
@@ -74,12 +83,23 @@ export interface SimpleInsuranceType {
     reason: string;
 }
 
+export interface ExceptionDiseaseSummaryDetail {
+    insurer: string;
+    productType: string;
+    matchedCount: number | string;
+    recommendation: string;
+}
+
 export interface ProductResult {
     products: ProductEligibility[];
     simpleInsuranceDetail?: {
         availableTypes: SimpleInsuranceType[];
         bestType: string;
         note: string;
+    };
+    exceptionDiseaseSummary?: {
+        totalMatchedInsurers: number | string;
+        details: ExceptionDiseaseSummaryDetail[];
     };
     exceptionDiseaseNote?: string;
     bestOption: string;
