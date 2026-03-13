@@ -89,6 +89,44 @@ export default function ProductCard({ product }: ProductCardProps) {
                             </div>
                         </AccordionContent>
                     </AccordionItem>
+
+                    {/* 예외질환 체크 결과 */}
+                    {product.exceptionDiseaseCheck && product.exceptionDiseaseCheck.length > 0 && (
+                        <AccordionItem value="exceptions" className="border-0">
+                            <AccordionTrigger className="text-sm py-2 hover:no-underline">
+                                🏥 예외질환 매칭 결과 ({product.exceptionDiseaseCheck.length}건)
+                            </AccordionTrigger>
+                            <AccordionContent>
+                                <div className="space-y-2 pt-2">
+                                    {product.exceptionDiseaseCheck.map((check, index) => (
+                                        <div key={index} className={cn(
+                                            'rounded-lg p-3 border text-xs',
+                                            check.isException ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900' : 'bg-muted/50'
+                                        )}>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                {check.isException ? (
+                                                    <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                                                ) : (
+                                                    <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                                                )}
+                                                <span className="font-medium">{check.insurer}</span>
+                                                <Badge className={cn('text-[10px]', check.isException ? 'bg-green-500' : 'bg-gray-400')}>
+                                                    {check.isException ? '예외질환 해당' : '해당없음'}
+                                                </Badge>
+                                            </div>
+                                            {check.matchedDisease && (
+                                                <p className="text-muted-foreground ml-5">질환: {check.matchedDisease}</p>
+                                            )}
+                                            {check.conditions && (
+                                                <p className="text-muted-foreground ml-5">조건: {check.conditions}</p>
+                                            )}
+                                            <p className="ml-5 mt-1 font-medium">{check.result}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    )}
                 </Accordion>
             </CardContent>
         </Card>

@@ -101,11 +101,88 @@ function ProductsContent() {
             {result && (
                 <>
                     {/* Product Cards */}
-                    <div className="grid gap-4 md:grid-cols-3">
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {result.products.map((product, index) => (
                             <ProductCard key={index} product={product} />
                         ))}
                     </div>
+
+                    {/* 간편보험 세부 유형 비교 */}
+                    {result.simpleInsuranceDetail && (
+                        <Card className="border-0 shadow-sm">
+                            <CardHeader>
+                                <CardTitle className="text-lg">📋 간편보험 3.N.5 세부유형 비교</CardTitle>
+                                <p className="text-sm text-muted-foreground">
+                                    N값에 따라 입원/수술 확인 기간이 달라집니다. 고객에게 가장 유리한 유형을 확인하세요.
+                                </p>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="border-b bg-muted/30">
+                                                <th className="text-left py-2 px-3 font-medium">유형</th>
+                                                <th className="text-left py-2 px-3 font-medium">확인기간</th>
+                                                <th className="text-center py-2 px-3 font-medium">가입가능</th>
+                                                <th className="text-left py-2 px-3 font-medium">사유</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {result.simpleInsuranceDetail.availableTypes.map((t, i) => (
+                                                <tr key={i} className={`border-b ${t.eligible === 'O' ? 'bg-green-50 dark:bg-green-950/10' : ''}`}>
+                                                    <td className="py-2 px-3 font-medium">{t.type}</td>
+                                                    <td className="py-2 px-3 text-muted-foreground">{t.nYears}</td>
+                                                    <td className="py-2 px-3 text-center">
+                                                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold ${t.eligible === 'O' ? 'bg-green-500 text-white' :
+                                                                t.eligible === 'X' ? 'bg-red-500 text-white' :
+                                                                    'bg-amber-500 text-white'
+                                                            }`}>{t.eligible}</span>
+                                                    </td>
+                                                    <td className="py-2 px-3 text-xs text-muted-foreground">{t.reason}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {result.simpleInsuranceDetail.bestType && (
+                                    <div className="mt-3 p-3 bg-primary/5 rounded-lg text-sm">
+                                        <strong>✅ 추천:</strong> {result.simpleInsuranceDetail.bestType}
+                                        {result.simpleInsuranceDetail.note && (
+                                            <span className="text-muted-foreground ml-2">({result.simpleInsuranceDetail.note})</span>
+                                        )}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* 예외질환 요약 */}
+                    {result.exceptionDiseaseSummary && result.exceptionDiseaseSummary.details && (
+                        <Card className="border-0 shadow-sm border-l-4 border-l-blue-500">
+                            <CardHeader>
+                                <CardTitle className="text-lg">🏥 보험사별 예외질환 매칭 요약</CardTitle>
+                                <p className="text-sm text-muted-foreground">
+                                    고객의 진단 이력과 매칭되는 보험사별 예외질환 정보입니다.
+                                </p>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-3">
+                                    {result.exceptionDiseaseSummary.details.map((detail, i) => (
+                                        <div key={i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                                            <div>
+                                                <span className="font-medium text-sm">{detail.insurer}</span>
+                                                <span className="text-xs text-muted-foreground ml-2">({detail.productType})</span>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-xs font-medium">매칭 {detail.matchedCount}건</span>
+                                                <p className="text-xs text-muted-foreground">{detail.recommendation}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Comparison Table */}
                     <Card className="border-0 shadow-sm">

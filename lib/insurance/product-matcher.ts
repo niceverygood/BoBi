@@ -16,7 +16,7 @@ export async function matchProducts(analysisResult: AnalysisResult): Promise<Pro
         .replace('{ANALYSIS_RESULT}', JSON.stringify(analysisResult, null, 2))
         .replace('{EXCEPTION_DISEASE_CONTEXT}', exceptionContext);
 
-    const response = await callOpenAI({ prompt, maxTokens: 4096 });
+    const response = await callOpenAI({ prompt, maxTokens: 8192 });
     return parseAIResponse<ProductResult>(response);
 }
 
