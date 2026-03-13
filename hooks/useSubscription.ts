@@ -110,7 +110,7 @@ export function useSubscription() {
     };
 
     const result: SubscriptionWithUsage = {
-        subscription: subscription!,
+        subscription: subscription ?? null,
         plan,
         usage,
         canAnalyze,

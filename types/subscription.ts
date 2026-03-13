@@ -53,7 +53,7 @@ export interface UsageTracking {
 }
 
 export interface SubscriptionWithUsage {
-    subscription: Subscription;
+    subscription: Subscription | null;
     plan: SubscriptionPlan;
     usage: UsageTracking;
     canAnalyze: boolean;
