@@ -309,7 +309,7 @@ export function generateReportHtml(result: AnalysisResult, customerName?: string
     <div class="footer">
         이 리포트는 BoBi AI 보험 분석 어시스턴트에 의해 자동 생성되었습니다.<br>
         분석 결과는 참고용이며, 최종 판단은 보험사 심사 기준에 따릅니다.<br>
-        © ${now.getFullYear()} BoBi — bo-bi.vercel.app
+        © ${now.getFullYear()} BoBi — bobi.co.kr
     </div>
 
 </div>

@@ -209,8 +209,8 @@ export default function AdminPage() {
                     {/* Plan change feedback */}
                     {planMessage && (
                         <div className={`mb-4 p-3 rounded-lg flex items-center gap-2 text-sm ${planMessage.type === 'success'
-                                ? 'bg-green-50 text-green-700 border border-green-200'
-                                : 'bg-red-50 text-red-700 border border-red-200'
+                            ? 'bg-green-50 text-green-700 border border-green-200'
+                            : 'bg-red-50 text-red-700 border border-red-200'
                             }`}>
                             {planMessage.type === 'success'
                                 ? <CheckCircle2 className="w-4 h-4 shrink-0" />
@@ -285,8 +285,8 @@ export default function AdminPage() {
                                     key={opt.key}
                                     onClick={() => handleSort(opt.key)}
                                     className={`px-2.5 py-1 rounded-md transition-colors flex items-center gap-1 ${sortKey === opt.key
-                                            ? 'bg-primary text-primary-foreground'
-                                            : 'hover:bg-accent text-muted-foreground'
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'hover:bg-accent text-muted-foreground'
                                         }`}
                                 >
                                     {opt.label}
