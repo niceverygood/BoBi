@@ -218,6 +218,43 @@ export default function PricingPage() {
                         </Button>
                     </Link>
                 </div>
+
+                {/* 결제 관련 고지 */}
+                <div className="mt-16 max-w-3xl mx-auto">
+                    <Card className="border-0 shadow-sm bg-muted/30">
+                        <CardContent className="p-6">
+                            <h3 className="font-semibold text-sm mb-3">💳 결제 관련 안내</h3>
+                            <ul className="text-xs text-muted-foreground space-y-2">
+                                <li>• 유료 플랜은 구독 형태로 제공되며, 구독 기간 종료 시 <strong>자동으로 갱신</strong>됩니다.</li>
+                                <li>• 자동 갱신을 원하지 않으시면 구독 기간 만료 전에 설정 페이지에서 해지해주세요.</li>
+                                <li>• 결제일로부터 7일 이내이고 서비스를 이용하지 않은 경우 <strong>전액 환불</strong>이 가능합니다.</li>
+                                <li>• 결제일로부터 7일 이내이나 서비스를 이용한 경우, 이용 건수에 해당하는 금액을 차감 후 환불됩니다.</li>
+                                <li>• 결제일로부터 7일 경과 후에는 환불이 불가합니다 (회사 귀책 사유 제외).</li>
+                                <li>• 환불 요청은 설정 페이지 또는 고객센터(010-2309-7443)를 통해 신청할 수 있습니다.</li>
+                            </ul>
+                            <div className="mt-4 pt-3 border-t text-xs text-muted-foreground">
+                                결제를 진행하시면{' '}
+                                <Link href="/terms" className="text-primary underline">이용약관</Link>
+                                {' '}및{' '}
+                                <Link href="/privacy" className="text-primary underline">개인정보처리방침</Link>
+                                에 동의하는 것으로 간주됩니다.
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* 사업자 정보 푸터 */}
+                <div className="mt-12 pt-8 border-t text-center text-xs text-muted-foreground space-y-1">
+                    <p>주식회사 바틀 | 대표자: 한승수 | 사업자등록번호: 376-87-01076</p>
+                    <p>경기도 성남시 분당구 판교로289번길 20, 2동 8층 (삼평동, 판교테크노밸리 스타트업 캠퍼스)</p>
+                    <p>연락처: 010-2309-7443</p>
+                    <p className="mt-2">
+                        <Link href="/terms" className="underline hover:text-foreground">이용약관</Link>
+                        {' | '}
+                        <Link href="/privacy" className="underline hover:text-foreground">개인정보처리방침</Link>
+                    </p>
+                    <p className="mt-2">© 2026 BoBi. All rights reserved.</p>
+                </div>
             </main>
         </div>
     );

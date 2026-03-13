@@ -20,6 +20,7 @@ export default function SignupPage() {
     const [kakaoLoading, setKakaoLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const [agreed, setAgreed] = useState(false);
     const router = useRouter();
     const supabase = createClient();
 
@@ -106,6 +107,15 @@ export default function SignupPage() {
                         <CardDescription>보비와 함께 스마트한 보험 분석을 시작하세요</CardDescription>
                     </CardHeader>
                     <CardContent>
+                        {/* 약관 동의 안내 */}
+                        <p className="text-xs text-center text-muted-foreground">
+                            카카오로 시작하면{' '}
+                            <Link href="/terms" target="_blank" className="text-primary underline">이용약관</Link>
+                            {' '}및{' '}
+                            <Link href="/privacy" target="_blank" className="text-primary underline">개인정보처리방침</Link>
+                            에 동의하게 됩니다.
+                        </p>
+
                         {/* 카카오 로그인 */}
                         <Button
                             type="button"
@@ -182,13 +192,30 @@ export default function SignupPage() {
                                 />
                             </div>
 
+                            {/* 약관 동의 */}
+                            <div className="flex items-start gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="agree"
+                                    checked={agreed}
+                                    onChange={(e) => setAgreed(e.target.checked)}
+                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                />
+                                <label htmlFor="agree" className="text-xs text-muted-foreground leading-relaxed">
+                                    <Link href="/terms" target="_blank" className="text-primary underline">이용약관</Link>
+                                    {' '}및{' '}
+                                    <Link href="/privacy" target="_blank" className="text-primary underline">개인정보처리방침</Link>
+                                    에 동의합니다. (필수)
+                                </label>
+                            </div>
+
                             {error && (
                                 <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg">
                                     {error}
                                 </div>
                             )}
 
-                            <Button type="submit" className="w-full h-11 bg-gradient-primary hover:opacity-90 transition-opacity" disabled={loading}>
+                            <Button type="submit" className="w-full h-11 bg-gradient-primary hover:opacity-90 transition-opacity" disabled={loading || !agreed}>
                                 {loading ? (
                                     <>
                                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />

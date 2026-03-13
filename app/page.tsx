@@ -177,7 +177,7 @@ export default function LandingPage() {
               </div>
               <div>
                 <h3 className="font-semibold mb-1">최신 AI 기술</h3>
-                <p className="text-sm text-muted-foreground">Claude AI 기반으로 정확한 분석과 자연스러운 요약 제공</p>
+                <p className="text-sm text-muted-foreground">최신 AI(GPT-4o) 기반으로 정확한 분석과 자연스러운 요약 제공</p>
               </div>
             </div>
           </div>
@@ -208,15 +208,44 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-8 px-4">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-primary" />
-            <span className="font-semibold">보비 BoBi</span>
+      <footer className="border-t py-10 px-4 bg-muted/20">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col md:flex-row items-start justify-between gap-8 mb-8">
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Shield className="w-5 h-5 text-primary" />
+                <span className="font-semibold text-lg">보비 BoBi</span>
+              </div>
+              <p className="text-sm text-muted-foreground max-w-sm">
+                보험설계사를 위한 AI 보험비서. 고지사항 분석부터 상품 매칭, 보험금 청구 안내까지.
+              </p>
+            </div>
+            <div className="flex gap-8">
+              <div>
+                <h4 className="font-semibold text-sm mb-3">서비스</h4>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li><Link href="/pricing" className="hover:text-foreground transition-colors">요금제</Link></li>
+                  <li><Link href="/auth/login" className="hover:text-foreground transition-colors">로그인</Link></li>
+                  <li><Link href="/auth/signup" className="hover:text-foreground transition-colors">회원가입</Link></li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold text-sm mb-3">법적 고지</h4>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li><Link href="/terms" className="hover:text-foreground transition-colors">이용약관</Link></li>
+                  <li><Link href="/privacy" className="hover:text-foreground transition-colors">개인정보처리방침</Link></li>
+                </ul>
+              </div>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground">
-            © 2024 BoBi. AI 보험비서 서비스.
-          </p>
+          <div className="border-t pt-6">
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>주식회사 바틀 | 대표자: 한승수 | 사업자등록번호: 376-87-01076</p>
+              <p>주소: 경기도 성남시 분당구 판교로289번길 20, 2동 8층 (삼평동, 판교테크노밸리 스타트업 캠퍼스)</p>
+              <p>연락처: 010-2309-7443</p>
+              <p className="mt-3">© 2026 BoBi. All rights reserved.</p>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
