@@ -67,15 +67,43 @@ export async function extractPdfText(buffer: Buffer): Promise<ExtractedPdfData> 
 function detectFileType(text: string): PdfFileType {
     const normalizedText = text.replace(/\s+/g, ' ').toLowerCase();
 
-    if (normalizedText.includes('주상병코드') || normalizedText.includes('기본진료정보') || normalizedText.includes('진료구분')) {
+    // 기본진료정보
+    if (
+        normalizedText.includes('주상병코드') ||
+        normalizedText.includes('기본진료정보') ||
+        normalizedText.includes('진료구분') ||
+        normalizedText.includes('주상병') ||
+        normalizedText.includes('부상병') ||
+        (normalizedText.includes('입원') && normalizedText.includes('외래') && normalizedText.includes('진단'))
+    ) {
         return 'basic_info';
     }
 
-    if (normalizedText.includes('약품명') || normalizedText.includes('성분명') || normalizedText.includes('처방조제')) {
+    // 처방조제정보
+    if (
+        normalizedText.includes('약품명') ||
+        normalizedText.includes('성분명') ||
+        normalizedText.includes('처방조제') ||
+        normalizedText.includes('처방/조제') ||
+        normalizedText.includes('투약량') ||
+        normalizedText.includes('1회투약량') ||
+        normalizedText.includes('총투약일수') ||
+        (normalizedText.includes('처방') && normalizedText.includes('조제'))
+    ) {
         return 'prescription';
     }
 
-    if (normalizedText.includes('진료내역') || normalizedText.includes('세부진료') || normalizedText.includes('코드명')) {
+    // 세부진료정보
+    if (
+        normalizedText.includes('진료내역') ||
+        normalizedText.includes('세부진료') ||
+        normalizedText.includes('코드명') ||
+        normalizedText.includes('조제료등') ||
+        normalizedText.includes('약국관리료') ||
+        normalizedText.includes('복약지도료') ||
+        normalizedText.includes('진찰료') ||
+        (normalizedText.includes('병·의원') && normalizedText.includes('코드'))
+    ) {
         return 'detail_treatment';
     }
 

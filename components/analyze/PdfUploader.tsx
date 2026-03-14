@@ -233,7 +233,7 @@ export default function PdfUploader({ onFilesUploaded, customerId }: PdfUploader
 
     const getFileTypeLabel = (type: string) => {
         const found = PDF_FILE_TYPES.find((t) => t.id === type);
-        return found?.label || '알 수 없음';
+        return found?.label || '진료이력 (자동인식)';
     };
 
     return (

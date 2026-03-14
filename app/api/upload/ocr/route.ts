@@ -10,9 +10,9 @@ type PdfFileType = 'basic_info' | 'prescription' | 'detail_treatment' | 'unknown
 
 function detectFileType(text: string): PdfFileType {
     const n = text.replace(/\s+/g, ' ').toLowerCase();
-    if (n.includes('주상병코드') || n.includes('기본진료정보') || n.includes('진료구분')) return 'basic_info';
-    if (n.includes('약품명') || n.includes('성분명') || n.includes('처방조제')) return 'prescription';
-    if (n.includes('진료내역') || n.includes('세부진료') || n.includes('코드명')) return 'detail_treatment';
+    if (n.includes('주상병코드') || n.includes('기본진료정보') || n.includes('진료구분') || n.includes('주상병') || n.includes('부상병') || (n.includes('입원') && n.includes('외래') && n.includes('진단'))) return 'basic_info';
+    if (n.includes('약품명') || n.includes('성분명') || n.includes('처방조제') || n.includes('처방/조제') || n.includes('투약량') || n.includes('1회투약량') || n.includes('총투약일수') || (n.includes('처방') && n.includes('조제'))) return 'prescription';
+    if (n.includes('진료내역') || n.includes('세부진료') || n.includes('코드명') || n.includes('조제료등') || n.includes('약국관리료') || n.includes('복약지도료') || n.includes('진찰료') || (n.includes('병·의원') && n.includes('코드'))) return 'detail_treatment';
     return 'unknown';
 }
 
