@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight, Loader2, Lock, Sparkles } from 'lucide-react';
@@ -9,6 +10,7 @@ import PdfUploader from '@/components/analyze/PdfUploader';
 import AnalysisResultView from '@/components/analyze/AnalysisResult';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { useSubscription } from '@/hooks/useSubscription';
+import { createClient } from '@/lib/supabase/client';
 import type { AnalysisResult } from '@/types/analysis';
 import Link from 'next/link';
 
@@ -27,13 +29,50 @@ const steps = [
     { id: 3, title: '청구 안내', description: '보험금 청구 가능여부' },
 ];
 
-export default function AnalyzePage() {
+function AnalyzeContent() {
+    const searchParams = useSearchParams();
+    const existingAnalysisId = searchParams.get('analysisId');
+
     const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
     const [analyzing, setAnalyzing] = useState(false);
     const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
-    const [analysisId, setAnalysisId] = useState<string | null>(null);
+    const [analysisId, setAnalysisId] = useState<string | null>(existingAnalysisId);
     const [error, setError] = useState<string | null>(null);
+    const [loadingExisting, setLoadingExisting] = useState(!!existingAnalysisId);
     const { canAnalyze, remainingAnalyses, plan, isFeatureEnabled, loading: subLoading, refresh } = useSubscription();
+
+    // 이력에서 기존 분석 결과 로드
+    useEffect(() => {
+        if (!existingAnalysisId) return;
+
+        const loadExistingAnalysis = async () => {
+            setLoadingExisting(true);
+            try {
+                const supabase = createClient();
+                const { data, error: fetchError } = await supabase
+                    .from('analyses')
+                    .select('*')
+                    .eq('id', existingAnalysisId)
+                    .single();
+
+                if (fetchError || !data) {
+                    setError('분석 결과를 불러올 수 없습니다.');
+                    return;
+                }
+
+                if (data.medical_history) {
+                    setAnalysisResult(data.medical_history as unknown as AnalysisResult);
+                    setAnalysisId(data.id);
+                }
+            } catch {
+                setError('분석 결과 로드 중 오류가 발생했습니다.');
+            } finally {
+                setLoadingExisting(false);
+            }
+        };
+
+        loadExistingAnalysis();
+    }, [existingAnalysisId]);
 
     const handleFilesUploaded = (files: UploadedFile[]) => {
         setUploadedFiles((prev) => [...prev, ...files]);
@@ -74,6 +113,14 @@ export default function AnalyzePage() {
     };
 
     const successFileCount = uploadedFiles.filter((f) => f.status === 'success').length;
+
+    if (loadingExisting) {
+        return (
+            <div className="max-w-4xl mx-auto py-12">
+                <LoadingSpinner text="이전 분석 결과를 불러오는 중..." size="lg" />
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
@@ -221,5 +268,13 @@ export default function AnalyzePage() {
                 </>
             )}
         </div>
+    );
+}
+
+export default function AnalyzePage() {
+    return (
+        <Suspense fallback={<LoadingSpinner text="로딩 중..." />}>
+            <AnalyzeContent />
+        </Suspense>
     );
 }
