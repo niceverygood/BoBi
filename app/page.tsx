@@ -1,8 +1,12 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Shield, FileSearch, Package, Receipt, ArrowRight, CheckCircle2, Sparkles, Zap, Lock } from 'lucide-react';
+import { Shield, FileSearch, Package, Receipt, ArrowRight, CheckCircle2, Sparkles, Zap, Lock, LayoutDashboard } from 'lucide-react';
+import { createClient } from '@/lib/supabase/server';
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
@@ -21,14 +25,25 @@ export default function LandingPage() {
               <Link href="/pricing">
                 <Button variant="ghost" className="text-sm">요금제</Button>
               </Link>
-              <Link href="/auth/login">
-                <Button variant="ghost" className="text-sm">로그인</Button>
-              </Link>
-              <Link href="/auth/signup">
-                <Button className="text-sm bg-gradient-primary hover:opacity-90">
-                  무료로 시작하기
-                </Button>
-              </Link>
+              {user ? (
+                <Link href="/dashboard">
+                  <Button className="text-sm bg-gradient-primary hover:opacity-90">
+                    <LayoutDashboard className="w-4 h-4 mr-1.5" />
+                    대시보드
+                  </Button>
+                </Link>
+              ) : (
+                <>
+                  <Link href="/auth/login">
+                    <Button variant="ghost" className="text-sm">로그인</Button>
+                  </Link>
+                  <Link href="/auth/signup">
+                    <Button className="text-sm bg-gradient-primary hover:opacity-90">
+                      무료로 시작하기
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -57,9 +72,9 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in" style={{ animationDelay: '0.3s' }}>
-            <Link href="/auth/signup">
+            <Link href={user ? '/dashboard/analyze' : '/auth/signup'}>
               <Button size="lg" className="text-base px-8 h-12 bg-gradient-primary hover:opacity-90 shadow-lg animate-pulse-glow">
-                무료로 시작하기
+                {user ? '분석 시작하기' : '무료로 시작하기'}
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
