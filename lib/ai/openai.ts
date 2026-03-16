@@ -1,15 +1,21 @@
 // lib/ai/openai.ts
+// OpenRouter API를 통해 Claude Opus 4.6 사용
 import OpenAI from 'openai';
 
-let _openai: OpenAI | null = null;
+let _client: OpenAI | null = null;
 
-function getOpenAI(): OpenAI {
-    if (!_openai) {
-        _openai = new OpenAI({
-            apiKey: process.env.OPENAI_API_KEY!,
+function getClient(): OpenAI {
+    if (!_client) {
+        _client = new OpenAI({
+            baseURL: 'https://openrouter.ai/api/v1',
+            apiKey: process.env.OPENROUTER_API_KEY!,
+            defaultHeaders: {
+                'HTTP-Referer': 'https://bo-bi.vercel.app',
+                'X-Title': 'BoBi AI Insurance Assistant',
+            },
         });
     }
-    return _openai;
+    return _client;
 }
 
 interface OpenAIRequestOptions {
@@ -29,8 +35,8 @@ export async function callOpenAI({
 
     for (let attempt = 0; attempt <= retries; attempt++) {
         try {
-            const response = await getOpenAI().chat.completions.create({
-                model: 'gpt-4o-mini',
+            const response = await getClient().chat.completions.create({
+                model: 'anthropic/claude-opus-4-20250609',
                 max_tokens: maxTokens,
                 temperature,
                 messages: [
@@ -43,7 +49,6 @@ export async function callOpenAI({
                         content: prompt,
                     },
                 ],
-                response_format: { type: 'json_object' },
             });
 
             const content = response.choices[0]?.message?.content;
@@ -51,10 +56,10 @@ export async function callOpenAI({
                 return content;
             }
 
-            throw new Error('Unexpected response format from OpenAI API');
+            throw new Error('Unexpected response format from OpenRouter API');
         } catch (error) {
             lastError = error as Error;
-            console.error(`OpenAI API attempt ${attempt + 1} failed:`, error);
+            console.error(`OpenRouter API attempt ${attempt + 1} failed:`, error);
 
             // Don't retry on rate limit (429) or auth errors
             const errorMessage = (error as Error).message || '';
@@ -68,5 +73,5 @@ export async function callOpenAI({
         }
     }
 
-    throw new Error(`OpenAI API failed after ${retries + 1} attempts: ${lastError?.message}`);
+    throw new Error(`OpenRouter API failed after ${retries + 1} attempts: ${lastError?.message}`);
 }
