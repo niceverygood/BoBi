@@ -135,7 +135,7 @@ function AnalyzeContent() {
                     <h1 className="text-2xl font-bold">STEP 1: 고지사항 분석</h1>
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
                         <Sparkles className="w-2.5 h-2.5" />
-                        Claude Opus 4.6
+                        Claude Sonnet 4
                     </span>
                 </div>
                 <p className="text-muted-foreground mt-1">

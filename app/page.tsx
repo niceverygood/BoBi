@@ -192,7 +192,7 @@ export default async function LandingPage() {
               </div>
               <div>
                 <h3 className="font-semibold mb-1">최신 AI 기술</h3>
-                <p className="text-sm text-muted-foreground">최신 AI(Claude Opus 4.6) 기반으로 정확한 분석과 자연스러운 요약 제공</p>
+                <p className="text-sm text-muted-foreground">최신 AI(Claude Sonnet 4) 기반으로 정확한 분석과 자연스러운 요약 제공</p>
               </div>
             </div>
           </div>
