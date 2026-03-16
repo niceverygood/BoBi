@@ -36,7 +36,7 @@ export async function callOpenAI({
     for (let attempt = 0; attempt <= retries; attempt++) {
         try {
             const response = await getClient().chat.completions.create({
-                model: 'anthropic/claude-opus-4-20250609',
+                model: 'anthropic/claude-opus-4.6',
                 max_tokens: maxTokens,
                 temperature,
                 messages: [
