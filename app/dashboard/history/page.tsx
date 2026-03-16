@@ -200,26 +200,25 @@ export default function HistoryPage() {
                                                         <>
                                                             {/* STEP 1 결과 보기 */}
                                                             <Link href={`/dashboard/analyze?analysisId=${analysis.id}`}>
-                                                                <Button variant="ghost" size="sm" title="STEP1 결과 보기">
-                                                                    <Eye className="w-4 h-4" />
+                                                                <Button variant="ghost" size="sm" title="STEP 1 보기" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/30">
+                                                                    <span className="text-[10px] font-bold mr-1">S1</span>
+                                                                    <Eye className="w-3.5 h-3.5" />
                                                                 </Button>
                                                             </Link>
-                                                            {/* STEP 2로 이동 */}
-                                                            {!analysis.product_eligibility && (
-                                                                <Link href={`/dashboard/products?analysisId=${analysis.id}`}>
-                                                                    <Button variant="ghost" size="sm" title="STEP2 진행">
-                                                                        <ArrowRight className="w-4 h-4" />
-                                                                    </Button>
-                                                                </Link>
-                                                            )}
-                                                            {/* STEP 2 결과가 있으면 STEP 3로 */}
-                                                            {analysis.product_eligibility && !analysis.claim_assessment && (
-                                                                <Link href={`/dashboard/claims?analysisId=${analysis.id}`}>
-                                                                    <Button variant="ghost" size="sm" title="STEP3 진행">
-                                                                        <ArrowRight className="w-4 h-4" />
-                                                                    </Button>
-                                                                </Link>
-                                                            )}
+                                                            {/* STEP 2 */}
+                                                            <Link href={`/dashboard/products?analysisId=${analysis.id}`}>
+                                                                <Button variant="ghost" size="sm" title={analysis.product_eligibility ? "STEP 2 결과 보기" : "STEP 2 진행"} className={analysis.product_eligibility ? "text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950/30" : "text-muted-foreground"}>
+                                                                    <span className="text-[10px] font-bold mr-1">S2</span>
+                                                                    {analysis.product_eligibility ? <Eye className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                                                                </Button>
+                                                            </Link>
+                                                            {/* STEP 3 */}
+                                                            <Link href={`/dashboard/claims?analysisId=${analysis.id}`}>
+                                                                <Button variant="ghost" size="sm" title={analysis.claim_assessment ? "STEP 3 결과 보기" : "STEP 3 진행"} className={analysis.claim_assessment ? "text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/30" : "text-muted-foreground"}>
+                                                                    <span className="text-[10px] font-bold mr-1">S3</span>
+                                                                    {analysis.claim_assessment ? <Eye className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                                                                </Button>
+                                                            </Link>
                                                         </>
                                                     )}
                                                     <Button

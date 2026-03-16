@@ -23,8 +23,39 @@ function ClaimsContent() {
     const searchParams = useSearchParams();
     const analysisId = searchParams.get('analysisId');
     const [loading, setLoading] = useState(false);
+    const [loadingExisting, setLoadingExisting] = useState(true);
     const [result, setResult] = useState<ClaimResult | null>(null);
     const [error, setError] = useState<string | null>(null);
+
+    // Load existing result from DB first
+    useEffect(() => {
+        if (!analysisId) {
+            setLoadingExisting(false);
+            return;
+        }
+
+        const loadExisting = async () => {
+            try {
+                const { createClient } = await import('@/lib/supabase/client');
+                const supabase = createClient();
+                const { data } = await supabase
+                    .from('analyses')
+                    .select('claim_assessment')
+                    .eq('id', analysisId)
+                    .single();
+
+                if (data?.claim_assessment) {
+                    setResult(data.claim_assessment as unknown as ClaimResult);
+                }
+            } catch {
+                // Ignore - will run analysis instead
+            } finally {
+                setLoadingExisting(false);
+            }
+        };
+
+        loadExisting();
+    }, [analysisId]);
 
     const runClaimAnalysis = async () => {
         if (!analysisId) return;
@@ -38,7 +69,12 @@ function ClaimsContent() {
                 body: JSON.stringify({ analysisId }),
             });
 
-            const data = await response.json();
+            let data;
+            try {
+                data = await response.json();
+            } catch {
+                throw new Error('서버 응답을 파싱할 수 없습니다. 잠시 후 다시 시도해주세요.');
+            }
 
             if (!response.ok) {
                 throw new Error(data.error || '청구 분석에 실패했습니다.');
@@ -52,11 +88,12 @@ function ClaimsContent() {
         }
     };
 
+    // Auto-run only if no existing result
     useEffect(() => {
-        if (analysisId && !result) {
+        if (!loadingExisting && analysisId && !result) {
             runClaimAnalysis();
         }
-    }, [analysisId]);
+    }, [loadingExisting, analysisId]);
 
     return (
         <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">

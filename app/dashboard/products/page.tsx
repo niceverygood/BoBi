@@ -23,8 +23,39 @@ function ProductsContent() {
     const searchParams = useSearchParams();
     const analysisId = searchParams.get('analysisId');
     const [loading, setLoading] = useState(false);
+    const [loadingExisting, setLoadingExisting] = useState(true);
     const [result, setResult] = useState<ProductResult | null>(null);
     const [error, setError] = useState<string | null>(null);
+
+    // Load existing result from DB first
+    useEffect(() => {
+        if (!analysisId) {
+            setLoadingExisting(false);
+            return;
+        }
+
+        const loadExisting = async () => {
+            try {
+                const { createClient } = await import('@/lib/supabase/client');
+                const supabase = createClient();
+                const { data } = await supabase
+                    .from('analyses')
+                    .select('product_eligibility')
+                    .eq('id', analysisId)
+                    .single();
+
+                if (data?.product_eligibility) {
+                    setResult(data.product_eligibility as unknown as ProductResult);
+                }
+            } catch {
+                // Ignore - will run analysis instead
+            } finally {
+                setLoadingExisting(false);
+            }
+        };
+
+        loadExisting();
+    }, [analysisId]);
 
     const runProductAnalysis = async () => {
         if (!analysisId) return;
@@ -57,11 +88,12 @@ function ProductsContent() {
         }
     };
 
+    // Auto-run only if no existing result
     useEffect(() => {
-        if (analysisId && !result) {
+        if (!loadingExisting && analysisId && !result) {
             runProductAnalysis();
         }
-    }, [analysisId]);
+    }, [loadingExisting, analysisId]);
 
     return (
         <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
