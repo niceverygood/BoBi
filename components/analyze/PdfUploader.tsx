@@ -36,8 +36,8 @@ async function renderPdfToImages(file: File, maxPages = 30): Promise<string[]> {
             if (!ctx) continue;
 
             await page.render({ canvasContext: ctx, viewport }).promise;
-            // Convert to base64 with moderate quality to keep size manageable
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            // Convert to base64 with reduced quality to stay under Vercel 4.5MB limit
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
             images.push(dataUrl);
         }
 
@@ -132,33 +132,51 @@ export default function PdfUploader({ onFilesUploaded, customerId }: PdfUploader
                     };
                 }
 
-                // Send images to OCR endpoint
-                const ocrResponse = await fetch('/api/upload/ocr', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        pageImages,
-                        filePath: data.filePath,
-                        fileName: file.name,
-                        customerId: customerId || null,
-                    }),
-                });
+                // Send images in batches of 5 to stay under Vercel 4.5MB body limit
+                const BATCH_SIZE = 5;
+                let lastOcrData = null;
 
-                if (!ocrResponse.ok) {
-                    const ocrErr = await ocrResponse.json();
+                for (let i = 0; i < pageImages.length; i += BATCH_SIZE) {
+                    const batch = pageImages.slice(i, i + BATCH_SIZE);
+                    const isFirstBatch = i === 0;
+                    const isLastBatch = i + BATCH_SIZE >= pageImages.length;
+
+                    const ocrResponse = await fetch('/api/upload/ocr', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            pageImages: batch,
+                            filePath: data.filePath,
+                            fileName: file.name,
+                            customerId: isFirstBatch ? (customerId || null) : null,
+                            appendMode: !isFirstBatch,
+                            isLastBatch,
+                        }),
+                    });
+
+                    if (!ocrResponse.ok) {
+                        const ocrErr = await ocrResponse.json().catch(() => ({}));
+                        console.error(`OCR batch ${Math.floor(i / BATCH_SIZE) + 1} failed:`, ocrErr);
+                        // Continue with other batches
+                        continue;
+                    }
+
+                    lastOcrData = await ocrResponse.json();
+                }
+
+                if (!lastOcrData) {
                     return {
                         file, fileType: 'unknown', status: 'error',
-                        error: ocrErr.error || 'OCR 처리 실패',
+                        error: 'OCR 처리에 실패했습니다. 다시 시도해주세요.',
                     };
                 }
 
-                const ocrData = await ocrResponse.json();
                 return {
-                    id: ocrData.upload.id,
+                    id: lastOcrData.upload.id,
                     file,
-                    fileType: ocrData.fileType,
+                    fileType: lastOcrData.fileType,
                     status: 'success',
-                    textPreview: ocrData.textPreview,
+                    textPreview: lastOcrData.textPreview,
                 };
             }
 

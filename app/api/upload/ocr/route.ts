@@ -1,10 +1,10 @@
 // app/api/upload/ocr/route.ts
-// OCR endpoint: receives base64 page images, extracts text via OpenAI Vision
+// OCR endpoint: receives base64 page images in batches, extracts text via OpenAI Vision
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { structureExtractedText } from '@/lib/pdf/extractor';
 
-export const maxDuration = 300; // 30 pages batch OCR takes longer
+export const maxDuration = 120; // Each batch is small now
 
 type PdfFileType = 'basic_info' | 'prescription' | 'detail_treatment' | 'unknown';
 
@@ -25,51 +25,38 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
         }
 
-        const { pageImages, filePath, fileName, customerId } = await request.json();
+        const { pageImages, filePath, fileName, customerId, appendMode, isLastBatch } = await request.json();
 
         if (!pageImages || !Array.isArray(pageImages) || pageImages.length === 0) {
             return NextResponse.json({ error: '페이지 이미지가 없습니다.' }, { status: 400 });
         }
 
-        // Process up to 30 pages in batches of 5
-        const MAX_PAGES = 30;
-        const BATCH_SIZE = 5;
-        const imagesToProcess = pageImages.slice(0, MAX_PAGES);
-
-        // Call OpenAI Vision API for OCR
+        // Call OpenAI Vision API for OCR on this batch (max 5 pages)
         const apiKey = process.env.OPENAI_API_KEY;
         if (!apiKey) {
             return NextResponse.json({ error: 'OpenAI API 키가 설정되지 않았습니다.' }, { status: 500 });
         }
 
-        const allExtractedTexts: string[] = [];
+        const imageMessages = pageImages.map((img: string) => ({
+            type: 'image_url' as const,
+            image_url: {
+                url: img.startsWith('data:') ? img : `data:image/png;base64,${img}`,
+                detail: 'high' as const,
+            },
+        }));
 
-        // Process in batches to avoid token limits
-        for (let batchStart = 0; batchStart < imagesToProcess.length; batchStart += BATCH_SIZE) {
-            const batch = imagesToProcess.slice(batchStart, batchStart + BATCH_SIZE);
-            const batchNum = Math.floor(batchStart / BATCH_SIZE) + 1;
-            const totalBatches = Math.ceil(imagesToProcess.length / BATCH_SIZE);
-
-            const imageMessages = batch.map((img: string) => ({
-                type: 'image_url' as const,
-                image_url: {
-                    url: img.startsWith('data:') ? img : `data:image/png;base64,${img}`,
-                    detail: 'high' as const,
-                },
-            }));
-
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${apiKey}`,
-                },
-                body: JSON.stringify({
-                    model: 'gpt-4o',
-                    messages: [
-                        {
-                            role: 'system',
-                            content: `당신은 한국 건강보험심평원 진료이력 문서를 읽는 OCR 전문가입니다.
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                model: 'gpt-4o',
+                messages: [
+                    {
+                        role: 'system',
+                        content: `당신은 한국 건강보험심평원 진료이력 문서를 읽는 OCR 전문가입니다.
 이미지에서 모든 텍스트를 정확하게 추출해주세요.
 특히 다음 정보를 빠짐없이 추출하세요:
 - 진료시작일, 병의원명, 진단과, 입원/외래 구분
@@ -81,50 +68,80 @@ export async function POST(request: Request) {
 ⚠️ 특히 '입원', '수술', '마취', '절제', '내시경', '제왕절개' 관련 데이터는 절대 누락하지 마세요!
 표 형식인 경우 각 열을 | 구분자로 구분해주세요.
 텍스트만 출력하세요. 부가 설명은 불필요합니다.`,
-                        },
-                        {
-                            role: 'user',
-                            content: [
-                                {
-                                    type: 'text' as const,
-                                    text: `[${batchNum}/${totalBatches} 배치] 이 ${batch.length}페이지의 심평원 진료이력 PDF에서 모든 텍스트를 추출해주세요. 수술/입원 관련 내용이 있으면 반드시 포함하세요.`,
-                                },
-                                ...imageMessages,
-                            ],
-                        },
-                    ],
-                    max_tokens: 16000,
-                    temperature: 0,
-                }),
-            });
+                    },
+                    {
+                        role: 'user',
+                        content: [
+                            {
+                                type: 'text' as const,
+                                text: `이 ${pageImages.length}페이지의 심평원 진료이력 PDF에서 모든 텍스트를 추출해주세요. 수술/입원 관련 내용이 있으면 반드시 포함하세요.`,
+                            },
+                            ...imageMessages,
+                        ],
+                    },
+                ],
+                max_tokens: 16000,
+                temperature: 0,
+            }),
+        });
 
-            if (!response.ok) {
-                const err = await response.json();
-                console.error(`OpenAI Vision API error (batch ${batchNum}):`, err);
-                // Continue with other batches even if one fails
-                continue;
-            }
-
-            const aiResult = await response.json();
-            const batchText = aiResult.choices?.[0]?.message?.content || '';
-            if (batchText.trim()) {
-                allExtractedTexts.push(`--- 페이지 ${batchStart + 1}~${batchStart + batch.length} ---\n${batchText}`);
-            }
+        if (!response.ok) {
+            const err = await response.json();
+            console.error('OpenAI Vision API error:', err);
+            return NextResponse.json({
+                error: `OCR 처리 실패: ${err.error?.message || '알 수 없는 오류'}`,
+            }, { status: 500 });
         }
 
-        const extractedText = allExtractedTexts.join('\n\n');
+        const aiResult = await response.json();
+        const extractedText = aiResult.choices?.[0]?.message?.content || '';
 
-        if (!extractedText.trim()) {
+        if (!extractedText.trim() && !appendMode) {
             return NextResponse.json({
                 error: '이미지에서 텍스트를 추출할 수 없었습니다.',
             }, { status: 400 });
         }
 
-        // Detect file type and structure text
+        // appendMode: append text to existing upload record
+        if (appendMode) {
+            // Find the existing upload record by filePath
+            const { data: existingUpload } = await supabase
+                .from('uploads')
+                .select('id, raw_text')
+                .eq('file_path', filePath)
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+
+            if (existingUpload) {
+                const updatedText = (existingUpload.raw_text || '') + '\n\n' + extractedText;
+                const fileType = detectFileType(updatedText);
+                const structuredText = structureExtractedText(updatedText, fileType);
+
+                await supabase
+                    .from('uploads')
+                    .update({
+                        raw_text: structuredText,
+                        file_type: fileType === 'unknown' ? 'basic_info' : fileType,
+                    })
+                    .eq('id', existingUpload.id);
+
+                return NextResponse.json({
+                    upload: { id: existingUpload.id },
+                    fileType,
+                    pageCount: pageImages.length,
+                    textPreview: structuredText.substring(0, 500),
+                    ocrUsed: true,
+                    appendMode: true,
+                });
+            }
+        }
+
+        // First batch: create new upload record
         const fileType = detectFileType(extractedText);
         const structuredText = structureExtractedText(extractedText, fileType);
 
-        // Save upload record
         const { data: upload, error: dbError } = await supabase
             .from('uploads')
             .insert({
@@ -146,7 +163,7 @@ export async function POST(request: Request) {
         return NextResponse.json({
             upload,
             fileType,
-            pageCount: imagesToProcess.length,
+            pageCount: pageImages.length,
             textPreview: structuredText.substring(0, 500),
             ocrUsed: true,
         });
