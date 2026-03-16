@@ -131,7 +131,13 @@ function AnalyzeContent() {
             />
 
             <div>
-                <h1 className="text-2xl font-bold">STEP 1: 고지사항 분석</h1>
+                <div className="flex items-center gap-3">
+                    <h1 className="text-2xl font-bold">STEP 1: 고지사항 분석</h1>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
+                        <Sparkles className="w-2.5 h-2.5" />
+                        Claude Opus 4.6
+                    </span>
+                </div>
                 <p className="text-muted-foreground mt-1">
                     심평원 진료이력 PDF를 업로드하면 AI가 보험 고지사항을 자동으로 분석합니다.
                 </p>

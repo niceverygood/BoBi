@@ -18,7 +18,13 @@ export default function DashboardPage() {
             {/* Welcome */}
             <div>
                 <h1 className="text-2xl sm:text-3xl font-bold">대시보드</h1>
-                <p className="text-muted-foreground mt-1">보비와 함께하는 스마트한 보험 분석</p>
+                <div className="flex items-center gap-3 mt-1">
+                    <p className="text-muted-foreground">보비와 함께하는 스마트한 보험 분석</p>
+                    <Badge variant="outline" className="text-[10px] gap-1 border-violet-300 text-violet-600 dark:border-violet-700 dark:text-violet-400">
+                        <Sparkles className="w-2.5 h-2.5" />
+                        Claude Opus 4.6
+                    </Badge>
+                </div>
             </div>
 
             {/* Free plan upgrade banner */}
