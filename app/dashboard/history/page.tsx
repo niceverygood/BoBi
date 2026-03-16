@@ -5,11 +5,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { FileSearch, ArrowRight, RefreshCw, Trash2, Eye } from 'lucide-react';
+import { FileSearch, ArrowRight, RefreshCw, Trash2, Eye, Download } from 'lucide-react';
 import EmptyState from '@/components/common/EmptyState';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import DownloadReportButton from '@/components/report/DownloadReportButton';
 
 interface AnalysisRecord {
     id: string;
@@ -220,6 +221,13 @@ export default function HistoryPage() {
                                                                 </Button>
                                                             </Link>
                                                         </>
+                                                    )}
+                                                    {analysis.status === 'completed' && (
+                                                        <DownloadReportButton
+                                                            analysisId={analysis.id}
+                                                            variant="ghost"
+                                                            size="sm"
+                                                        />
                                                     )}
                                                     <Button
                                                         variant="ghost"

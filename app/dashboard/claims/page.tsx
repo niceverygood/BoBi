@@ -12,6 +12,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner';
 import EmptyState from '@/components/common/EmptyState';
 import type { ClaimResult } from '@/types/analysis';
 import Link from 'next/link';
+import DownloadReportButton from '@/components/report/DownloadReportButton';
 
 const steps = [
     { id: 1, title: '고지사항 분석', description: 'PDF 업로드 후 AI 분석' },
@@ -222,14 +223,23 @@ function ClaimsContent() {
                         <CardContent className="p-6 text-center">
                             <p className="text-lg font-semibold mb-2">✅ 분석이 완료되었습니다!</p>
                             <p className="text-sm text-muted-foreground mb-4">
-                                분석 결과는 이력 페이지에서 다시 확인할 수 있습니다.
+                                종합 리포트를 PDF로 다운받거나, 이력에서 다시 확인할 수 있습니다.
                             </p>
-                            <div className="flex justify-center gap-3">
+                            <div className="flex flex-wrap justify-center gap-3">
+                                {analysisId && (
+                                    <DownloadReportButton
+                                        analysisId={analysisId}
+                                        variant="default"
+                                        size="default"
+                                        className="bg-gradient-primary hover:opacity-90"
+                                        label="종합 리포트 PDF 다운로드"
+                                    />
+                                )}
                                 <Link href="/dashboard/history">
                                     <Button variant="outline">분석 이력 보기</Button>
                                 </Link>
                                 <Link href="/dashboard/analyze">
-                                    <Button className="bg-gradient-primary hover:opacity-90">새 분석 시작</Button>
+                                    <Button variant="outline">새 분석 시작</Button>
                                 </Link>
                             </div>
                         </CardContent>
