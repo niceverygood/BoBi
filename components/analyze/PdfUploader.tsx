@@ -13,7 +13,7 @@ import { createClient } from '@/lib/supabase/client';
  * Render PDF pages to base64 PNG images using pdfjs-dist
  * Used as fallback when text extraction fails (image-based PDFs)
  */
-async function renderPdfToImages(file: File, maxPages = 10): Promise<string[]> {
+async function renderPdfToImages(file: File, maxPages = 30): Promise<string[]> {
     try {
         const pdfjsLib = await import('pdfjs-dist');
         // Set worker source
