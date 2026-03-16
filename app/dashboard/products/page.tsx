@@ -38,7 +38,12 @@ function ProductsContent() {
                 body: JSON.stringify({ analysisId }),
             });
 
-            const data = await response.json();
+            let data;
+            try {
+                data = await response.json();
+            } catch {
+                throw new Error('서버 응답을 파싱할 수 없습니다. 잠시 후 다시 시도해주세요.');
+            }
 
             if (!response.ok) {
                 throw new Error(data.error || '상품 판단에 실패했습니다.');
@@ -134,8 +139,8 @@ function ProductsContent() {
                                                     <td className="py-2 px-3 text-muted-foreground">{t.nYears}</td>
                                                     <td className="py-2 px-3 text-center">
                                                         <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold ${t.eligible === 'O' ? 'bg-green-500 text-white' :
-                                                                t.eligible === 'X' ? 'bg-red-500 text-white' :
-                                                                    'bg-amber-500 text-white'
+                                                            t.eligible === 'X' ? 'bg-red-500 text-white' :
+                                                                'bg-amber-500 text-white'
                                                             }`}>{t.eligible}</span>
                                                     </td>
                                                     <td className="py-2 px-3 text-xs text-muted-foreground">{t.reason}</td>
