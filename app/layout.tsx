@@ -1,11 +1,25 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+  themeColor: '#1a365d',
+};
 
 export const metadata: Metadata = {
   title: "보비 BoBi - AI 보험비서",
   description: "보험설계사를 위한 AI 보험비서. 고객의 진료이력을 분석하여 고지사항 정리, 가입가능 상품 판단, 보험금 청구 가능여부를 안내합니다.",
   keywords: ["보험", "AI", "보험비서", "고지사항", "보험설계사", "심평원"],
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: '보비 BoBi',
+  },
 };
 
 export default function RootLayout({

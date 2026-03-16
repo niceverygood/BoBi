@@ -112,6 +112,38 @@
   --sidebar-ring: oklch(0.6 0.12 250);
 }
 
+/* Mobile optimization */
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+@media (max-width: 640px) {
+
+  /* Prevent tap highlight on mobile */
+  a,
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Minimum touch target size */
+  button,
+  a,
+  [role="button"] {
+    min-height: 44px;
+  }
+
+  /* Safe area padding for notch devices */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Fix viewport height on mobile (100vh issue) */
+  .min-h-screen {
+    min-height: 100dvh;
+  }
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

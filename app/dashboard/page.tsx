@@ -17,9 +17,9 @@ export default function DashboardPage() {
         <div className="space-y-8 animate-fade-in">
             {/* Welcome */}
             <div>
-                <h1 className="text-2xl sm:text-3xl font-bold">대시보드</h1>
-                <div className="flex items-center gap-3 mt-1">
-                    <p className="text-muted-foreground">보비와 함께하는 스마트한 보험 분석</p>
+                <h1 className="text-xl sm:text-3xl font-bold">대시보드</h1>
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1">
+                    <p className="text-sm sm:text-base text-muted-foreground">보비와 함께하는 스마트한 보험 분석</p>
                     <Badge variant="outline" className="text-[10px] gap-1 border-violet-300 text-violet-600 dark:border-violet-700 dark:text-violet-400">
                         <Sparkles className="w-2.5 h-2.5" />
                         Claude Sonnet 4.5
