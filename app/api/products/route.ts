@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server';
 import { matchProducts } from '@/lib/insurance/product-matcher';
 import type { AnalysisResult } from '@/types/analysis';
 
+export const maxDuration = 120;
+
 export async function POST(request: Request) {
     try {
         const supabase = await createClient();

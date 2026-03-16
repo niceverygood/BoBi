@@ -6,9 +6,13 @@ let _client: OpenAI | null = null;
 
 function getClient(): OpenAI {
     if (!_client) {
+        const apiKey = process.env.OPENROUTER_API_KEY;
+        if (!apiKey) {
+            throw new Error('OPENROUTER_API_KEY 환경변수가 설정되지 않았습니다.');
+        }
         _client = new OpenAI({
             baseURL: 'https://openrouter.ai/api/v1',
-            apiKey: process.env.OPENROUTER_API_KEY!,
+            apiKey,
             defaultHeaders: {
                 'HTTP-Referer': 'https://bo-bi.vercel.app',
                 'X-Title': 'BoBi AI Insurance Assistant',

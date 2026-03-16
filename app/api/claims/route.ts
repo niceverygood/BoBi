@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { analyzeClaims } from '@/lib/insurance/claim-analyzer';
 
+export const maxDuration = 120;
 export async function POST(request: Request) {
     try {
         const supabase = await createClient();

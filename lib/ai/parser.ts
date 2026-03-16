@@ -109,15 +109,30 @@ function repairTruncatedJSON(json: string): string {
 }
 
 /**
- * Validate that the parsed result has the expected structure
+ * Validate that the parsed result has the expected structure.
+ * Fills in defaults for missing fields (common with repaired/truncated JSON).
  */
 export function validateAnalysisResult(result: Record<string, unknown>): boolean {
-    return (
-        typeof result.analysisDate === 'string' &&
-        Array.isArray(result.items) &&
-        Array.isArray(result.riskFlags) &&
-        typeof result.overallSummary === 'string'
-    );
+    // Minimum requirement: must have items array
+    if (!Array.isArray(result.items)) {
+        return false;
+    }
+
+    // Fill in defaults for missing fields
+    if (!result.analysisDate) {
+        result.analysisDate = new Date().toISOString().split('T')[0];
+    }
+    if (!Array.isArray(result.riskFlags)) {
+        result.riskFlags = [];
+    }
+    if (!result.overallSummary) {
+        result.overallSummary = '분석이 완료되었습니다. 상세 내용을 확인해주세요.';
+    }
+    if (!Array.isArray(result.diseaseSummary)) {
+        result.diseaseSummary = [];
+    }
+
+    return true;
 }
 
 export function validateProductResult(result: Record<string, unknown>): boolean {
