@@ -29,12 +29,83 @@ export function parseAIResponse<T>(response: string): T {
             try {
                 return JSON.parse(jsonMatch[0]) as T;
             } catch {
-                // Fall through to error
+                // Fall through to repair
             }
+        }
+
+        // Try to repair truncated JSON (common when max_tokens is hit)
+        try {
+            const repaired = repairTruncatedJSON(cleaned);
+            return JSON.parse(repaired) as T;
+        } catch {
+            // Fall through to error
         }
 
         throw new Error(`Failed to parse AI response as JSON: ${(error as Error).message}\nResponse: ${cleaned.substring(0, 200)}...`);
     }
+}
+
+/**
+ * Attempt to repair truncated JSON by closing open brackets/braces/strings
+ */
+function repairTruncatedJSON(json: string): string {
+    let s = json.trim();
+
+    // Ensure it starts with {
+    const firstBrace = s.indexOf('{');
+    if (firstBrace === -1) throw new Error('No JSON object found');
+    s = s.substring(firstBrace);
+
+    // Remove trailing comma if present
+    s = s.replace(/,\s*$/, '');
+
+    // Track open brackets
+    let inString = false;
+    let escaped = false;
+    const stack: string[] = [];
+
+    for (let i = 0; i < s.length; i++) {
+        const ch = s[i];
+
+        if (escaped) {
+            escaped = false;
+            continue;
+        }
+
+        if (ch === '\\') {
+            escaped = true;
+            continue;
+        }
+
+        if (ch === '"') {
+            inString = !inString;
+            continue;
+        }
+
+        if (inString) continue;
+
+        if (ch === '{') stack.push('}');
+        else if (ch === '[') stack.push(']');
+        else if (ch === '}' || ch === ']') stack.pop();
+    }
+
+    // If still in a string, close it
+    if (inString) {
+        s += '"';
+    }
+
+    // Remove trailing comma after closing string
+    s = s.replace(/,\s*$/, '');
+
+    // Close all open brackets/braces
+    while (stack.length > 0) {
+        const closer = stack.pop();
+        // Remove trailing comma before closing
+        s = s.replace(/,\s*$/, '');
+        s += closer;
+    }
+
+    return s;
 }
 
 /**

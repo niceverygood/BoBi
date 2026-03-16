@@ -6,6 +6,7 @@ import { STEP1_ANALYSIS_PROMPT } from '@/lib/ai/prompts';
 import { parseAIResponse, validateAnalysisResult } from '@/lib/ai/parser';
 import type { AnalysisResult } from '@/types/analysis';
 
+export const maxDuration = 120; // Claude Opus needs more time
 // Truncate text to stay within OpenAI token limits
 // ~4 chars per token, keep under 24K chars total (~6K tokens)
 const MAX_CHARS_PER_FILE = 8000;
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
 
         // Call Claude AI
         const prompt = STEP1_ANALYSIS_PROMPT.replace('{PDF_TEXT}', combinedText);
-        const aiResponse = await callOpenAI({ prompt, maxTokens: 4096 });
+        const aiResponse = await callOpenAI({ prompt, maxTokens: 16384 });
         const result = parseAIResponse<AnalysisResult>(aiResponse);
 
         if (!validateAnalysisResult(result as unknown as Record<string, unknown>)) {
