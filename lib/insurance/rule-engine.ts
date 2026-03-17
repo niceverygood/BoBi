@@ -3,6 +3,7 @@
 // STEP 1 분석 결과에서 프로그래밍적으로 판단 → AI는 설명/추천만 담당
 
 import type { AnalysisResult, AnalysisItem, MedicalDetail } from '@/types/analysis';
+import { isMajor6Disease, isInRange, getDiseaseName, lookupKcd } from '@/lib/kcd/lookup';
 
 // ─── 타입 정의 ─────────────────────────────────────────────────
 
@@ -34,16 +35,7 @@ export interface RuleEngineResult {
     overallNote: string;
 }
 
-// ─── 6대 질병 코드 매핑 ─────────────────────────────────────────
-
-const MAJOR_6_DISEASES: { name: string; codePrefix: string[] }[] = [
-    { name: '암', codePrefix: ['C', 'D0'] },
-    { name: '뇌졸중(뇌출혈/뇌경색)', codePrefix: ['I60', 'I61', 'I62', 'I63', 'I64', 'I65', 'I66', 'I67', 'I68', 'I69'] },
-    { name: '심근경색', codePrefix: ['I21', 'I22', 'I23'] },
-    { name: '협심증', codePrefix: ['I20'] },
-    { name: '심장판막증', codePrefix: ['I05', 'I06', 'I07', 'I08', 'I34', 'I35', 'I36', 'I37'] },
-    { name: '간경화', codePrefix: ['K70.3', 'K74'] },
-];
+// ─── 6대 질병 판별: KCD DB 기반 (lib/kcd/lookup.ts의 isMajor6Disease 사용) ──
 
 // ─── 보험상품 정의 ──────────────────────────────────────────────
 
@@ -118,9 +110,10 @@ function subtractMonths(date: Date, months: number): Date {
     return result;
 }
 
-/** KCD 코드가 특정 prefix 목록에 해당하는지 확인 */
+/** KCD 코드가 특정 prefix 목록에 해당하는지 확인 (KCD DB 기반) */
 function matchesCodePrefix(code: string, prefixes: string[]): boolean {
     if (!code) return false;
+    // KCD DB의 isInRange를 활용하되, prefix 리스트도 호환
     const normalizedCode = code.toUpperCase().trim();
     return prefixes.some(prefix =>
         normalizedCode.startsWith(prefix.toUpperCase())
@@ -145,7 +138,7 @@ function isSurgery(detail: MedicalDetail): boolean {
     return keywords.some(kw => combined.includes(kw));
 }
 
-/** 특정 기간 내의 입원/수술 이력 추출 */
+/** 특정 기간 내의 입원/수술 이력 추출 (KCD DB로 정확한 질병명 표시) */
 function findHospSurgInPeriod(
     items: AnalysisItem[],
     startDate: Date,
@@ -161,8 +154,12 @@ function findHospSurgInPeriod(
 
             if (isHospitalization(detail) || isSurgery(detail)) {
                 const type = isSurgery(detail) ? '수술' : '입원';
+                // KCD DB에서 정확한 질병명 조회
+                const diseaseName = detail.diagnosisCode
+                    ? getDiseaseName(detail.diagnosisCode, detail.diagnosisName)
+                    : (detail.diagnosisName || '');
                 evidence.push(
-                    `${detail.date} ${detail.hospital || ''} - ${detail.diagnosisName || detail.diagnosisCode || ''} (${type})`
+                    `${detail.date} ${detail.hospital || ''} - ${diseaseName} [${detail.diagnosisCode || ''}] (${type})`
                 );
             }
         }
@@ -171,7 +168,7 @@ function findHospSurgInPeriod(
     return { found: evidence.length > 0, evidence };
 }
 
-/** 특정 기간 내의 6대질병 이력 확인 */
+/** 특정 기간 내의 6대질병 이력 확인 (KCD DB 기반 정확 판별) */
 function findMajor6InPeriod(
     items: AnalysisItem[],
     diseaseSummary: AnalysisResult['diseaseSummary'],
@@ -181,22 +178,22 @@ function findMajor6InPeriod(
     const evidence: string[] = [];
     const matchedDiseases: string[] = [];
 
-    // items의 details에서 확인
+    // items의 details에서 확인 — KCD DB의 isMajor6Disease 사용
     for (const item of items) {
         for (const detail of item.details) {
             const detailDate = parseDate(detail.date);
             if (!detailDate) continue;
             if (detailDate < startDate || detailDate > endDate) continue;
 
-            for (const disease of MAJOR_6_DISEASES) {
-                if (matchesCodePrefix(detail.diagnosisCode, disease.codePrefix)) {
-                    if (!matchedDiseases.includes(disease.name)) {
-                        matchedDiseases.push(disease.name);
-                    }
-                    evidence.push(
-                        `${detail.date} ${disease.name} - ${detail.diagnosisName || ''} [${detail.diagnosisCode}] (${detail.hospital || ''})`
-                    );
+            const major6Check = isMajor6Disease(detail.diagnosisCode);
+            if (major6Check.isMajor) {
+                if (!matchedDiseases.includes(major6Check.diseaseName)) {
+                    matchedDiseases.push(major6Check.diseaseName);
                 }
+                const exactName = getDiseaseName(detail.diagnosisCode, detail.diagnosisName);
+                evidence.push(
+                    `${detail.date} ${major6Check.diseaseName} - ${exactName} [${detail.diagnosisCode}] (${detail.hospital || ''})`
+                );
             }
         }
     }
@@ -208,21 +205,20 @@ function findMajor6InPeriod(
             const lastDate = parseDate(ds.lastDate);
             if (!firstDate && !lastDate) continue;
 
-            // 질병의 치료 기간이 검색 기간과 겹치는지 확인
             const diseaseStart = firstDate || lastDate;
             const diseaseEnd = lastDate || firstDate;
             if (!diseaseStart || !diseaseEnd) continue;
 
             if (diseaseEnd < startDate || diseaseStart > endDate) continue;
 
-            for (const disease of MAJOR_6_DISEASES) {
-                if (matchesCodePrefix(ds.diseaseCode, disease.codePrefix)) {
-                    if (!matchedDiseases.includes(disease.name)) {
-                        matchedDiseases.push(disease.name);
-                        evidence.push(
-                            `${ds.diseaseName} [${ds.diseaseCode}] - ${ds.firstDate}~${ds.lastDate} (${ds.status})`
-                        );
-                    }
+            const major6Check = isMajor6Disease(ds.diseaseCode);
+            if (major6Check.isMajor) {
+                if (!matchedDiseases.includes(major6Check.diseaseName)) {
+                    matchedDiseases.push(major6Check.diseaseName);
+                    const exactName = getDiseaseName(ds.diseaseCode, ds.diseaseName);
+                    evidence.push(
+                        `${exactName} [${ds.diseaseCode}] - ${ds.firstDate}~${ds.lastDate} (${ds.status})`
+                    );
                 }
             }
         }
@@ -519,20 +515,21 @@ function checkHypertensionDiabetes(result: AnalysisResult): {
 
     const allDetails = result.items.flatMap(i => i.details);
     for (const detail of allDetails) {
-        if (matchesCodePrefix(detail.diagnosisCode, ['I10', 'I11', 'I12', 'I13', 'I14', 'I15'])) {
+        // KCD DB 기반 범위 체크
+        if (isInRange(detail.diagnosisCode, 'I10-I15')) {
             if (!diseases.includes('고혈압')) diseases.push('고혈압');
         }
-        if (matchesCodePrefix(detail.diagnosisCode, ['E10', 'E11', 'E12', 'E13', 'E14'])) {
+        if (isInRange(detail.diagnosisCode, 'E10-E14')) {
             if (!diseases.includes('당뇨')) diseases.push('당뇨');
         }
     }
 
     if (result.diseaseSummary) {
         for (const ds of result.diseaseSummary) {
-            if (matchesCodePrefix(ds.diseaseCode, ['I10', 'I11', 'I12', 'I13', 'I14', 'I15'])) {
+            if (isInRange(ds.diseaseCode, 'I10-I15')) {
                 if (!diseases.includes('고혈압')) diseases.push('고혈압');
             }
-            if (matchesCodePrefix(ds.diseaseCode, ['E10', 'E11', 'E12', 'E13', 'E14'])) {
+            if (isInRange(ds.diseaseCode, 'E10-E14')) {
                 if (!diseases.includes('당뇨')) diseases.push('당뇨');
             }
         }

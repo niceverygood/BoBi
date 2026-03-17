@@ -9,6 +9,7 @@ import { AlertTriangle, CheckCircle2, XCircle, Info, Shield } from 'lucide-react
 import type { AnalysisResult } from '@/types/analysis';
 import { getCategoryLabel } from '@/lib/utils/format';
 import { cn } from '@/lib/utils';
+import { getBodyPartIcon } from '@/lib/kcd/client-utils';
 
 interface AnalysisResultProps {
     result: AnalysisResult;
@@ -79,7 +80,10 @@ export default function AnalysisResultView({ result }: AnalysisResultProps) {
                             {result.diseaseSummary.map((d, i) => (
                                 <div key={i} className="rounded-lg border p-4 space-y-2">
                                     <div className="flex items-center justify-between">
-                                        <span className="font-medium text-sm">{d.diseaseName}</span>
+                                        <span className="font-medium text-sm flex items-center gap-1.5">
+                                            <span className="text-base" title={d.diseaseCode}>{getBodyPartIcon(d.diseaseCode)}</span>
+                                            {d.diseaseName}
+                                        </span>
                                         <Badge variant="outline" className="text-xs font-mono">{d.diseaseCode}</Badge>
                                     </div>
                                     <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
@@ -162,7 +166,12 @@ export default function AnalysisResultView({ result }: AnalysisResultProps) {
                                                             <TableRow key={dIndex}>
                                                                 <TableCell className="text-xs whitespace-nowrap">{detail.date}</TableCell>
                                                                 <TableCell className="text-xs">{detail.hospital}</TableCell>
-                                                                <TableCell className="text-xs font-mono">{detail.diagnosisCode}</TableCell>
+                                                                <TableCell className="text-xs font-mono">
+                                                                    <span className="inline-flex items-center gap-1">
+                                                                        <span className="text-sm">{getBodyPartIcon(detail.diagnosisCode)}</span>
+                                                                        {detail.diagnosisCode}
+                                                                    </span>
+                                                                </TableCell>
                                                                 <TableCell className="text-xs">{detail.diagnosisName}</TableCell>
                                                                 <TableCell className="text-xs">
                                                                     <Badge variant="outline" className="text-xs">{detail.type}</Badge>

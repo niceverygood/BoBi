@@ -2,6 +2,7 @@
 // 보험사별 예외질환 매칭 모듈
 
 import exceptionData from '@/data/exception-diseases.json';
+import { lookupKcd, getChildCodes, getDiseaseName } from '@/lib/kcd/lookup';
 
 /**
  * 고객의 진단코드 목록과 보험사별 예외질환 DB를 대조하여
@@ -30,7 +31,7 @@ interface InsurerExceptionSummary {
 }
 
 /**
- * KCD 코드 매칭 (prefix 매칭 지원)
+ * KCD 코드 매칭 (KCD DB 계층 구조 활용)
  * 예: 고객코드 "I10.0" → 예외질환 "I10" 매칭
  * 예: 고객코드 "K64" → 예외질환 "K64.0" 매칭
  */
@@ -41,17 +42,27 @@ function isKcdMatch(customerCode: string, exceptionCode: string): boolean {
     // 정확 매칭
     if (c === e) return true;
 
-    // 고객 코드가 예외질환 코드의 상위코드인 경우 (예: I10 → I10.0)
+    // 고객 코드가 예외질환 코드의 상위코드인 경우 (I10 → I10.0)
     if (e.startsWith(c + '.') || e.startsWith(c)) return true;
 
-    // 예외질환 코드가 고객 코드의 상위코드인 경우 (예: I10 ← I10.0)
+    // 예외질환 코드가 고객 코드의 상위코드인 경우 (I10 ← I10.0)
     if (c.startsWith(e + '.') || c.startsWith(e)) return true;
+
+    // KCD DB 계층 구조로 추가 확인: 같은 소분류(부모) 코드를 공유하는지
+    const customerInfo = lookupKcd(c);
+    const exceptionInfo = lookupKcd(e);
+    if (customerInfo && exceptionInfo) {
+        // 같은 소분류 코드 하위인 경우 (예: J30.1과 J30.4는 같은 J30 하위)
+        if (customerInfo.parentCode && customerInfo.parentCode === exceptionInfo.parentCode) {
+            return true;
+        }
+    }
 
     return false;
 }
 
 /**
- * 진단명 기반 매칭 (부분 문자열 매칭)
+ * 진단명 기반 매칭 (KCD DB 정확한 질병명 활용)
  */
 function isNameMatch(customerDiagnosisName: string, exceptionDiseaseName: string): boolean {
     const c = customerDiagnosisName.trim().toLowerCase();
@@ -59,8 +70,10 @@ function isNameMatch(customerDiagnosisName: string, exceptionDiseaseName: string
 
     if (!c || !e) return false;
 
-    // 부분 문자열 매칭
-    return c.includes(e) || e.includes(c);
+    // 직접 부분 문자열 매칭
+    if (c.includes(e) || e.includes(c)) return true;
+
+    return false;
 }
 
 /**
