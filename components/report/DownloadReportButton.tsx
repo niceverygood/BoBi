@@ -55,8 +55,9 @@ export default function DownloadReportButton({
                 customerId: data.customer_id,
             });
 
-            // Wait for render
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Wait for render + font loading
+            await document.fonts.ready;
+            await new Promise(resolve => setTimeout(resolve, 800));
 
             // Generate PDF
             const { generateReportPDF } = await import('@/lib/pdf/report-generator');
@@ -91,7 +92,16 @@ export default function DownloadReportButton({
 
             {/* Hidden report for PDF generation */}
             {reportData && (
-                <div style={{ position: 'fixed', left: '-9999px', top: 0 }}>
+                <div style={{
+                    position: 'absolute',
+                    left: '0px',
+                    top: '0px',
+                    width: '794px',
+                    opacity: 0,
+                    pointerEvents: 'none',
+                    zIndex: -9999,
+                    overflow: 'visible',
+                }}>
                     <AnalysisReport
                         ref={reportRef}
                         analysisResult={reportData.analysis}

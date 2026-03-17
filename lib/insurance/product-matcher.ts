@@ -4,17 +4,24 @@ import { callOpenAI } from '@/lib/ai/openai';
 import { STEP2_PRODUCT_PROMPT } from '@/lib/ai/prompts';
 import { parseAIResponse } from '@/lib/ai/parser';
 import { generateExceptionContext } from '@/lib/insurance/exception-diseases';
+import { evaluateEligibility, formatRuleEngineResultForPrompt } from '@/lib/insurance/rule-engine';
 
 export async function matchProducts(analysisResult: AnalysisResult): Promise<ProductResult> {
-    // 고객의 진단 코드/이름 목록 추출
+    // 1. 고객의 진단 코드/이름 목록 추출
     const customerDiagnoses = extractDiagnoses(analysisResult);
 
-    // 예외질환 DB와 매칭하여 컨텍스트 생성
+    // 2. 예외질환 DB와 매칭하여 컨텍스트 생성
     const exceptionContext = generateExceptionContext(customerDiagnoses);
 
+    // 3. 규칙 기반 사전 판단 수행
+    const ruleEngineResult = evaluateEligibility(analysisResult);
+    const ruleEngineContext = formatRuleEngineResultForPrompt(ruleEngineResult);
+
+    // 4. AI 프롬프트 조립
     const prompt = STEP2_PRODUCT_PROMPT
         .replace('{ANALYSIS_RESULT}', JSON.stringify(analysisResult, null, 2))
-        .replace('{EXCEPTION_DISEASE_CONTEXT}', exceptionContext);
+        .replace('{EXCEPTION_DISEASE_CONTEXT}', exceptionContext)
+        .replace('{RULE_ENGINE_RESULT}', ruleEngineContext);
 
     const response = await callOpenAI({ prompt, maxTokens: 16384 });
     return parseAIResponse<ProductResult>(response);

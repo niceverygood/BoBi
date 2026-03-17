@@ -85,7 +85,7 @@ export default function AnalysisResultView({ result }: AnalysisResultProps) {
                                     <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
                                         <span>최초: {d.firstDate}</span>
                                         <span>최근: {d.lastDate}</span>
-                                        <span>방문: {d.totalVisits}회</span>
+                                        <span>방문: {String(d.totalVisits).replace(/회$/, '')}회</span>
                                         <span>기간: {d.treatmentPeriod}</span>
                                     </div>
                                     <Badge variant={d.status === '현재 치료중' ? 'destructive' : 'secondary'} className="text-xs">
