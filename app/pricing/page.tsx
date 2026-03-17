@@ -118,7 +118,7 @@ export default function PricingPage() {
                                             </li>
                                         ))}
                                     </ul>
-                                    <Link href="/auth/signup">
+                                    <Link href={slug === 'free' ? '/auth/signup' : slug === 'team' ? '/auth/signup' : `/dashboard/subscribe?plan=${slug}`}>
                                         <Button
                                             className={`w-full ${isRecommended
                                                 ? 'bg-gradient-primary hover:opacity-90'
@@ -126,7 +126,7 @@ export default function PricingPage() {
                                                 }`}
                                             variant={isRecommended ? 'default' : 'outline'}
                                         >
-                                            {slug === 'free' ? '무료로 시작' : slug === 'team' ? '문의하기' : '시작하기'}
+                                            {slug === 'free' ? '무료로 시작' : slug === 'team' ? '문의하기' : '구독 시작하기'}
                                         </Button>
                                     </Link>
                                 </CardContent>

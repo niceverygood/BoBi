@@ -196,7 +196,14 @@ export default function SettingsPage() {
                                         </li>
                                     ))}
                                 </ul>
-                                {key !== currentSlug && (
+                                {key !== currentSlug && key !== 'free' && key !== 'team' && (
+                                    <Link href={`/dashboard/subscribe?plan=${key}`}>
+                                        <Button variant="outline" size="sm" className="w-full text-xs h-8">
+                                            구독하기
+                                        </Button>
+                                    </Link>
+                                )}
+                                {key !== currentSlug && (key === 'free' || key === 'team') && (
                                     <Link href="/pricing">
                                         <Button variant="outline" size="sm" className="w-full text-xs h-8">
                                             {key === 'team' ? '문의하기' : '자세히 보기'}
