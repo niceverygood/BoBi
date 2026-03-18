@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
     Plus, Trash2, Upload, User, Shield, ChevronDown, ChevronUp,
-    FileSpreadsheet, Loader2, AlertCircle, Camera
+    FileSpreadsheet, Loader2, AlertCircle, Camera, Search, X, CheckCircle2
 } from 'lucide-react';
 import type { CoverageInput, Policy, Coverage, CustomerInfo } from '@/types/coverage';
+import { toast } from 'sonner';
 
 interface PolicyInputFormProps {
     onSubmit: (data: CoverageInput) => void;
@@ -62,6 +63,71 @@ export default function PolicyInputForm({ onSubmit, loading }: PolicyInputFormPr
     const [expandedPolicies, setExpandedPolicies] = useState<Set<number>>(new Set([0]));
     const [error, setError] = useState('');
     const [uploading, setUploading] = useState<'excel' | 'ocr' | null>(null);
+
+    // 코드에프 자동조회
+    const [showCodefModal, setShowCodefModal] = useState(false);
+    const [codefLoading, setCodefLoading] = useState(false);
+    const [codefLoginId, setCodefLoginId] = useState('');
+    const [codefLoginPw, setCodefLoginPw] = useState('');
+    const [codefFetched, setCodefFetched] = useState(false);
+
+    const handleCodefFetch = useCallback(async () => {
+        if (!customer.name || !customer.birth) {
+            setError('고객 이름과 생년월일을 먼저 입력해주세요.');
+            setShowCodefModal(false);
+            return;
+        }
+        if (!codefLoginId || !codefLoginPw) {
+            toast.error('내보험다보여 아이디와 비밀번호를 입력해주세요.');
+            return;
+        }
+
+        setCodefLoading(true);
+        toast.info('보험 정보 조회 중... (약 15~30초 소요)');
+
+        try {
+            const res = await fetch('/api/codef/fetch-insurance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    loginId: codefLoginId,
+                    loginPassword: codefLoginPw,
+                    customerName: customer.name,
+                    customerBirth: customer.birth,
+                    customerGender: customer.gender,
+                }),
+            });
+
+            const data = await res.json();
+
+            if (data.requires2Way) {
+                toast.error('추가 인증이 필요합니다. 내보험다보여 앱에서 인증을 완료해주세요.');
+                return;
+            }
+
+            if (!res.ok) {
+                throw new Error(data.error || '조회 실패');
+            }
+
+            if (data.coverageInput?.policies?.length > 0) {
+                setPolicies(data.coverageInput.policies);
+                setExpandedPolicies(new Set(data.coverageInput.policies.map((_: unknown, i: number) => i)));
+                setCodefFetched(true);
+                setShowCodefModal(false);
+                setCodefLoginId('');
+                setCodefLoginPw('');
+                toast.success(
+                    `${data.summary.insurers.length}개 보험사, ${data.summary.totalPolicies}건 보험, ${data.summary.totalCoverages}건 특약 조회 완료!`
+                );
+            } else {
+                toast.error('조회된 보험 내역이 없습니다.');
+            }
+        } catch (err) {
+            toast.error((err as Error).message || '보험 정보 조회 중 오류가 발생했습니다.');
+        } finally {
+            setCodefLoading(false);
+        }
+    }, [customer, codefLoginId, codefLoginPw]);
 
     const toggleExpand = (index: number) => {
         setExpandedPolicies(prev => {
@@ -223,6 +289,24 @@ export default function PolicyInputForm({ onSubmit, loading }: PolicyInputFormPr
         <div className="space-y-6">
             {/* Header actions */}
             <div className="flex flex-wrap gap-3">
+                {/* 코드에프 자동조회 (메인 버튼) */}
+                <Button
+                    size="sm"
+                    onClick={() => setShowCodefModal(true)}
+                    disabled={loading || !!uploading || codefLoading}
+                    className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md"
+                >
+                    {codefFetched ? (
+                        <><CheckCircle2 className="w-4 h-4" /> 조회 완료</>
+                    ) : codefLoading ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" /> 조회 중...</>
+                    ) : (
+                        <><Search className="w-4 h-4" /> 내보험다보여 자동조회</>
+                    )}
+                </Button>
+
+                <div className="w-px h-8 bg-border" />
+
                 <Button variant="outline" size="sm" onClick={loadSample} disabled={loading || !!uploading}>
                     <FileSpreadsheet className="w-4 h-4 mr-2" />
                     샘플 데이터
@@ -423,6 +507,74 @@ export default function PolicyInputForm({ onSubmit, loading }: PolicyInputFormPr
                     <><Shield className="w-4 h-4 mr-2" /> 보장 분석 시작</>
                 )}
             </Button>
+
+            {/* 코드에프 로그인 모달 */}
+            {showCodefModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="bg-background rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
+                        {/* Modal header */}
+                        <div className="flex items-center justify-between p-5 border-b bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+                            <div>
+                                <h3 className="text-lg font-bold">내보험다보여 자동조회</h3>
+                                <p className="text-xs text-white/80 mt-0.5">
+                                    전 보험사 가입 현황 + 특약까지 자동 조회
+                                </p>
+                            </div>
+                            <button onClick={() => setShowCodefModal(false)} className="p-1 rounded-full hover:bg-white/20 transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Modal body */}
+                        <div className="p-5 space-y-4">
+                            <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 text-xs text-blue-700 dark:text-blue-300">
+                                💡 <strong>내보험다보여</strong> (insurance.insure.or.kr) 계정이 필요합니다.
+                                아직 가입하지 않았다면 먼저 회원가입을 해주세요.
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-1.5">아이디</label>
+                                <input
+                                    className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                                    placeholder="내보험다보여 아이디"
+                                    value={codefLoginId}
+                                    onChange={e => setCodefLoginId(e.target.value)}
+                                    disabled={codefLoading}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-1.5">비밀번호</label>
+                                <input
+                                    type="password"
+                                    className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                                    placeholder="내보험다보여 비밀번호"
+                                    value={codefLoginPw}
+                                    onChange={e => setCodefLoginPw(e.target.value)}
+                                    disabled={codefLoading}
+                                    onKeyDown={e => { if (e.key === 'Enter') handleCodefFetch(); }}
+                                />
+                            </div>
+
+                            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 text-xs text-amber-700 dark:text-amber-300">
+                                🔒 입력하신 정보는 보험 조회 목적으로만 사용되며, 서버에 저장되지 않습니다.
+                            </div>
+
+                            <Button
+                                className="w-full gap-2"
+                                onClick={handleCodefFetch}
+                                disabled={codefLoading || !codefLoginId || !codefLoginPw}
+                            >
+                                {codefLoading ? (
+                                    <><Loader2 className="w-4 h-4 animate-spin" /> 조회 중... (15~30초 소요)</>
+                                ) : (
+                                    <><Search className="w-4 h-4" /> 보험 정보 조회하기</>
+                                )}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
