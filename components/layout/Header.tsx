@@ -35,9 +35,13 @@ export default function Header({ title }: HeaderProps) {
             </div>
 
             <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" className="relative h-9 w-9">
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="relative h-9 w-9"
+                    onClick={() => alert('알림 기능이 곧 추가될 예정입니다.')}
+                >
                     <Bell className="w-4 h-4" />
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
                 </Button>
 
                 <DropdownMenu>
