@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Shield, LayoutDashboard, FileSearch, History, Settings, Menu, ShieldCheck } from 'lucide-react';
+import { Shield, LayoutDashboard, FileSearch, History, Settings, Menu, ShieldCheck, ShieldPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
@@ -13,6 +13,7 @@ import { useAdmin } from '@/hooks/useAdmin';
 const navItems = [
     { title: '대시보드', href: '/dashboard', icon: LayoutDashboard },
     { title: '새 분석', href: '/dashboard/analyze', icon: FileSearch },
+    { title: '보장 분석', href: '/dashboard/coverage', icon: ShieldPlus },
     { title: '분석 이력', href: '/dashboard/history', icon: History },
     { title: '설정', href: '/dashboard/settings', icon: Settings },
 ];

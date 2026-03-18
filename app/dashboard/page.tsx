@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileSearch, TrendingUp, Clock, ArrowRight, Plus, FileText, Sparkles, Crown } from 'lucide-react';
+import { FileSearch, TrendingUp, Clock, ArrowRight, Plus, FileText, Sparkles, Crown, ShieldPlus } from 'lucide-react';
 import EmptyState from '@/components/common/EmptyState';
 import { useSubscription } from '@/hooks/useSubscription';
 
@@ -122,13 +122,22 @@ export default function DashboardPage() {
                     <CardTitle className="text-lg">빠른 시작</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <Link href="/dashboard/analyze">
-                        <Button className="bg-gradient-primary hover:opacity-90 shadow-sm">
-                            <Plus className="w-4 h-4 mr-2" />
-                            새 분석 시작하기
-                            <ArrowRight className="w-4 h-4 ml-2" />
-                        </Button>
-                    </Link>
+                    <div className="flex flex-wrap gap-3">
+                        <Link href="/dashboard/analyze">
+                            <Button className="bg-gradient-primary hover:opacity-90 shadow-sm">
+                                <Plus className="w-4 h-4 mr-2" />
+                                새 분석 시작하기
+                                <ArrowRight className="w-4 h-4 ml-2" />
+                            </Button>
+                        </Link>
+                        <Link href="/dashboard/coverage">
+                            <Button variant="outline" className="shadow-sm">
+                                <ShieldPlus className="w-4 h-4 mr-2" />
+                                보장 분석표 만들기
+                                <ArrowRight className="w-4 h-4 ml-2" />
+                            </Button>
+                        </Link>
+                    </div>
                 </CardContent>
             </Card>
 
