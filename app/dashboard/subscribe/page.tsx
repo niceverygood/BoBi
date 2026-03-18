@@ -6,12 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Check, Loader2, ArrowLeft, CreditCard, Shield, Zap, Crown } from 'lucide-react';
+import { Check, Loader2, ArrowLeft, CreditCard, Shield, Zap, Crown, Apple, Smartphone } from 'lucide-react';
 import { PLAN_LIMITS, type PlanSlug } from '@/lib/utils/constants';
 import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import * as PortOne from '@portone/browser-sdk/v2';
+import { getPlatform, isNative, type AppPlatform } from '@/lib/iap/platform';
 
 const PLAN_ICONS: Record<string, typeof Zap> = {
     basic: Zap,
@@ -38,6 +38,20 @@ function SubscribeContent() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const [platform, setPlatform] = useState<AppPlatform>('web');
+    const [iapReady, setIapReady] = useState(false);
+
+    useEffect(() => {
+        const detectedPlatform = getPlatform();
+        setPlatform(detectedPlatform);
+
+        // 네이티브 앱이면 인앱결제 초기화
+        if (detectedPlatform !== 'web') {
+            import('@/lib/iap/store').then(({ initializeStore }) => {
+                initializeStore().then(setIapReady);
+            });
+        }
+    }, []);
 
     useEffect(() => {
         if (planParam && (planParam === 'basic' || planParam === 'pro')) {
@@ -45,7 +59,7 @@ function SubscribeContent() {
         }
     }, [planParam]);
 
-    // 연간 결제 시 카카오페이 불가 → 카드로 자동 전환
+    // 연간 결제 시 카카오페이 불가 → 카드로 자동 전환 (웹만)
     useEffect(() => {
         if (billingCycle === 'yearly' && paymentMethod === 'kakaopay') {
             setPaymentMethod('card');
@@ -58,11 +72,57 @@ function SubscribeContent() {
         ? Math.round((1 - planInfo.priceYearly / (planInfo.priceMonthly * 12)) * 100)
         : 0;
 
-    const handleSubscribe = async () => {
+    // 인앱결제 (iOS / Android)
+    const handleIAPSubscribe = async () => {
         setLoading(true);
         setError(null);
 
         try {
+            const { purchase } = await import('@/lib/iap/store');
+            const result = await purchase(selectedPlan as 'basic' | 'pro', billingCycle);
+
+            if (!result.success) {
+                setError(result.error || '결제에 실패했습니다.');
+                setLoading(false);
+                return;
+            }
+
+            // 서버에 영수증 검증 요청
+            const res = await fetch('/api/iap/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    platform,
+                    receipt: result.receipt,
+                    productId: `kr.bobi.app.${selectedPlan}.${billingCycle}`,
+                    purchaseToken: result.transactionId,
+                }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                setError(data.error || '구독 등록에 실패했습니다.');
+                setLoading(false);
+                return;
+            }
+
+            setSuccess(true);
+        } catch (err) {
+            setError((err as Error).message || '결제 처리 중 오류가 발생했습니다.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 웹 결제 (PortOne)
+    const handleWebSubscribe = async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const PortOne = await import('@portone/browser-sdk/v2');
+
             const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID!;
             const isKakaoPay = paymentMethod === 'kakaopay';
             const channelKey = isKakaoPay
@@ -80,13 +140,11 @@ function SubscribeContent() {
                 },
             });
 
-            console.log('PortOne response:', response);
-
             if (response?.code) {
                 if (response.code === 'FAILURE_TYPE_PG') {
                     setError('결제가 취소되었습니다.');
                 } else {
-                    setError(`${response.message || '빌링키 발급에 실패했습니다.'} (storeId: ${storeId.slice(-8)}, channelKey: ${channelKey.slice(-8)})`);
+                    setError(response.message || '빌링키 발급에 실패했습니다.');
                 }
                 setLoading(false);
                 return;
@@ -98,7 +156,6 @@ function SubscribeContent() {
                 return;
             }
 
-            // Server-side subscription creation
             const res = await fetch('/api/billing/issue', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -125,6 +182,8 @@ function SubscribeContent() {
             setLoading(false);
         }
     };
+
+    const handleSubscribe = platform === 'web' ? handleWebSubscribe : handleIAPSubscribe;
 
     if (success) {
         return (
@@ -159,6 +218,22 @@ function SubscribeContent() {
             </div>
         );
     }
+
+    const paymentLabel = platform === 'ios'
+        ? 'Apple로 결제하기'
+        : platform === 'android'
+            ? 'Google Play로 결제하기'
+            : paymentMethod === 'kakaopay'
+                ? '카카오페이로 결제하기'
+                : '신용카드로 결제하기';
+
+    const paymentProviderLabel = platform === 'ios'
+        ? 'Apple App Store'
+        : platform === 'android'
+            ? 'Google Play'
+            : paymentMethod === 'kakaopay'
+                ? '카카오페이'
+                : 'KG이니시스';
 
     return (
         <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
@@ -340,43 +415,61 @@ function SubscribeContent() {
                                     </div>
                                 )}
 
-                                {/* 결제 수단 선택 */}
-                                <div className="space-y-2">
-                                    <p className="text-sm font-medium">결제 수단</p>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <button
-                                            onClick={() => setPaymentMethod('kakaopay')}
-                                            disabled={billingCycle === 'yearly'}
-                                            className={cn(
-                                                'p-3 rounded-lg border-2 text-center text-sm transition-all',
-                                                paymentMethod === 'kakaopay'
-                                                    ? 'border-primary bg-primary/5 font-semibold'
-                                                    : 'border-muted hover:border-primary/30',
-                                                billingCycle === 'yearly' && 'opacity-40 cursor-not-allowed'
-                                            )}
-                                        >
-                                            카카오페이
-                                        </button>
-                                        <button
-                                            onClick={() => setPaymentMethod('card')}
-                                            className={cn(
-                                                'p-3 rounded-lg border-2 text-center text-sm transition-all',
-                                                paymentMethod === 'card'
-                                                    ? 'border-primary bg-primary/5 font-semibold'
-                                                    : 'border-muted hover:border-primary/30'
-                                            )}
-                                        >
-                                            신용카드
-                                        </button>
+                                {/* 결제 수단 - 웹에서만 선택 가능 */}
+                                {platform === 'web' && (
+                                    <div className="space-y-2">
+                                        <p className="text-sm font-medium">결제 수단</p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button
+                                                onClick={() => setPaymentMethod('kakaopay')}
+                                                disabled={billingCycle === 'yearly'}
+                                                className={cn(
+                                                    'p-3 rounded-lg border-2 text-center text-sm transition-all',
+                                                    paymentMethod === 'kakaopay'
+                                                        ? 'border-primary bg-primary/5 font-semibold'
+                                                        : 'border-muted hover:border-primary/30',
+                                                    billingCycle === 'yearly' && 'opacity-40 cursor-not-allowed'
+                                                )}
+                                            >
+                                                카카오페이
+                                            </button>
+                                            <button
+                                                onClick={() => setPaymentMethod('card')}
+                                                className={cn(
+                                                    'p-3 rounded-lg border-2 text-center text-sm transition-all',
+                                                    paymentMethod === 'card'
+                                                        ? 'border-primary bg-primary/5 font-semibold'
+                                                        : 'border-muted hover:border-primary/30'
+                                                )}
+                                            >
+                                                신용카드
+                                            </button>
+                                        </div>
+                                        {billingCycle === 'yearly' && (
+                                            <p className="text-[11px] text-amber-600">연간 결제는 신용카드만 가능합니다.</p>
+                                        )}
                                     </div>
-                                    {billingCycle === 'yearly' && (
-                                        <p className="text-[11px] text-amber-600">연간 결제는 신용카드만 가능합니다.</p>
-                                    )}
-                                </div>
+                                )}
+
+                                {/* 네이티브 앱 결제 안내 */}
+                                {platform !== 'web' && (
+                                    <div className="p-3 rounded-lg bg-muted/50 text-sm">
+                                        <div className="flex items-center gap-2 font-medium mb-1">
+                                            {platform === 'ios' ? (
+                                                <><Apple className="w-4 h-4" /> Apple로 결제</>
+                                            ) : (
+                                                <><Smartphone className="w-4 h-4" /> Google Play로 결제</>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            {platform === 'ios' ? 'App Store' : 'Google Play'} 결제 시스템을 통해 안전하게 처리됩니다.
+                                        </p>
+                                    </div>
+                                )}
 
                                 <Button
                                     onClick={handleSubscribe}
-                                    disabled={loading || subLoading}
+                                    disabled={loading || subLoading || (platform !== 'web' && !iapReady)}
                                     className="w-full h-12 text-base bg-gradient-primary hover:opacity-90 transition-opacity"
                                 >
                                     {loading ? (
@@ -387,18 +480,18 @@ function SubscribeContent() {
                                     ) : (
                                         <>
                                             <CreditCard className="w-5 h-5 mr-2" />
-                                            {paymentMethod === 'kakaopay' ? '카카오페이로 결제하기' : '신용카드로 결제하기'}
+                                            {paymentLabel}
                                         </>
                                     )}
                                 </Button>
 
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
                                     <Shield className="w-3.5 h-3.5" />
-                                    안전한 결제 ({paymentMethod === 'kakaopay' ? '카카오페이' : 'KG이니시스'})
+                                    안전한 결제 ({paymentProviderLabel})
                                 </div>
 
                                 <div className="text-[11px] text-muted-foreground space-y-1 pt-2 border-t">
-                                    <p>• 구독은 자동 갱신되며, 설정에서 언제든 해지 가능합니다.</p>
+                                    <p>• 구독은 자동 갱신되며, {platform === 'ios' ? '설정 앱' : platform === 'android' ? 'Google Play' : '설정 페이지'}에서 언제든 해지 가능합니다.</p>
                                     <p>• 7일 이내 미사용 시 전액 환불 가능합니다.</p>
                                     <p>• 결제 진행 시 <Link href="/terms" className="text-primary underline">이용약관</Link> 및 <Link href="/privacy" className="text-primary underline">개인정보처리방침</Link>에 동의합니다.</p>
                                 </div>

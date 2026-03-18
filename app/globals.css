@@ -112,6 +112,14 @@
   --sidebar-ring: oklch(0.6 0.12 250);
 }
 
+/* Capacitor / Native app safe area */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
 /* Mobile optimization */
 html {
   -webkit-text-size-adjust: 100%;

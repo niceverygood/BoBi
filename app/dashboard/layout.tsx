@@ -16,7 +16,7 @@ export default function DashboardLayout({
         <div className="flex min-h-screen bg-background">
             <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
             <div className="flex-1 flex flex-col min-w-0">
-                <div className="lg:hidden sticky top-0 z-40 h-16 border-b bg-background/80 backdrop-blur-md flex items-center justify-between px-4">
+                <div className="lg:hidden sticky top-0 z-40 border-b bg-background/80 backdrop-blur-md flex items-center justify-between px-4" style={{ paddingTop: 'env(safe-area-inset-top, 0px)', minHeight: 'calc(4rem + env(safe-area-inset-top, 0px))' }}>
                     <MobileNav />
                     <span className="text-lg font-bold">
                         보비 <span className="text-primary">BoBi</span>
