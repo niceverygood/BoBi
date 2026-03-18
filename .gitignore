@@ -42,3 +42,4 @@ next-env.d.ts
 
 # KCD raw data (use data/kcd-*.json instead)
 /KCD/
+android/bobi-release.keystore
