@@ -1,11 +1,13 @@
 // app/dashboard/coverage/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Shield } from 'lucide-react';
+import { ArrowLeft, Shield, History } from 'lucide-react';
 import PolicyInputForm from '@/components/coverage/PolicyInputForm';
 import CoverageReport from '@/components/coverage/CoverageReport';
+import CoverageReportPrint from '@/components/coverage/CoverageReportPrint';
 import type { CoverageInput, CoverageAnalysisResult } from '@/types/coverage';
 import { toast } from 'sonner';
 
@@ -14,6 +16,8 @@ export default function CoveragePage() {
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<CoverageAnalysisResult | null>(null);
     const [inputData, setInputData] = useState<CoverageInput | null>(null);
+    const [pdfGenerating, setPdfGenerating] = useState(false);
+    const printRef = useRef<HTMLDivElement>(null);
 
     const handleSubmit = async (data: CoverageInput) => {
         setLoading(true);
@@ -47,6 +51,59 @@ export default function CoveragePage() {
         setResult(null);
     };
 
+    const handleDownloadPdf = useCallback(async () => {
+        if (!printRef.current || !result) return;
+        setPdfGenerating(true);
+        toast.info('PDF 생성 중...');
+
+        try {
+            // Dynamic import to avoid SSR issues
+            const html2canvas = (await import('html2canvas')).default;
+            const jsPDF = (await import('jspdf')).default;
+
+            // Wait for render
+            await new Promise(r => setTimeout(r, 500));
+
+            const canvas = await html2canvas(printRef.current, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                logging: false,
+            });
+
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = 210;
+            const pdfHeight = 297;
+            const imgWidth = pdfWidth;
+            const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+            let position = 0;
+            let remaining = imgHeight;
+
+            // First page
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            remaining -= pdfHeight;
+
+            // Additional pages
+            while (remaining > 0) {
+                position -= pdfHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                remaining -= pdfHeight;
+            }
+
+            const filename = `보장분석표_${result.customer_summary.name}_${new Date().toISOString().split('T')[0]}.pdf`;
+            pdf.save(filename);
+            toast.success('PDF가 다운로드되었습니다!');
+        } catch (error) {
+            console.error('PDF generation error:', error);
+            toast.error('PDF 생성 중 오류가 발생했습니다.');
+        } finally {
+            setPdfGenerating(false);
+        }
+    }, [result]);
+
     return (
         <div className="max-w-5xl mx-auto space-y-6">
             {/* Page Header */}
@@ -74,6 +131,14 @@ export default function CoveragePage() {
                         새 분석
                     </Button>
                 )}
+                {step === 'input' && (
+                    <Link href="/dashboard/coverage/history">
+                        <Button variant="ghost" size="sm">
+                            <History className="w-4 h-4 mr-2" />
+                            이력
+                        </Button>
+                    </Link>
+                )}
             </div>
 
             {/* Step Content */}
@@ -82,7 +147,14 @@ export default function CoveragePage() {
             )}
 
             {step === 'result' && result && (
-                <CoverageReport result={result} />
+                <>
+                    <CoverageReport result={result} onDownloadPdf={handleDownloadPdf} />
+
+                    {/* Hidden print layout for PDF generation */}
+                    <div style={{ position: 'absolute', left: '-9999px', top: 0, overflow: 'visible' }}>
+                        <CoverageReportPrint ref={printRef} result={result} />
+                    </div>
+                </>
             )}
         </div>
     );

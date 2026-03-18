@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
     Plus, Trash2, Upload, User, Shield, ChevronDown, ChevronUp,
-    FileSpreadsheet, Loader2, AlertCircle
+    FileSpreadsheet, Loader2, AlertCircle, Camera
 } from 'lucide-react';
 import type { CoverageInput, Policy, Coverage, CustomerInfo } from '@/types/coverage';
 
@@ -61,6 +61,7 @@ export default function PolicyInputForm({ onSubmit, loading }: PolicyInputFormPr
     const [policies, setPolicies] = useState<Policy[]>([emptyPolicy()]);
     const [expandedPolicies, setExpandedPolicies] = useState<Set<number>>(new Set([0]));
     const [error, setError] = useState('');
+    const [uploading, setUploading] = useState<'excel' | 'ocr' | null>(null);
 
     const toggleExpand = (index: number) => {
         setExpandedPolicies(prev => {
@@ -117,10 +118,82 @@ export default function PolicyInputForm({ onSubmit, loading }: PolicyInputFormPr
         setExpandedPolicies(new Set([0, 1]));
     };
 
-    const handleExcelUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        // TODO: 엑셀 파싱 구현
-        setError('엑셀 업로드 기능은 준비 중입니다. 수동 입력 또는 샘플 데이터를 사용해주세요.');
+    const handleExcelUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setError('');
+        setUploading('excel');
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const res = await fetch('/api/coverage/parse-excel', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || '엑셀 파싱 실패');
+            }
+
+            const { policies: parsed } = await res.json();
+            if (parsed && parsed.length > 0) {
+                setPolicies(parsed);
+                setExpandedPolicies(new Set(parsed.map((_: unknown, i: number) => i)));
+            }
+        } catch (err) {
+            setError((err as Error).message);
+        } finally {
+            setUploading(null);
+            e.target.value = '';
+        }
     }, []);
+
+    const handleOcrUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+        setError('');
+        setUploading('ocr');
+
+        try {
+            const formData = new FormData();
+            for (let i = 0; i < files.length; i++) {
+                formData.append('images', files[i]);
+            }
+
+            const res = await fetch('/api/coverage/ocr', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'OCR 처리 실패');
+            }
+
+            const { policies: parsed } = await res.json();
+            if (parsed && parsed.length > 0) {
+                setPolicies(prev => {
+                    const existing = prev.filter(p => p.insurer || p.product_name);
+                    const combined = [...existing, ...parsed];
+                    return combined.length > 0 ? combined : [emptyPolicy()];
+                });
+                setExpandedPolicies(prev => {
+                    const next = new Set(prev);
+                    const startIdx = policies.filter(p => p.insurer || p.product_name).length;
+                    parsed.forEach((_: unknown, i: number) => next.add(startIdx + i));
+                    return next;
+                });
+            }
+        } catch (err) {
+            setError((err as Error).message);
+        } finally {
+            setUploading(null);
+            e.target.value = '';
+        }
+    }, [policies]);
 
     const handleSubmit = () => {
         setError('');
@@ -150,16 +223,23 @@ export default function PolicyInputForm({ onSubmit, loading }: PolicyInputFormPr
         <div className="space-y-6">
             {/* Header actions */}
             <div className="flex flex-wrap gap-3">
-                <Button variant="outline" size="sm" onClick={loadSample} disabled={loading}>
+                <Button variant="outline" size="sm" onClick={loadSample} disabled={loading || !!uploading}>
                     <FileSpreadsheet className="w-4 h-4 mr-2" />
-                    샘플 데이터 불러오기
+                    샘플 데이터
                 </Button>
                 <label className="cursor-pointer">
                     <span className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground h-8 px-3">
-                        <Upload className="w-4 h-4" />
-                        엑셀 업로드
+                        {uploading === 'excel' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                        {uploading === 'excel' ? '파싱 중...' : '엑셀 업로드'}
                     </span>
-                    <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleExcelUpload} />
+                    <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleExcelUpload} disabled={!!uploading} />
+                </label>
+                <label className="cursor-pointer">
+                    <span className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground h-8 px-3">
+                        {uploading === 'ocr' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                        {uploading === 'ocr' ? 'OCR 처리 중...' : '증권 사진 촬영'}
+                    </span>
+                    <input type="file" accept="image/*" multiple capture="environment" className="hidden" onChange={handleOcrUpload} disabled={!!uploading} />
                 </label>
             </div>
 
