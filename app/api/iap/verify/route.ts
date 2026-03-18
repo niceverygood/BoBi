@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
+import { GoogleAuth } from 'google-auth-library';
 
 // Apple App Store 영수증 검증
 async function verifyAppleReceipt(receipt: string) {
@@ -45,62 +46,40 @@ async function verifyAppleReceipt(receipt: string) {
 
 // Google Play 영수증 검증
 async function verifyGoogleReceipt(productId: string, purchaseToken: string) {
-  // Google Play Developer API 호출을 위한 서비스 계정 인증
-  // 환경변수: GOOGLE_SERVICE_ACCOUNT_KEY (JSON)
   try {
     const packageName = 'kr.bobi.app';
     const serviceAccountKey = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY || '{}');
 
-    // JWT 생성 → Access Token 발급 → subscriptions.get 호출
-    // 간소화: Google API 클라이언트 없이 직접 호출
-    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-        assertion: await createGoogleJWT(serviceAccountKey),
-      }),
+    const auth = new GoogleAuth({
+      credentials: serviceAccountKey,
+      scopes: ['https://www.googleapis.com/auth/androidpublisher'],
     });
 
-    const { access_token } = await tokenRes.json();
+    const client = await auth.getClient();
+    const accessToken = await client.getAccessToken();
 
     const verifyRes = await fetch(
-      `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${packageName}/purchases/subscriptions/${productId}/tokens/${purchaseToken}`,
-      { headers: { Authorization: `Bearer ${access_token}` } },
+      `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${packageName}/purchases/subscriptionsv2/tokens/${purchaseToken}`,
+      { headers: { Authorization: `Bearer ${accessToken.token}` } },
     );
 
     const data = await verifyRes.json();
 
-    if (data.paymentState !== undefined) {
+    if (data.subscriptionState === 'SUBSCRIPTION_STATE_ACTIVE') {
       return {
         valid: true,
-        productId,
-        transactionId: data.orderId,
-        expiresDate: data.expiryTimeMillis
-          ? new Date(parseInt(data.expiryTimeMillis))
+        productId: data.lineItems?.[0]?.productId || productId,
+        transactionId: data.latestOrderId,
+        expiresDate: data.lineItems?.[0]?.expiryTime
+          ? new Date(data.lineItems[0].expiryTime)
           : null,
       };
     }
 
-    return { valid: false, error: 'Google verification failed' };
+    return { valid: false, error: `Google verification failed: ${data.subscriptionState || 'unknown'}` };
   } catch (err) {
     return { valid: false, error: (err as Error).message };
   }
-}
-
-async function createGoogleJWT(serviceAccount: any): Promise<string> {
-  // 간소화된 JWT 생성 - 프로덕션에서는 google-auth-library 사용 권장
-  const header = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
-  const now = Math.floor(Date.now() / 1000);
-  const payload = btoa(JSON.stringify({
-    iss: serviceAccount.client_email,
-    scope: 'https://www.googleapis.com/auth/androidpublisher',
-    aud: 'https://oauth2.googleapis.com/token',
-    iat: now,
-    exp: now + 3600,
-  }));
-  // RS256 서명은 서버 crypto 모듈 필요 — 실제 구현 시 google-auth-library 사용
-  return `${header}.${payload}.placeholder`;
 }
 
 // 상품 ID → 플랜 매핑
