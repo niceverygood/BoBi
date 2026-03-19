@@ -190,7 +190,7 @@ function guessCategory(name: string): string {
     const n = name.toLowerCase();
     if (n.includes('암') || n.includes('cancer')) return '암';
     if (n.includes('뇌') || n.includes('뇌혈관')) return '뇌혈관';
-    if (n.includes('심') || n.includes('심장') || n.includes('심근')) return '심장';
+    if (n.includes('심장') || n.includes('심근') || n.includes('심부전') || n.includes('허혈') || n.includes('협심')) return '심장';
     if (n.includes('사망')) return '사망';
     if (n.includes('입원') || n.includes('일당')) return '입원';
     if (n.includes('수술')) return '수술';

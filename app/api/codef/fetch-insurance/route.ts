@@ -60,11 +60,18 @@ export async function POST(request: Request) {
             });
 
             // 2-Way 인증 필요한 경우
-            if (result.startsWith('{') && JSON.parse(result).requires2Way) {
-                return NextResponse.json({
-                    requires2Way: true,
-                    twoWayData: JSON.parse(result),
-                });
+            if (result.startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(result);
+                    if (parsed.requires2Way) {
+                        return NextResponse.json({
+                            requires2Way: true,
+                            twoWayData: parsed,
+                        });
+                    }
+                } catch {
+                    // JSON 파싱 실패 시 connectedId로 처리
+                }
             }
 
             connectedId = result;

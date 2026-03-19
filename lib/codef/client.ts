@@ -218,7 +218,7 @@ function guessCoverageType(name: string): Coverage['coverage_type'] {
 function guessCategory(name: string): string {
     if (/암|종양|유사암|소액암|고액암/.test(name)) return '암';
     if (/뇌|뇌혈관|뇌졸중|뇌출혈|뇌경색/.test(name)) return '뇌혈관';
-    if (/심장|심근경색|허혈성|협심증/.test(name)) return '심장';
+    if (/심장|심근경색|심부전|허혈성|협심증/.test(name)) return '심장';
     if (/사망/.test(name)) return '사망';
     if (/수술/.test(name)) return '수술';
     if (/입원|일당/.test(name)) return '입원';
