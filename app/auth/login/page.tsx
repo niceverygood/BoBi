@@ -34,8 +34,11 @@ export default function LoginPage() {
             setError(error.message);
             setLoading(false);
         } else {
-            router.push('/dashboard');
+            // refresh 먼저 해서 서버 세션 갱신 후 이동
             router.refresh();
+            // 약간의 딜레이를 줘서 세션이 미들웨어에 반영되도록
+            await new Promise(r => setTimeout(r, 300));
+            router.push('/dashboard');
         }
     };
 

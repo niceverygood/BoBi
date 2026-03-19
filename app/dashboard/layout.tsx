@@ -1,9 +1,12 @@
+// app/dashboard/layout.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import MobileNav from '@/components/layout/MobileNav';
+import { User } from 'lucide-react';
 
 export default function DashboardLayout({
     children,
@@ -11,6 +14,23 @@ export default function DashboardLayout({
     children: React.ReactNode;
 }) {
     const [collapsed, setCollapsed] = useState(false);
+    const [userName, setUserName] = useState<string>('');
+
+    useEffect(() => {
+        const supabase = createClient();
+        const fetchUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const name = user.user_metadata?.full_name
+                    || user.user_metadata?.name
+                    || user.user_metadata?.preferred_username
+                    || user.email?.split('@')[0]
+                    || '';
+                setUserName(name);
+            }
+        };
+        fetchUser();
+    }, []);
 
     return (
         <div className="flex min-h-screen bg-background">
@@ -21,7 +41,15 @@ export default function DashboardLayout({
                     <span className="text-lg font-bold">
                         보비 <span className="text-primary">BoBi</span>
                     </span>
-                    <div className="w-9" />
+                    {/* 모바일 헤더 우측: 유저 이름 */}
+                    {userName ? (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <User className="w-3.5 h-3.5" />
+                            <span className="font-medium text-foreground max-w-[60px] truncate">{userName}</span>
+                        </span>
+                    ) : (
+                        <div className="w-9" />
+                    )}
                 </div>
                 <div className="hidden lg:block">
                     <Header />
