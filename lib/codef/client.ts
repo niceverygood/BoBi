@@ -177,6 +177,197 @@ export async function fetchInsuranceContracts(connectedId: string): Promise<Insu
     return contracts;
 }
 
+// ─── 보험사 기관코드 매핑 ─────────────────────────────
+
+export const INSURER_CODES: Record<string, string> = {
+    '삼성생명': '0001', '한화생명': '0002', '교보생명': '0003',
+    '동양생명': '0005', '메트라이프생명': '0006', '흥국생명': '0007',
+    'DB생명': '0010', '푸본현대생명': '0012', 'AIA생명': '0013',
+    'ABL생명': '0014', '신한라이프': '0016', 'KB생명': '0019',
+    'NH농협생명': '0021', 'iM라이프': '0023',
+    '삼성화재': '0101', '현대해상': '0102', 'DB손해보험': '0103',
+    'KB손해보험': '0104', '롯데손해보험': '0107',
+    'MG손해보험': '0108', '흥국화재': '0109', '한화손해보험': '0111',
+    'NH농협손해보험': '0112', '하나손해보험': '0114',
+    '메리츠화재': '0117',
+};
+
+// ─── 보험사별 계약 상세 조회 ──────────────────────────
+
+export interface InsurerContractDetail {
+    resCompanyName: string;
+    resProductName: string;
+    resContractDate: string;
+    resExpiryDate: string;
+    resPremium: string;
+    resContractStatus: string;
+    resPaymentPeriod?: string;
+    resPaymentCycle?: string;
+    resContractType?: string;       // 계약유형
+    resProductType?: string;        // 상품유형
+    resInsuredPerson?: string;
+    resLoanAmount?: string;         // 대출금액
+    resSurrenderValue?: string;     // 해약환급금
+    // 보장내역
+    resCoverageLists?: CoverageItem[];
+    // 특약상세
+    resSpecialAgreeDetLists?: SpecialAgreeItem[];
+    // 보장분석 통계
+    resCoverageAnalysisLists?: CoverageAnalysisItem[];
+}
+
+interface CoverageAnalysisItem {
+    resCoverageCategory?: string;   // 보장 카테고리
+    resCoverageName: string;
+    resCoverageAmount: string;
+    resRecommendedAmount?: string;  // 권장 보장 금액
+    resCoverageStatus?: string;     // 적정/부족/과다
+}
+
+export async function fetchInsurerContractDetail(
+    connectedId: string,
+    organization: string,
+): Promise<InsurerContractDetail[]> {
+    const token = await getAccessToken();
+
+    const res = await fetch(`${CODEF_API_URL}/v1/kr/insurance/a/insurer-product/contract-info`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+            connectedId,
+            organization,
+        }),
+    });
+
+    const data = await res.json();
+
+    if (data.result?.code !== 'CF-00000') {
+        if (data.result?.code === 'CF-03002') {
+            throw new Error(`CODEF_2WAY:${JSON.stringify(data.data)}`);
+        }
+        throw new Error(`보험사 계약 상세 조회 실패: ${data.result?.code} ${data.result?.message}`);
+    }
+
+    const contracts = Array.isArray(data.data) ? data.data : [data.data];
+    return contracts;
+}
+
+// ─── 내보험다보여 보장분석 통계 조회 ─────────────────
+
+export interface CoverageStatResponse {
+    // 실손형 보장분석 통계
+    resRealLossCoverageAnalysisLists?: {
+        resCoverageCategory: string;
+        resCoverageName: string;
+        resTotalAmount: string;
+        resCompanyCounts: string;
+    }[];
+    // 정액형 보장분석 통계
+    resFixedCoverageAnalysisLists?: {
+        resCoverageCategory: string;
+        resCoverageName: string;
+        resTotalAmount: string;
+        resCompanyCounts: string;
+    }[];
+}
+
+// ─── 보험 상품/약관 정보 변환 ────────────────────────
+
+export interface ProductTermsInfo {
+    insurer: string;
+    product_name: string;
+    contract_date: string;
+    expiry_date: string;
+    monthly_premium: number;
+    status: string;
+    product_type?: string;
+    payment_period?: string;
+    surrender_value?: number;
+    loan_amount?: number;
+    // 주계약
+    main_coverage: {
+        name: string;
+        amount: number;
+        premium?: number;
+        period?: string;
+    }[];
+    // 특약 목록
+    riders: {
+        name: string;
+        amount: number;
+        premium?: number;
+        period?: string;
+        payment_period?: string;
+    }[];
+    // 보장내역 (통합)
+    all_coverages: {
+        name: string;
+        amount: number;
+        type?: string;
+        status?: string;
+        reason_for_payment?: string;
+    }[];
+}
+
+export function transformContractToTerms(contract: InsurerContractDetail): ProductTermsInfo {
+    const mainCoverage: ProductTermsInfo['main_coverage'] = [];
+    const riders: ProductTermsInfo['riders'] = [];
+    const allCoverages: ProductTermsInfo['all_coverages'] = [];
+
+    // 보장내역(resCoverageLists)
+    if (contract.resCoverageLists) {
+        for (const cov of contract.resCoverageLists) {
+            if (!cov.resCoverageName) continue;
+            allCoverages.push({
+                name: cov.resCoverageName,
+                amount: parseAmount(cov.resCoverageAmount),
+                type: cov.resAgreementType,
+                status: cov.resCoverageStatus,
+                reason_for_payment: cov.resReasonForPayment,
+            });
+        }
+    }
+
+    // 특약상세(resSpecialAgreeDetLists) → 주계약/특약 분리
+    if (contract.resSpecialAgreeDetLists) {
+        for (const spec of contract.resSpecialAgreeDetLists) {
+            if (!spec.resHostSpecAgreeName) continue;
+            const item = {
+                name: spec.resHostSpecAgreeName,
+                amount: parseAmount(spec.resJoinAmount || ''),
+                premium: parseAmount(spec.resPremium || ''),
+                period: spec.resPeriodOfInsurance,
+                payment_period: spec.resPaymentPeriod,
+            };
+
+            if (spec.resType === '1') {
+                mainCoverage.push(item);
+            } else {
+                riders.push(item);
+            }
+        }
+    }
+
+    return {
+        insurer: contract.resCompanyName || '',
+        product_name: contract.resProductName || '',
+        contract_date: parseDate(contract.resContractDate),
+        expiry_date: parseDate(contract.resExpiryDate),
+        monthly_premium: parseAmount(contract.resPremium),
+        status: contract.resContractStatus || '',
+        product_type: contract.resProductType,
+        payment_period: contract.resPaymentPeriod,
+        surrender_value: contract.resSurrenderValue ? parseAmount(contract.resSurrenderValue) : undefined,
+        loan_amount: contract.resLoanAmount ? parseAmount(contract.resLoanAmount) : undefined,
+        main_coverage: mainCoverage,
+        riders,
+        all_coverages: allCoverages,
+    };
+}
+
 // ─── 코드에프 응답 → BoBi CoverageInput 변환 ────────
 
 import type { CoverageInput, Policy, Coverage } from '@/types/coverage';

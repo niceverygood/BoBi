@@ -216,12 +216,20 @@ export default function CoveragePage() {
                         </Button>
                     )}
                     {step === 'input' && (
-                        <Link href="/dashboard/coverage/history">
-                            <Button variant="ghost" size="sm">
-                                <History className="w-4 h-4 mr-2" />
-                                이력
-                            </Button>
-                        </Link>
+                        <div className="flex items-center gap-1">
+                            <Link href="/dashboard/coverage/terms">
+                                <Button variant="ghost" size="sm">
+                                    <FileText className="w-4 h-4 mr-2" />
+                                    약관 조회
+                                </Button>
+                            </Link>
+                            <Link href="/dashboard/coverage/history">
+                                <Button variant="ghost" size="sm">
+                                    <History className="w-4 h-4 mr-2" />
+                                    이력
+                                </Button>
+                            </Link>
+                        </div>
                     )}
                 </div>
             </div>
