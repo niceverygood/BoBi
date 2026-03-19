@@ -85,7 +85,6 @@ export async function POST(request: Request) {
             success: true,
             connectedId,
             coverageInput,
-            rawContracts: contracts, // 디버깅용 (필요 시 제거)
             summary: {
                 totalPolicies: coverageInput.policies.length,
                 totalCoverages: coverageInput.policies.reduce((sum, p) => sum + p.coverages.length, 0),
