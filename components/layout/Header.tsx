@@ -1,4 +1,3 @@
-// components/layout/Header.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -26,24 +25,39 @@ export default function Header({ title }: HeaderProps) {
     const [userName, setUserName] = useState<string>('');
     const [userEmail, setUserEmail] = useState<string>('');
     const [userInitial, setUserInitial] = useState<string>('U');
+    const [planName, setPlanName] = useState<string>('Free');
 
     useEffect(() => {
         const fetchUser = async () => {
             const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                // 카카오 로그인: user_metadata에 이름이 있음
-                const name = user.user_metadata?.full_name
-                    || user.user_metadata?.name
-                    || user.user_metadata?.preferred_username
-                    || user.email?.split('@')[0]
-                    || '사용자';
-                setUserName(name);
-                setUserEmail(user.email || '');
-                setUserInitial(name.charAt(0).toUpperCase());
+            if (!user) return;
+
+            // 카카오 로그인: user_metadata에 이름이 있음
+            const name = user.user_metadata?.full_name
+                || user.user_metadata?.name
+                || user.user_metadata?.preferred_username
+                || user.email?.split('@')[0]
+                || '사용자';
+            setUserName(name);
+            setUserEmail(user.email || '');
+            setUserInitial(name.charAt(0).toUpperCase());
+
+            // 구독 플랜 정보 조회
+            const { data: sub } = await supabase
+                .from('subscriptions')
+                .select('subscription_plans(display_name)')
+                .eq('user_id', user.id)
+                .eq('status', 'active')
+                .maybeSingle();
+
+            if (sub?.subscription_plans) {
+                const plan = sub.subscription_plans as unknown as { display_name: string };
+                setPlanName(plan.display_name || 'Free');
             }
         };
         fetchUser();
-    }, [supabase]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
@@ -89,7 +103,7 @@ export default function Header({ title }: HeaderProps) {
                             </Avatar>
                             <div className="flex flex-col">
                                 <p className="text-sm font-medium">{userName || '사용자'}</p>
-                                <p className="text-xs text-muted-foreground">{userEmail || 'Basic 플랜'}</p>
+                                <p className="text-xs text-muted-foreground">{planName} 플랜</p>
                             </div>
                         </div>
                         <DropdownMenuSeparator />

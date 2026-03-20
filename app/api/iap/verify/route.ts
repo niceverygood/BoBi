@@ -131,6 +131,19 @@ export async function POST(request: Request) {
 
   const serviceClient = await createServiceClient();
 
+  // 영수증 replay attack 방지: 동일 transactionId 중복 체크
+  if (verification.transactionId) {
+    const { data: existingTx } = await serviceClient
+      .from('subscriptions')
+      .select('id')
+      .eq('payment_key', verification.transactionId)
+      .maybeSingle();
+
+    if (existingTx) {
+      return NextResponse.json({ error: '이미 처리된 영수증입니다.' }, { status: 409 });
+    }
+  }
+
   // 플랜 조회
   const { data: plan } = await serviceClient
     .from('subscription_plans')

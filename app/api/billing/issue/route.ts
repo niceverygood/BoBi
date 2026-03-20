@@ -113,7 +113,7 @@ export async function POST(request: Request) {
             .upsert({
                 user_id: user.id,
                 billing_key: billingKey,
-                provider: 'portone_kakaopay',
+                provider: paymentMethod === 'card' ? 'portone_inicis' : 'portone_kakaopay',
                 created_at: now.toISOString(),
             }, { onConflict: 'user_id' });
     } catch {
