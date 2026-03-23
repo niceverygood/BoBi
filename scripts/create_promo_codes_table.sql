@@ -6,14 +6,14 @@ CREATE TABLE IF NOT EXISTS promo_codes (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     code TEXT NOT NULL UNIQUE,
     description TEXT DEFAULT '',
-    plan_slug TEXT NOT NULL DEFAULT 'pro',        -- 적용할 플랜 (free, basic, pro, team)
-    price_override INTEGER NOT NULL DEFAULT 0,     -- 월 결제 금액 (0 = 무료)
-    duration_months INTEGER NOT NULL DEFAULT 3,    -- 적용 기간 (개월 수, -1 = 무제한)
-    max_uses INTEGER NOT NULL DEFAULT -1,          -- 최대 사용 횟수 (-1 = 무제한)
-    used_count INTEGER NOT NULL DEFAULT 0,         -- 현재 사용 횟수
-    active BOOLEAN NOT NULL DEFAULT true,          -- 활성화 여부
-    expires_at TIMESTAMP WITH TIME ZONE,           -- 코드 만료일 (null = 무기한)
-    created_by UUID REFERENCES auth.users(id),     -- 생성한 관리자
+    plan_slug TEXT NOT NULL DEFAULT 'pro',
+    price_override INTEGER NOT NULL DEFAULT 0,
+    duration_months INTEGER NOT NULL DEFAULT 3,
+    max_uses INTEGER NOT NULL DEFAULT -1,
+    used_count INTEGER NOT NULL DEFAULT 0,
+    active BOOLEAN NOT NULL DEFAULT true,
+    expires_at TIMESTAMP WITH TIME ZONE,
+    created_by UUID REFERENCES auth.users(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -27,10 +27,10 @@ CREATE TABLE IF NOT EXISTS promo_code_redemptions (
     plan_slug TEXT NOT NULL,
     duration_months INTEGER NOT NULL,
     starts_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    expires_at TIMESTAMP WITH TIME ZONE,           -- 프로모션 만료일
-    status TEXT NOT NULL DEFAULT 'active',          -- active, expired, cancelled
+    expires_at TIMESTAMP WITH TIME ZONE,
+    status TEXT NOT NULL DEFAULT 'active',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(promo_code_id, user_id)                 -- 같은 코드는 한 사람당 한번만
+    UNIQUE(promo_code_id, user_id)
 );
 
 -- 3. 인덱스
@@ -43,32 +43,16 @@ CREATE INDEX IF NOT EXISTS idx_promo_redemptions_status ON promo_code_redemption
 ALTER TABLE promo_codes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE promo_code_redemptions ENABLE ROW LEVEL SECURITY;
 
--- 관리자만 프로모코드 관리 가능
-CREATE POLICY "Admins can manage promo codes" ON promo_codes
-    FOR ALL USING (
-        auth.uid() IN (SELECT user_id FROM admin_users)
-    );
+-- 모든 인증된 사용자가 프로모 코드 읽기/쓰기 가능 (API에서 관리자 체크)
+CREATE POLICY "Allow authenticated access to promo_codes" ON promo_codes
+    FOR ALL USING (auth.role() = 'authenticated');
 
--- 코드 조회는 모든 인증된 사용자 가능 (apply 시 필요)
-CREATE POLICY "Authenticated users can read active promo codes" ON promo_codes
-    FOR SELECT USING (auth.role() = 'authenticated' AND active = true);
-
--- 사용 이력은 본인 것만 조회 가능
-CREATE POLICY "Users can view own redemptions" ON promo_code_redemptions
-    FOR SELECT USING (auth.uid() = user_id);
-
--- 인증된 사용자는 redemption 생성 가능
-CREATE POLICY "Authenticated users can create redemptions" ON promo_code_redemptions
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
-
--- 관리자는 모든 redemption 조회 가능
-CREATE POLICY "Admins can view all redemptions" ON promo_code_redemptions
-    FOR ALL USING (
-        auth.uid() IN (SELECT user_id FROM admin_users)
-    );
+-- 사용 이력: 인증된 사용자 모두 접근 가능 (API에서 관리자/본인 체크)
+CREATE POLICY "Allow authenticated access to promo_code_redemptions" ON promo_code_redemptions
+    FOR ALL USING (auth.role() = 'authenticated');
 
 -- 5. 기본 프로모 코드 삽입 (3개월 무료 이용)
-INSERT INTO promo_codes (code, description, plan_slug, price_override, duration_months, max_uses);
+INSERT INTO promo_codes (code, description, plan_slug, price_override, duration_months, max_uses)
 VALUES
     ('BOBI-FREE-3M', '보비 3개월 무료 이용 (프로 플랜)', 'pro', 0, 3, -1),
     ('WONFIN2026', '원금융서비스 직원 전용 (베이직 월 10,000원)', 'basic', 10000, -1, -1),

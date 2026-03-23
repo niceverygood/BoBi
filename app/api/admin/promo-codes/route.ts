@@ -1,11 +1,10 @@
-// app/api/admin/promo-codes/route.ts
-// 관리자 프로모 코드 관리 API
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { ADMIN_EMAILS } from '@/lib/utils/constants';
 
 async function isAdmin(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
-    const { data } = await supabase.from('admin_users').select('id').eq('user_id', userId).maybeSingle();
-    return !!data;
+    const { data: { user } } = await supabase.auth.getUser();
+    return user?.email ? (ADMIN_EMAILS as readonly string[]).includes(user.email) : false;
 }
 
 // 조회
