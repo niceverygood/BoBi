@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
     Shield, Users, FileText, CreditCard, Activity, BarChart3,
     TrendingUp, AlertCircle, Search, CheckCircle2, ArrowUpDown,
-    ChevronDown
+    ChevronDown, Tag
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -372,6 +372,9 @@ export default function AdminPage() {
                         </CardContent>
                     </Card>
 
+                    {/* Promo Code Management */}
+                    <PromoCodeManager />
+
                     {/* Quick Actions */}
                     <div>
                         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
@@ -407,5 +410,262 @@ export default function AdminPage() {
                 </main>
             </div>
         </div>
+    );
+}
+
+// ─── 프로모 코드 관리 컴포넌트 ──────────────────────
+
+interface PromoCode {
+    id: string;
+    code: string;
+    description: string;
+    plan_slug: string;
+    price_override: number;
+    duration_months: number;
+    max_uses: number;
+    used_count: number;
+    active: boolean;
+    expires_at: string | null;
+    created_at: string;
+}
+
+function PromoCodeManager() {
+    const [codes, setCodes] = useState<PromoCode[]>([]);
+    const [codesLoading, setCodesLoading] = useState(true);
+    const [showCreate, setShowCreate] = useState(false);
+    const [creating, setCreating] = useState(false);
+    const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    // New code form
+    const [newCode, setNewCode] = useState('');
+    const [newDesc, setNewDesc] = useState('');
+    const [newPlan, setNewPlan] = useState('pro');
+    const [newPrice, setNewPrice] = useState(0);
+    const [newDuration, setNewDuration] = useState(3);
+    const [newMaxUses, setNewMaxUses] = useState(-1);
+
+    const fetchCodes = useCallback(async () => {
+        try {
+            const res = await fetch('/api/admin/promo-codes');
+            if (!res.ok) throw new Error('Failed');
+            const data = await res.json();
+            setCodes(data.codes || []);
+        } catch {
+            console.error('Failed to fetch promo codes');
+        } finally {
+            setCodesLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchCodes();
+    }, [fetchCodes]);
+
+    const handleCreate = async () => {
+        if (!newCode.trim()) {
+            setMessage({ type: 'error', text: '코드를 입력해주세요.' });
+            return;
+        }
+        setCreating(true);
+        setMessage(null);
+        try {
+            const res = await fetch('/api/admin/promo-codes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    code: newCode,
+                    description: newDesc,
+                    plan_slug: newPlan,
+                    price_override: newPrice,
+                    duration_months: newDuration,
+                    max_uses: newMaxUses,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            setMessage({ type: 'success', text: `코드 "${newCode.toUpperCase()}" 생성 완료!` });
+            setNewCode('');
+            setNewDesc('');
+            setShowCreate(false);
+            fetchCodes();
+        } catch (err) {
+            setMessage({ type: 'error', text: (err as Error).message });
+        } finally {
+            setCreating(false);
+        }
+    };
+
+    const toggleActive = async (id: string, currentActive: boolean) => {
+        try {
+            const res = await fetch('/api/admin/promo-codes', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, active: !currentActive }),
+            });
+            if (!res.ok) throw new Error('Failed');
+            setCodes(prev => prev.map(c => c.id === id ? { ...c, active: !currentActive } : c));
+        } catch {
+            setMessage({ type: 'error', text: '상태 변경 실패' });
+        }
+    };
+
+    const deleteCode = async (id: string, code: string) => {
+        if (!confirm(`"${code}" 코드를 삭제하시겠습니까?`)) return;
+        try {
+            const res = await fetch(`/api/admin/promo-codes?id=${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed');
+            setCodes(prev => prev.filter(c => c.id !== id));
+            setMessage({ type: 'success', text: `"${code}" 삭제 완료` });
+        } catch {
+            setMessage({ type: 'error', text: '삭제 실패' });
+        }
+    };
+
+    const generateRandomCode = () => {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let result = 'BOBI-';
+        for (let i = 0; i < 6; i++) result += chars[Math.floor(Math.random() * chars.length)];
+        setNewCode(result);
+    };
+
+    const PLAN_NAMES: Record<string, string> = { free: '무료', basic: '베이직', pro: '프로', team: '팀' };
+
+    return (
+        <Card className="border-0 shadow-md mb-8">
+            <CardHeader className="pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                        <Tag className="w-4 h-4" />
+                        프로모션 코드 관리
+                        <Badge variant="secondary" className="ml-1 text-xs">{codes.length}개</Badge>
+                    </CardTitle>
+                    <Button size="sm" onClick={() => setShowCreate(!showCreate)}>
+                        {showCreate ? '취소' : '+ 새 코드'}
+                    </Button>
+                </div>
+            </CardHeader>
+
+            {message && (
+                <div className={`mx-5 mb-3 p-3 rounded-lg flex items-center gap-2 text-sm ${message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+                    }`}>
+                    {message.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                    {message.text}
+                    <button onClick={() => setMessage(null)} className="ml-auto text-xs opacity-60 hover:opacity-100">✕</button>
+                </div>
+            )}
+
+            {/* Create form */}
+            {showCreate && (
+                <div className="mx-5 mb-4 p-4 border rounded-xl bg-muted/30 space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="col-span-2 sm:col-span-1">
+                            <label className="text-xs font-medium mb-1 block">코드 *</label>
+                            <div className="flex gap-2">
+                                <input
+                                    className="flex-1 px-3 py-2 border rounded-lg text-sm bg-background font-mono uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                    placeholder="BOBI-XXXXX"
+                                    value={newCode}
+                                    onChange={e => setNewCode(e.target.value.toUpperCase())}
+                                />
+                                <Button variant="outline" size="sm" onClick={generateRandomCode} className="shrink-0 text-xs">
+                                    자동생성
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="col-span-2 sm:col-span-1">
+                            <label className="text-xs font-medium mb-1 block">설명</label>
+                            <input
+                                className="w-full px-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                placeholder="3개월 무료 이용 프로모션"
+                                value={newDesc}
+                                onChange={e => setNewDesc(e.target.value)}
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium mb-1 block">적용 플랜</label>
+                            <select className="w-full px-3 py-2 border rounded-lg text-sm bg-background" value={newPlan} onChange={e => setNewPlan(e.target.value)}>
+                                <option value="basic">베이직</option>
+                                <option value="pro">프로</option>
+                                <option value="team">팀</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium mb-1 block">월 결제금액 (0=무료)</label>
+                            <input type="number" className="w-full px-3 py-2 border rounded-lg text-sm bg-background" value={newPrice} onChange={e => setNewPrice(Number(e.target.value))} />
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium mb-1 block">기간 (개월, -1=무제한)</label>
+                            <input type="number" className="w-full px-3 py-2 border rounded-lg text-sm bg-background" value={newDuration} onChange={e => setNewDuration(Number(e.target.value))} />
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium mb-1 block">최대 사용 횟수 (-1=무제한)</label>
+                            <input type="number" className="w-full px-3 py-2 border rounded-lg text-sm bg-background" value={newMaxUses} onChange={e => setNewMaxUses(Number(e.target.value))} />
+                        </div>
+                    </div>
+                    <Button onClick={handleCreate} disabled={creating} className="w-full">
+                        {creating ? '생성 중...' : '프로모 코드 생성'}
+                    </Button>
+                </div>
+            )}
+
+            <Separator />
+
+            {/* Code list */}
+            <CardContent className="p-0">
+                {codesLoading ? (
+                    <div className="p-8 text-center text-sm text-muted-foreground">
+                        <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2" />
+                        로딩 중...
+                    </div>
+                ) : codes.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-muted-foreground">
+                        프로모션 코드가 없습니다. 위에서 새 코드를 생성해주세요.
+                    </div>
+                ) : (
+                    <div className="divide-y max-h-[400px] overflow-y-auto">
+                        {codes.map(c => (
+                            <div key={c.id} className="flex items-center gap-3 px-5 py-3 hover:bg-muted/30 transition-colors">
+                                {/* Code */}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <code className="text-sm font-mono font-bold">{c.code}</code>
+                                        <Badge variant={c.active ? 'default' : 'secondary'} className="text-[10px]">
+                                            {c.active ? '활성' : '비활성'}
+                                        </Badge>
+                                        <Badge variant="outline" className="text-[10px]">
+                                            {PLAN_NAMES[c.plan_slug] || c.plan_slug}
+                                        </Badge>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground truncate mt-0.5">{c.description}</p>
+                                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-0.5">
+                                        <span>{c.price_override === 0 ? '무료' : `월 ${c.price_override.toLocaleString()}원`}</span>
+                                        <span>·</span>
+                                        <span>{c.duration_months === -1 ? '무기한' : `${c.duration_months}개월`}</span>
+                                        <span>·</span>
+                                        <span>사용 {c.used_count}{c.max_uses === -1 ? '회' : `/${c.max_uses}회`}</span>
+                                    </div>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="flex items-center gap-1 shrink-0">
+                                    <Button
+                                        variant="ghost" size="sm" className="text-xs h-7 px-2"
+                                        onClick={() => toggleActive(c.id, c.active)}
+                                    >
+                                        {c.active ? '비활성화' : '활성화'}
+                                    </Button>
+                                    <Button
+                                        variant="ghost" size="sm" className="text-xs h-7 px-2 text-destructive hover:text-destructive"
+                                        onClick={() => deleteCode(c.id, c.code)}
+                                    >
+                                        삭제
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
     );
 }
