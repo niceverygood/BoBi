@@ -56,13 +56,23 @@ export default function Header({ title }: HeaderProps) {
             }
         };
         fetchUser();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleLogout = async () => {
-        await supabase.auth.signOut();
-        router.push('/');
-        router.refresh();
+        try {
+            // 1. 클라이언트 측 세션 삭제 (global scope)
+            await supabase.auth.signOut({ scope: 'global' });
+
+            // 2. 서버 측 쿠키 삭제 API 호출
+            await fetch('/api/auth/logout', { method: 'POST' });
+
+            // 3. 하드 네비게이션으로 모든 캐시 무효화
+            window.location.href = '/';
+        } catch {
+            // 에러 발생해도 강제 이동
+            window.location.href = '/';
+        }
     };
 
     return (
