@@ -40,6 +40,7 @@ export function useSubscription() {
     const [plan, setPlan] = useState<SubscriptionPlan>(DEFAULT_PLAN);
     const [subscription, setSubscription] = useState<Subscription | null>(null);
     const [usage, setUsage] = useState<UsageTracking>(DEFAULT_USAGE);
+    const [credits, setCredits] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const supabase = createClient();
@@ -85,6 +86,17 @@ export function useSubscription() {
             if (usageData) {
                 setUsage(usageData as UsageTracking);
             }
+
+            // Fetch credit balance
+            const { data: creditData } = await supabase
+                .from('credit_balances')
+                .select('credits_remaining')
+                .eq('user_id', user.id)
+                .maybeSingle();
+
+            if (creditData) {
+                setCredits(creditData.credits_remaining ?? 0);
+            }
         } catch (err) {
             setError((err as Error).message);
         } finally {
@@ -99,7 +111,11 @@ export function useSubscription() {
         }
     }, [fetchSubscription]);
 
-    const canAnalyze = plan.max_analyses === -1 || usage.analyses_used < usage.analyses_limit;
+    // 플랜 한도 내이거나, 크레딧이 있으면 분석 가능
+    const planLimitReached = plan.max_analyses !== -1 && usage.analyses_used >= usage.analyses_limit;
+    const canAnalyze = plan.max_analyses === -1 || !planLimitReached || credits > 0;
+    const canAnalyzeWithPlan = plan.max_analyses === -1 || usage.analyses_used < usage.analyses_limit;
+    const needsCredit = planLimitReached && credits > 0;
 
     const remainingAnalyses = plan.max_analyses === -1
         ? -1
@@ -113,6 +129,7 @@ export function useSubscription() {
         subscription: subscription ?? null,
         plan,
         usage,
+        credits,
         canAnalyze,
         remainingAnalyses,
     };
@@ -122,6 +139,9 @@ export function useSubscription() {
         loading,
         error,
         isFeatureEnabled,
+        canAnalyzeWithPlan,  // 플랜 한도 내인지 여부
+        needsCredit,         // 크레딧으로 분석해야 하는지
+        planLimitReached,    // 플랜 한도 도달했는지
         refresh: fetchSubscription,
     };
 }

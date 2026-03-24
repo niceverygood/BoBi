@@ -38,11 +38,26 @@ export async function POST(request: Request) {
             .eq('id', user.id)
             .single();
 
+        let useCredit = false;
+
         if (profile) {
             const limits: Record<string, number> = { basic: 50, pro: 200, enterprise: Infinity };
             const limit = limits[profile.plan] || 50;
             if (profile.analysis_count >= limit) {
-                return NextResponse.json({ error: '이번 달 분석 한도를 초과했습니다. 플랜을 업그레이드해주세요.' }, { status: 429 });
+                // 플랜 한도 초과 → 크레딧 확인
+                const { data: creditData } = await supabase
+                    .from('credit_balances')
+                    .select('credits_remaining')
+                    .eq('user_id', user.id)
+                    .maybeSingle();
+
+                if (creditData && creditData.credits_remaining > 0) {
+                    useCredit = true; // 크레딧으로 분석 진행
+                } else {
+                    return NextResponse.json({
+                        error: '이번 달 분석 한도를 초과했습니다. 크레딧을 구매하거나 플랜을 업그레이드해주세요.',
+                    }, { status: 429 });
+                }
             }
         }
 
@@ -123,6 +138,15 @@ export async function POST(request: Request) {
             await supabase.rpc('increment_analysis_count', { user_id: user.id });
         } catch {
             // Non-critical, ignore if RPC doesn't exist
+        }
+
+        // 크레딧으로 분석한 경우 차감
+        if (useCredit) {
+            try {
+                await supabase.rpc('use_credit', { p_user_id: user.id });
+            } catch {
+                console.error('Credit deduction failed');
+            }
         }
 
         return NextResponse.json({

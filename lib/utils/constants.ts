@@ -58,7 +58,7 @@ export const PLAN_LIMITS: Record<PlanSlug, PlanInfo> = {
     basic: {
         name: '베이직',
         slug: 'basic',
-        analysisLimit: 30,
+        analysisLimit: 50,
         price: '19,900원/월',
         priceMonthly: 19900,
         priceYearly: 190800,
@@ -69,11 +69,12 @@ export const PLAN_LIMITS: Record<PlanSlug, PlanInfo> = {
         features: [
             'AI 고지사항 분석',
             '보장 분석 리포트',
-            '월 30건 분석',
+            '월 50건 분석',
             'PDF 업로드 무제한 용량',
             '결과 PDF 다운로드',
             '분석 이력 6개월 보관',
             '보험 자동 조회 (CODEF)',
+            '초과 시 크레딧 구매 가능',
         ],
         lockedFeatures: [
             '리모델링 제안서',
@@ -235,3 +236,41 @@ export const PDF_FILE_TYPES = [
     { id: 'prescription', label: '처방조제정보', description: '약품명, 성분명, 투약량, 투여횟수, 투약일수' },
     { id: 'detail_treatment', label: '세부진료정보', description: '진료내역, 코드명, 투약량, 투여횟수, 투약일수' },
 ] as const;
+
+// 분석 크레딧 팩 (구독 한도 초과 시 추가 구매용)
+export interface CreditPack {
+    id: string;
+    name: string;
+    credits: number;
+    price: number;
+    pricePerCredit: number;
+    discount?: string;
+    popular?: boolean;
+}
+
+export const CREDIT_PACKS: CreditPack[] = [
+    {
+        id: 'credit_1',
+        name: '1건',
+        credits: 1,
+        price: 990,
+        pricePerCredit: 990,
+    },
+    {
+        id: 'credit_10',
+        name: '10건 팩',
+        credits: 10,
+        price: 7900,
+        pricePerCredit: 790,
+        discount: '20% 할인',
+        popular: true,
+    },
+    {
+        id: 'credit_30',
+        name: '30건 팩',
+        credits: 30,
+        price: 19900,
+        pricePerCredit: 663,
+        discount: '33% 할인',
+    },
+];

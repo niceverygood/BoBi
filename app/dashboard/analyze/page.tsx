@@ -4,15 +4,17 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, Loader2, Lock, Sparkles } from 'lucide-react';
+import { ArrowRight, Loader2, Lock, Sparkles, Coins, Zap } from 'lucide-react';
 import StepIndicator from '@/components/common/StepIndicator';
 import PdfUploader from '@/components/analyze/PdfUploader';
 import AnalysisResultView from '@/components/analyze/AnalysisResult';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { useSubscription } from '@/hooks/useSubscription';
 import { createClient } from '@/lib/supabase/client';
+import { CREDIT_PACKS } from '@/lib/utils/constants';
 import type { AnalysisResult } from '@/types/analysis';
 import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 
 interface UploadedFile {
     id?: string;
@@ -39,7 +41,29 @@ function AnalyzeContent() {
     const [analysisId, setAnalysisId] = useState<string | null>(existingAnalysisId);
     const [error, setError] = useState<string | null>(null);
     const [loadingExisting, setLoadingExisting] = useState(!!existingAnalysisId);
-    const { canAnalyze, remainingAnalyses, plan, isFeatureEnabled, loading: subLoading, refresh } = useSubscription();
+    const { canAnalyze, remainingAnalyses, plan, credits, needsCredit, planLimitReached, isFeatureEnabled, loading: subLoading, refresh } = useSubscription();
+    const [showCreditShop, setShowCreditShop] = useState(false);
+    const [buyingCredit, setBuyingCredit] = useState<string | null>(null);
+
+    // 크레딧 구매 핸들러
+    const handleBuyCredit = async (packId: string) => {
+        setBuyingCredit(packId);
+        try {
+            const response = await fetch('/api/credits/purchase', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ packId }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || '구매 실패');
+            refresh(); // 크레딧 잔량 새로고침
+            setShowCreditShop(false);
+        } catch (err) {
+            setError((err as Error).message);
+        } finally {
+            setBuyingCredit(null);
+        }
+    };
 
     // 이력에서 기존 분석 결과 로드
     useEffect(() => {
@@ -143,7 +167,7 @@ function AnalyzeContent() {
                 </p>
             </div>
 
-            {/* Usage Limit Warning */}
+            {/* Usage Limit Warning - 한도 초과 + 크레딧 없음 */}
             {!subLoading && !canAnalyze && (
                 <Card className="border-0 shadow-sm border-amber-200 bg-amber-50/50 dark:bg-amber-950/10">
                     <CardContent className="p-5">
@@ -159,12 +183,38 @@ function AnalyzeContent() {
                                     </p>
                                 </div>
                             </div>
-                            <Link href="/pricing">
-                                <Button size="sm" className="bg-gradient-primary hover:opacity-90 shadow-sm">
-                                    <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-                                    업그레이드
+                            <div className="flex items-center gap-2">
+                                <Button size="sm" variant="outline" onClick={() => setShowCreditShop(true)}>
+                                    <Coins className="w-3.5 h-3.5 mr-1.5" />
+                                    크레딧 구매
                                 </Button>
-                            </Link>
+                                <Link href="/pricing">
+                                    <Button size="sm" className="bg-gradient-primary hover:opacity-90 shadow-sm">
+                                        <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                                        업그레이드
+                                    </Button>
+                                </Link>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* 크레딧으로 분석 가능 알림 */}
+            {!subLoading && needsCredit && (
+                <Card className="border-0 shadow-sm border-blue-200 bg-blue-50/50 dark:bg-blue-950/10">
+                    <CardContent className="p-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                                <Coins className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-sm font-medium">플랜 한도를 초과했지만 크레딧이 있어 분석 가능합니다</p>
+                                <p className="text-xs text-muted-foreground">남은 크레딧: {credits}건 (분석 시 1크레딧 차감)</p>
+                            </div>
+                            <Button size="sm" variant="ghost" onClick={() => setShowCreditShop(true)} className="text-xs">
+                                + 충전
+                            </Button>
                         </div>
                     </CardContent>
                 </Card>
@@ -172,10 +222,81 @@ function AnalyzeContent() {
 
             {/* Remaining analyses info */}
             {!subLoading && canAnalyze && remainingAnalyses !== -1 && (
-                <div className="text-sm text-muted-foreground flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    이번 달 남은 분석: <span className="font-semibold text-foreground">{remainingAnalyses}건</span>
+                <div className="flex items-center justify-between">
+                    <div className="text-sm text-muted-foreground flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        이번 달 남은 분석: <span className="font-semibold text-foreground">{remainingAnalyses}건</span>
+                        {credits > 0 && (
+                            <span className="ml-2 text-blue-600 flex items-center gap-1">
+                                <Coins className="w-3 h-3" />
+                                + 크레딧 {credits}건
+                            </span>
+                        )}
+                    </div>
+                    {plan.max_analyses !== -1 && (
+                        <Button size="sm" variant="ghost" onClick={() => setShowCreditShop(true)} className="text-xs text-muted-foreground">
+                            <Coins className="w-3 h-3 mr-1" />
+                            크레딧 충전
+                        </Button>
+                    )}
                 </div>
+            )}
+
+            {/* Credit Shop Modal */}
+            {showCreditShop && (
+                <Card className="border-0 shadow-lg">
+                    <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="text-lg flex items-center gap-2">
+                                <Coins className="w-5 h-5 text-amber-500" />
+                                분석 크레딧 구매
+                            </CardTitle>
+                            <Button variant="ghost" size="sm" onClick={() => setShowCreditShop(false)}>닫기</Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            월간 분석 한도를 초과했을 때 크레딧으로 추가 분석할 수 있습니다. 크레딧은 만료되지 않습니다.
+                        </p>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {CREDIT_PACKS.map((pack) => (
+                                <button
+                                    key={pack.id}
+                                    onClick={() => handleBuyCredit(pack.id)}
+                                    disabled={buyingCredit !== null}
+                                    className={`relative p-4 rounded-xl border-2 text-center transition-all hover:shadow-md ${pack.popular
+                                            ? 'border-primary bg-primary/5'
+                                            : 'border-muted hover:border-primary/30'
+                                        } ${buyingCredit === pack.id ? 'opacity-50' : ''}`}
+                                >
+                                    {pack.popular && (
+                                        <Badge className="absolute -top-2 left-1/2 -translate-x-1/2 text-[10px] px-2">인기</Badge>
+                                    )}
+                                    <p className="text-lg font-bold mt-1">{pack.name}</p>
+                                    <p className="text-2xl font-bold text-primary mt-1">
+                                        {pack.price.toLocaleString()}원
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        건당 {pack.pricePerCredit.toLocaleString()}원
+                                    </p>
+                                    {pack.discount && (
+                                        <Badge variant="secondary" className="mt-2 text-[10px]">{pack.discount}</Badge>
+                                    )}
+                                    {buyingCredit === pack.id && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-background/50 rounded-xl">
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                        </div>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                        {credits > 0 && (
+                            <p className="text-xs text-muted-foreground text-center mt-3">
+                                현재 보유 크레딧: <span className="font-semibold text-foreground">{credits}건</span>
+                            </p>
+                        )}
+                    </CardContent>
+                </Card>
             )}
 
             {/* PDF Upload */}

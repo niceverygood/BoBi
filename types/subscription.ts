@@ -2,7 +2,7 @@
 
 export interface SubscriptionPlan {
     id: string;
-    slug: 'free' | 'basic' | 'pro' | 'team';
+    slug: 'free' | 'basic' | 'pro' | 'team' | 'business' | 'enterprise';
     display_name: string;
     price_monthly: number;
     price_yearly: number;
@@ -52,10 +52,30 @@ export interface UsageTracking {
     updated_at: string;
 }
 
+export interface CreditBalance {
+    id: string;
+    user_id: string;
+    credits_remaining: number;
+    credits_purchased: number;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface CreditTransaction {
+    id: string;
+    user_id: string;
+    pack_id: string;
+    credits: number;
+    amount: number;
+    payment_key?: string;
+    created_at: string;
+}
+
 export interface SubscriptionWithUsage {
     subscription: Subscription | null;
     plan: SubscriptionPlan;
     usage: UsageTracking;
+    credits: number;       // 추가 크레딧 잔량
     canAnalyze: boolean;
     remainingAnalyses: number;  // -1 = unlimited
 }
