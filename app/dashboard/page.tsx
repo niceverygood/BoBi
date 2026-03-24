@@ -38,7 +38,7 @@ export default function DashboardPage() {
                             <div>
                                 <p className="font-semibold text-sm">베이직 플랜으로 업그레이드</p>
                                 <p className="text-xs text-muted-foreground">
-                                    월 30건 분석 + 상품 매칭 기능을 이용하세요
+                                    월 19,900원으로 30건 분석 + 보장 분석 리포트
                                 </p>
                             </div>
                         </div>

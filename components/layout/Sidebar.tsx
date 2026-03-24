@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Shield, LayoutDashboard, FileSearch, History, Settings, ChevronLeft, Crown, CreditCard, ShieldCheck, ShieldPlus, FileText } from 'lucide-react';
+import { Shield, LayoutDashboard, FileSearch, History, Settings, ChevronLeft, Crown, ShieldCheck, ShieldPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -13,9 +13,7 @@ const navItems = [
     { title: '대시보드', href: '/dashboard', icon: LayoutDashboard },
     { title: '새 분석', href: '/dashboard/analyze', icon: FileSearch },
     { title: '보장 분석', href: '/dashboard/coverage', icon: ShieldPlus },
-    { title: '약관 조회', href: '/dashboard/coverage/terms', icon: FileText },
     { title: '분석 이력', href: '/dashboard/history', icon: History },
-    { title: '요금제', href: '/pricing', icon: CreditCard },
     { title: '설정', href: '/dashboard/settings', icon: Settings },
 ];
 

@@ -7,12 +7,12 @@ import type { SubscriptionPlan, Subscription, UsageTracking, SubscriptionWithUsa
 const DEFAULT_PLAN: SubscriptionPlan = {
     id: '',
     slug: 'free',
-    display_name: '무료',
+    display_name: '무료 체험',
     price_monthly: 0,
     price_yearly: 0,
-    max_analyses: 3,
-    max_file_size_mb: 5,
-    max_customers: 3,
+    max_analyses: 5,
+    max_file_size_mb: -1,
+    max_customers: 5,
     history_days: 7,
     features: {
         disclosure_analysis: true,
@@ -31,7 +31,7 @@ const DEFAULT_USAGE: UsageTracking = {
     period_start: new Date().toISOString(),
     period_end: new Date().toISOString(),
     analyses_used: 0,
-    analyses_limit: 3,
+    analyses_limit: 5,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
 };

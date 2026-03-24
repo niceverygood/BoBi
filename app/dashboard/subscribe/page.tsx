@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Check, Loader2, ArrowLeft, CreditCard, Shield, Zap, Crown, Apple, Smartphone } from 'lucide-react';
+import { Check, Loader2, ArrowLeft, CreditCard, Shield, Zap, Crown, Apple, Smartphone, Users, Building, Rocket } from 'lucide-react';
 import { PLAN_LIMITS, type PlanSlug } from '@/lib/utils/constants';
 import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
@@ -16,6 +16,9 @@ import { getPlatform, isNative, type AppPlatform } from '@/lib/iap/platform';
 const PLAN_ICONS: Record<string, typeof Zap> = {
     basic: Zap,
     pro: Crown,
+    team: Users,
+    business: Building,
+    enterprise: Rocket,
 };
 
 export default function SubscribePage() {
@@ -54,7 +57,7 @@ function SubscribeContent() {
     }, []);
 
     useEffect(() => {
-        if (planParam && (planParam === 'basic' || planParam === 'pro')) {
+        if (planParam && planParam !== 'free' && PLAN_LIMITS[planParam]) {
             setSelectedPlan(planParam);
         }
     }, [planParam]);
@@ -257,9 +260,12 @@ function SubscribeContent() {
                             <CardTitle className="text-lg">플랜 선택</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
+                            <p className="text-xs text-muted-foreground mb-2 font-medium">개인 플랜</p>
                             {(['basic', 'pro'] as PlanSlug[]).map((slug) => {
                                 const info = PLAN_LIMITS[slug];
                                 const Icon = PLAN_ICONS[slug];
+                                const colorMap: Record<string, string> = { basic: 'bg-blue-100', pro: 'bg-violet-100', team: 'bg-teal-100', business: 'bg-amber-100', enterprise: 'bg-rose-100' };
+                                const textMap: Record<string, string> = { basic: 'text-blue-600', pro: 'text-violet-600', team: 'text-teal-600', business: 'text-amber-600', enterprise: 'text-rose-600' };
                                 return (
                                     <button
                                         key={slug}
@@ -273,11 +279,8 @@ function SubscribeContent() {
                                     >
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
-                                                <div className={cn(
-                                                    'w-10 h-10 rounded-xl flex items-center justify-center',
-                                                    slug === 'basic' ? 'bg-blue-100' : 'bg-violet-100'
-                                                )}>
-                                                    <Icon className={cn('w-5 h-5', slug === 'basic' ? 'text-blue-600' : 'text-violet-600')} />
+                                                <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', colorMap[slug])}>
+                                                    <Icon className={cn('w-5 h-5', textMap[slug])} />
                                                 </div>
                                                 <div>
                                                     <div className="flex items-center gap-2">
@@ -285,7 +288,46 @@ function SubscribeContent() {
                                                         {info.recommended && <Badge variant="default" className="text-[10px] px-1.5 py-0">추천</Badge>}
                                                     </div>
                                                     <p className="text-sm text-muted-foreground">
-                                                        월 {info.analysisLimit}건 분석
+                                                        {info.analysisLimit === -1 ? '무제한 분석' : `월 ${info.analysisLimit}건 분석`}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="font-bold">{info.priceMonthly.toLocaleString()}원<span className="font-normal text-sm text-muted-foreground">/월</span></p>
+                                            </div>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                            <p className="text-xs text-muted-foreground mb-2 mt-4 font-medium">팀 / GA 플랜</p>
+                            {(['team', 'business', 'enterprise'] as PlanSlug[]).map((slug) => {
+                                const info = PLAN_LIMITS[slug];
+                                const Icon = PLAN_ICONS[slug];
+                                const colorMap: Record<string, string> = { team: 'bg-teal-100', business: 'bg-amber-100', enterprise: 'bg-rose-100' };
+                                const textMap: Record<string, string> = { team: 'text-teal-600', business: 'text-amber-600', enterprise: 'text-rose-600' };
+                                return (
+                                    <button
+                                        key={slug}
+                                        onClick={() => setSelectedPlan(slug)}
+                                        className={cn(
+                                            'w-full p-4 rounded-xl border-2 text-left transition-all',
+                                            selectedPlan === slug
+                                                ? 'border-primary bg-primary/5'
+                                                : 'border-muted hover:border-primary/30'
+                                        )}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', colorMap[slug])}>
+                                                    <Icon className={cn('w-5 h-5', textMap[slug])} />
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-semibold">{info.name}</span>
+                                                        {info.recommended && <Badge variant="default" className="text-[10px] px-1.5 py-0">인기</Badge>}
+                                                    </div>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {info.includedSeats}명 포함 · 인당 {info.perSeatPrice?.toLocaleString()}원
                                                     </p>
                                                 </div>
                                             </div>
