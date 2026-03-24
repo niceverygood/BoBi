@@ -45,17 +45,80 @@ function AnalyzeContent() {
     const [showCreditShop, setShowCreditShop] = useState(false);
     const [buyingCredit, setBuyingCredit] = useState<string | null>(null);
 
-    // 크레딧 구매 핸들러
+    // 크레딧 구매 핸들러 (플랫폼별 분기)
     const handleBuyCredit = async (packId: string) => {
         setBuyingCredit(packId);
+        setError(null);
+
         try {
-            const response = await fetch('/api/credits/purchase', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ packId }),
-            });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || '구매 실패');
+            const { getPlatform } = await import('@/lib/iap/platform');
+            const platform = getPlatform();
+            const pack = CREDIT_PACKS.find(p => p.id === packId);
+            if (!pack) throw new Error('유효하지 않은 상품');
+
+            if (platform !== 'web') {
+                // ── 네이티브 인앱결제 (iOS/Android) ──
+                const { purchaseCredit } = await import('@/lib/iap/store');
+                const iapResult = await purchaseCredit(packId as 'credit_1' | 'credit_10' | 'credit_30');
+
+                if (!iapResult.success) {
+                    throw new Error(iapResult.error || '인앱결제 실패');
+                }
+
+                // 서버에 영수증 검증 + 크레딧 충전 요청
+                const res = await fetch('/api/credits/purchase', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        packId,
+                        platform,
+                        receipt: iapResult.receipt,
+                        transactionId: iapResult.transactionId,
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || '크레딧 충전 실패');
+
+            } else {
+                // ── 웹 결제 (PortOne + KG이니시스) ──
+                const PortOne = await import('@portone/browser-sdk/v2');
+
+                const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID!;
+                const channelKey = process.env.NEXT_PUBLIC_PORTONE_INICIS_CHANNEL_KEY!;
+
+                const paymentId = `credit-${packId}-${Date.now()}`;
+
+                const response = await PortOne.requestPayment({
+                    storeId,
+                    channelKey,
+                    paymentId,
+                    orderName: `보비 분석 크레딧 ${pack.name}`,
+                    totalAmount: pack.price,
+                    currency: 'CURRENCY_KRW',
+                    payMethod: 'CARD',
+                });
+
+                if (response?.code) {
+                    if (response.code === 'FAILURE_TYPE_PG') {
+                        throw new Error('결제가 취소되었습니다.');
+                    }
+                    throw new Error(response.message || '결제에 실패했습니다.');
+                }
+
+                // 서버에 결제 확인 + 크레딧 충전 요청
+                const res = await fetch('/api/credits/purchase', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        packId,
+                        paymentId,
+                        platform: 'web',
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || '크레딧 충전 실패');
+            }
+
             refresh(); // 크레딧 잔량 새로고침
             setShowCreditShop(false);
         } catch (err) {
@@ -265,8 +328,8 @@ function AnalyzeContent() {
                                     onClick={() => handleBuyCredit(pack.id)}
                                     disabled={buyingCredit !== null}
                                     className={`relative p-4 rounded-xl border-2 text-center transition-all hover:shadow-md ${pack.popular
-                                            ? 'border-primary bg-primary/5'
-                                            : 'border-muted hover:border-primary/30'
+                                        ? 'border-primary bg-primary/5'
+                                        : 'border-muted hover:border-primary/30'
                                         } ${buyingCredit === pack.id ? 'opacity-50' : ''}`}
                                 >
                                     {pack.popular && (

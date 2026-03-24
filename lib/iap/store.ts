@@ -3,20 +3,33 @@ import { getPlatform, type AppPlatform } from './platform';
 
 // App Store Connect / Google Play Console에서 등록한 상품 ID
 export const IAP_PRODUCTS = {
-  basic_monthly: 'kr.bobi.app.basic.monthly',      // 29,900원/월
-  basic_yearly: 'kr.bobi.app.basic.yearly',         // 298,800원/년
-  pro_monthly: 'kr.bobi.app.pro.monthly',           // 59,900원/월
-  pro_yearly: 'kr.bobi.app.pro.yearly',             // 598,800원/년
+  basic_monthly: 'kr.bobi.app.basic.monthly',      // 19,900원/월
+  basic_yearly: 'kr.bobi.app.basic.yearly',         // 190,800원/년
+  pro_monthly: 'kr.bobi.app.pro.monthly',           // 39,900원/월
+  pro_yearly: 'kr.bobi.app.pro.yearly',             // 382,800원/년
+} as const;
+
+// 크레딧 상품 ID (소모성 아이템)
+export const IAP_CREDIT_PRODUCTS = {
+  credit_1: 'kr.bobi.app.credit.1',         // 990원 / 1크레딧
+  credit_10: 'kr.bobi.app.credit.10',       // 7,900원 / 10크레딧
+  credit_30: 'kr.bobi.app.credit.30',       // 19,900원 / 30크레딧
 } as const;
 
 export type IAPProductId = typeof IAP_PRODUCTS[keyof typeof IAP_PRODUCTS];
+export type IAPCreditProductId = typeof IAP_CREDIT_PRODUCTS[keyof typeof IAP_CREDIT_PRODUCTS];
 
 type PlanSlug = 'basic' | 'pro';
 type BillingCycle = 'monthly' | 'yearly';
+type CreditPackId = 'credit_1' | 'credit_10' | 'credit_30';
 
 export function getProductId(plan: PlanSlug, cycle: BillingCycle): IAPProductId {
   const key = `${plan}_${cycle}` as keyof typeof IAP_PRODUCTS;
   return IAP_PRODUCTS[key];
+}
+
+export function getCreditProductId(packId: CreditPackId): IAPCreditProductId {
+  return IAP_CREDIT_PRODUCTS[packId];
 }
 
 interface PurchaseResult {
@@ -52,6 +65,13 @@ export async function initializeStore(): Promise<boolean> {
       { id: IAP_PRODUCTS.basic_yearly, type: ProductType.PAID_SUBSCRIPTION, platform: targetPlatform },
       { id: IAP_PRODUCTS.pro_monthly, type: ProductType.PAID_SUBSCRIPTION, platform: targetPlatform },
       { id: IAP_PRODUCTS.pro_yearly, type: ProductType.PAID_SUBSCRIPTION, platform: targetPlatform },
+    ]);
+
+    // 크레딧 상품 등록 (소모성 아이템)
+    store.register([
+      { id: IAP_CREDIT_PRODUCTS.credit_1, type: ProductType.CONSUMABLE, platform: targetPlatform },
+      { id: IAP_CREDIT_PRODUCTS.credit_10, type: ProductType.CONSUMABLE, platform: targetPlatform },
+      { id: IAP_CREDIT_PRODUCTS.credit_30, type: ProductType.CONSUMABLE, platform: targetPlatform },
     ]);
 
     // 영수증 검증 서버 설정
@@ -113,5 +133,43 @@ export async function restorePurchases(): Promise<PurchaseResult> {
     return { success: true };
   } catch (err) {
     return { success: false, error: '구매 복원에 실패했습니다.' };
+  }
+}
+
+// 크레딧 구매 (소모성 아이템)
+export async function purchaseCredit(packId: CreditPackId): Promise<PurchaseResult> {
+  if (!storeReady || !store) {
+    return { success: false, error: '인앱결제를 초기화할 수 없습니다.' };
+  }
+
+  const productId = getCreditProductId(packId);
+
+  try {
+    const product = store.get(productId);
+    if (!product) {
+      return { success: false, error: '크레딧 상품 정보를 불러올 수 없습니다.' };
+    }
+
+    const offer = product.getOffer();
+    if (!offer) {
+      return { success: false, error: '구매 가능한 상품이 없습니다.' };
+    }
+
+    const result = await store.order(offer);
+
+    if (result?.isError) {
+      return { success: false, error: result.message || '크레딧 구매에 실패했습니다.' };
+    }
+
+    return {
+      success: true,
+      transactionId: result?.transactionId,
+      receipt: result?.receipt,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: (err as Error).message || '크레딧 구매 중 오류가 발생했습니다.',
+    };
   }
 }
