@@ -1,0 +1,122 @@
+// 포트원 V2 서버 API 유틸리티
+// https://developers.portone.io/opi/ko/api/billing-key-payment/pay-with-billing-key
+
+const PORTONE_API_BASE = 'https://api.portone.io';
+
+interface PortOneTokenResponse {
+    access_token: string;
+    token_type: string;
+    expires_in: number;
+}
+
+interface BillingKeyPaymentRequest {
+    billingKey: string;
+    paymentId: string;
+    orderName: string;
+    amount: number;
+    currency?: string;
+}
+
+interface BillingKeyPaymentResponse {
+    success: boolean;
+    paymentId?: string;
+    error?: string;
+    status?: string;
+}
+
+// 포트원 V2 액세스 토큰 발급
+async function getAccessToken(): Promise<string> {
+    const apiSecret = process.env.PORTONE_API_SECRET;
+    if (!apiSecret) throw new Error('PORTONE_API_SECRET 환경변수가 설정되지 않았습니다.');
+
+    const response = await fetch(`${PORTONE_API_BASE}/login/api-secret`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiSecret }),
+    });
+
+    if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`포트원 토큰 발급 실패: ${response.status} ${errText}`);
+    }
+
+    const data: PortOneTokenResponse = await response.json();
+    return data.access_token;
+}
+
+// 빌링키로 결제 실행
+export async function payWithBillingKey(params: BillingKeyPaymentRequest): Promise<BillingKeyPaymentResponse> {
+    try {
+        const accessToken = await getAccessToken();
+
+        const response = await fetch(
+            `${PORTONE_API_BASE}/payments/${encodeURIComponent(params.paymentId)}/billing-key`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                    billingKey: params.billingKey,
+                    orderName: params.orderName,
+                    amount: {
+                        total: params.amount,
+                    },
+                    currency: params.currency || 'KRW',
+                }),
+            }
+        );
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            return {
+                success: false,
+                error: errorData.message || `결제 실패 (${response.status})`,
+                status: 'FAILED',
+            };
+        }
+
+        const data = await response.json();
+
+        return {
+            success: true,
+            paymentId: params.paymentId,
+            status: data.status || 'PAID',
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: (error as Error).message,
+            status: 'FAILED',
+        };
+    }
+}
+
+// 결제 상태 조회
+export async function getPaymentStatus(paymentId: string): Promise<{ status: string; paidAt?: string }> {
+    try {
+        const accessToken = await getAccessToken();
+
+        const response = await fetch(
+            `${PORTONE_API_BASE}/payments/${encodeURIComponent(paymentId)}`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                },
+            }
+        );
+
+        if (!response.ok) {
+            return { status: 'UNKNOWN' };
+        }
+
+        const data = await response.json();
+        return {
+            status: data.status,
+            paidAt: data.paidAt,
+        };
+    } catch {
+        return { status: 'UNKNOWN' };
+    }
+}
