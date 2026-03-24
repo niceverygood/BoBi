@@ -43,3 +43,10 @@ next-env.d.ts
 # KCD raw data (use data/kcd-*.json instead)
 /KCD/
 android/bobi-release.keystore
+
+# Firebase config (API keys)
+android/app/google-services.json
+ios/App/App/GoogleService-Info.plist
+
+# iOS build archive
+ios/BoBi.xcarchive/
