@@ -12,8 +12,9 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Bell, LogOut, Settings, User } from 'lucide-react';
+import { Bell, BellRing, LogOut, Settings, User } from 'lucide-react';
 import Link from 'next/link';
+import { initPushNotifications } from '@/lib/push';
 
 interface HeaderProps {
     title?: string;
@@ -26,6 +27,7 @@ export default function Header({ title }: HeaderProps) {
     const [userEmail, setUserEmail] = useState<string>('');
     const [userInitial, setUserInitial] = useState<string>('U');
     const [planName, setPlanName] = useState<string>('Free');
+    const [pushEnabled, setPushEnabled] = useState(false);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -53,6 +55,14 @@ export default function Header({ title }: HeaderProps) {
             if (sub?.subscription_plans) {
                 const plan = sub.subscription_plans as unknown as { display_name: string };
                 setPlanName(plan.display_name || 'Free');
+            }
+
+            // FCM 푸시 초기화
+            try {
+                await initPushNotifications();
+                setPushEnabled(true);
+            } catch {
+                // 웹 환경에서는 무시
             }
         };
         fetchUser();
@@ -93,9 +103,13 @@ export default function Header({ title }: HeaderProps) {
                     variant="ghost"
                     size="icon"
                     className="relative h-9 w-9"
-                    onClick={() => alert('알림 기능이 곧 추가될 예정입니다.')}
+                    onClick={() => {
+                        if (!pushEnabled) {
+                            alert('알림은 앱에서만 지원됩니다.');
+                        }
+                    }}
                 >
-                    <Bell className="w-4 h-4" />
+                    {pushEnabled ? <BellRing className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
                 </Button>
 
                 <DropdownMenu>
