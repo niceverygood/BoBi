@@ -111,19 +111,21 @@ export async function GET(request: Request) {
                     await resetUsageForNewPeriod(supabase, sub.user_id, plan.max_analyses);
 
                     // 결제 기록 저장
-                    await supabase
-                        .from('payment_history')
-                        .insert({
-                            user_id: sub.user_id,
-                            subscription_id: sub.id,
-                            payment_id: paymentId,
-                            amount,
-                            status: 'paid',
-                            billing_cycle: sub.billing_cycle,
-                            plan_slug: plan.slug,
-                        })
-                        .then(() => { }) // payment_history 테이블 없으면 무시
-                        .catch(() => { });
+                    try {
+                        await supabase
+                            .from('payment_history')
+                            .insert({
+                                user_id: sub.user_id,
+                                subscription_id: sub.id,
+                                payment_id: paymentId,
+                                amount,
+                                status: 'paid',
+                                billing_cycle: sub.billing_cycle,
+                                plan_slug: plan.slug,
+                            });
+                    } catch {
+                        // payment_history 테이블 없으면 무시
+                    }
 
                     results.renewed++;
                 } else {

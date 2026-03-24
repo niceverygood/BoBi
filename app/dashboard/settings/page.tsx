@@ -18,6 +18,8 @@ const PLAN_BADGE_COLORS: Record<PlanSlug, string> = {
     basic: 'bg-blue-100 text-blue-700',
     pro: 'bg-violet-100 text-violet-700',
     team: 'bg-amber-100 text-amber-700',
+    business: 'bg-emerald-100 text-emerald-700',
+    enterprise: 'bg-rose-100 text-rose-700',
 };
 
 export default function SettingsPage() {
@@ -246,8 +248,8 @@ export default function SettingsPage() {
                     </div>
                     {discountMessage && (
                         <div className={`p-3 rounded-lg flex items-center gap-2 text-sm ${discountMessage.type === 'success'
-                                ? 'bg-green-50 text-green-700 border border-green-200'
-                                : 'bg-red-50 text-red-700 border border-red-200'
+                            ? 'bg-green-50 text-green-700 border border-green-200'
+                            : 'bg-red-50 text-red-700 border border-red-200'
                             }`}>
                             {discountMessage.type === 'success'
                                 ? <CheckCircle2 className="w-4 h-4 shrink-0" />
