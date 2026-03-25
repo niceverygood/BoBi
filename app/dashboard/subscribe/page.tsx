@@ -61,12 +61,21 @@ function SubscribeContent() {
         }
     }, [planParam]);
 
-    // 연간 결제 시 카카오페이 불가 → 카드로 자동 전환 (웹만)
+    // 카카오페이 콜백 처리 (approve 후 리다이렉트)
     useEffect(() => {
-        if (billingCycle === 'yearly' && paymentMethod === 'kakaopay') {
-            setPaymentMethod('card');
+        const status = searchParams.get('status');
+        if (status === 'success') {
+            setSuccess(true);
+            const plan = searchParams.get('plan');
+            if (plan && PLAN_LIMITS[plan as PlanSlug]) {
+                setSelectedPlan(plan as PlanSlug);
+            }
+        } else if (status === 'fail') {
+            setError(searchParams.get('error') ? decodeURIComponent(searchParams.get('error')!) : '결제에 실패했습니다.');
+        } else if (status === 'cancel') {
+            setError('결제가 취소되었습니다.');
         }
-    }, [billingCycle, paymentMethod]);
+    }, [searchParams]);
 
     const planInfo = PLAN_LIMITS[selectedPlan];
     const amount = billingCycle === 'yearly' ? planInfo.priceYearly : planInfo.priceMonthly;
@@ -117,8 +126,40 @@ function SubscribeContent() {
         }
     };
 
-    // 웹 결제 (PortOne)
-    const handleWebSubscribe = async () => {
+    // 웹 결제 — 카카오페이 직접 API
+    const handleKakaoPaySubscribe = async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const res = await fetch('/api/kakaopay/ready', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    planSlug: selectedPlan,
+                    billingCycle,
+                }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                setError(data.error || '카카오페이 결제 준비에 실패했습니다.');
+                setLoading(false);
+                return;
+            }
+
+            // 카카오페이 결제 페이지로 리다이렉트
+            const isMobile = /Mobile|Android|iPhone/i.test(navigator.userAgent);
+            window.location.href = isMobile ? data.mobileRedirectUrl : data.redirectUrl;
+        } catch (err) {
+            setError((err as Error).message || '결제 처리 중 오류가 발생했습니다.');
+            setLoading(false);
+        }
+    };
+
+    // 웹 결제 — 신용카드 (PortOne)
+    const handleCardSubscribe = async () => {
         setLoading(true);
         setError(null);
 
@@ -126,15 +167,12 @@ function SubscribeContent() {
             const PortOne = await import('@portone/browser-sdk/v2');
 
             const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID!;
-            const isKakaoPay = paymentMethod === 'kakaopay';
-            const channelKey = isKakaoPay
-                ? process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY!
-                : process.env.NEXT_PUBLIC_PORTONE_INICIS_CHANNEL_KEY!;
+            const channelKey = process.env.NEXT_PUBLIC_PORTONE_INICIS_CHANNEL_KEY!;
 
             const response = await PortOne.requestIssueBillingKey({
                 storeId,
                 channelKey,
-                billingKeyMethod: isKakaoPay ? 'EASY_PAY' : 'CARD',
+                billingKeyMethod: 'CARD',
                 issueId: `billing-${Date.now()}`,
                 issueName: `보비 ${planInfo.name} 플랜 (${billingCycle === 'yearly' ? '연간' : '월간'})`,
                 customer: {
@@ -165,7 +203,7 @@ function SubscribeContent() {
                     billingKey: response.billingKey,
                     planSlug: selectedPlan,
                     billingCycle,
-                    paymentMethod,
+                    paymentMethod: 'card',
                 }),
             });
 
@@ -183,6 +221,14 @@ function SubscribeContent() {
         } finally {
             setLoading(false);
         }
+    };
+
+    // 웹 결제: 결제 수단에 따라 분기
+    const handleWebSubscribe = async () => {
+        if (paymentMethod === 'kakaopay') {
+            return handleKakaoPaySubscribe();
+        }
+        return handleCardSubscribe();
     };
 
     const handleSubscribe = platform === 'web' ? handleWebSubscribe : handleIAPSubscribe;

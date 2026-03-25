@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { payWithBillingKey } from '@/lib/portone/server';
+import { kakaoPaySubscription } from '@/lib/kakaopay/client';
 
 // Vercel Cron에서 호출 — CRON_SECRET으로 인증
 export async function GET(request: Request) {
@@ -75,18 +76,43 @@ export async function GET(request: Request) {
                     continue;
                 }
 
-                // 포트원 빌링키 결제.
+                // 결제 실행: provider에 따라 분기
+                const provider = billingKeyData?.provider || sub.payment_provider || 'portone';
                 const paymentId = `renewal-${sub.id}-${Date.now()}`;
                 const cycleLabel = sub.billing_cycle === 'yearly' ? '연간' : '월간';
 
-                const payResult = await payWithBillingKey({
-                    billingKey,
-                    paymentId,
-                    orderName: `보비 ${plan.display_name} (${cycleLabel} 자동갱신)`,
-                    amount,
-                });
+                let paySuccess = false;
+                let payError = '';
+                let newSid: string | undefined;
 
-                if (payResult.success) {
+                if (provider === 'kakaopay') {
+                    // 카카오페이 SID로 정기결제
+                    try {
+                        const kakaoResult = await kakaoPaySubscription({
+                            sid: billingKey,
+                            partnerOrderId: paymentId,
+                            partnerUserId: sub.user_id,
+                            itemName: `보비 ${plan.display_name} (${cycleLabel} 자동갱신)`,
+                            totalAmount: amount,
+                        });
+                        paySuccess = true;
+                        newSid = kakaoResult.sid; // 갱신된 SID
+                    } catch (err) {
+                        payError = (err as Error).message;
+                    }
+                } else {
+                    // 포트원 빌링키 결제
+                    const payResult = await payWithBillingKey({
+                        billingKey,
+                        paymentId,
+                        orderName: `보비 ${plan.display_name} (${cycleLabel} 자동갱신)`,
+                        amount,
+                    });
+                    paySuccess = payResult.success;
+                    payError = payResult.error || '';
+                }
+
+                if (paySuccess) {
                     // 결제 성공 → 구독 기간 연장
                     const newPeriodStart = new Date(sub.current_period_end);
                     const newPeriodEnd = new Date(newPeriodStart);
@@ -97,15 +123,37 @@ export async function GET(request: Request) {
                         newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1);
                     }
 
+                    const updateData: Record<string, string> = {
+                        current_period_start: newPeriodStart.toISOString(),
+                        current_period_end: newPeriodEnd.toISOString(),
+                        status: 'active',
+                        updated_at: now.toISOString(),
+                    };
+                    // 카카오페이 SID 갱신
+                    if (newSid) {
+                        updateData.payment_key = newSid;
+                    }
+
                     await supabase
                         .from('subscriptions')
-                        .update({
-                            current_period_start: newPeriodStart.toISOString(),
-                            current_period_end: newPeriodEnd.toISOString(),
-                            status: 'active',
-                            updated_at: now.toISOString(),
-                        })
+                        .update(updateData)
                         .eq('id', sub.id);
+
+                    // SID 갱신 시 billing_keys도 업데이트
+                    if (newSid) {
+                        try {
+                            await supabase
+                                .from('billing_keys')
+                                .upsert({
+                                    user_id: sub.user_id,
+                                    billing_key: newSid,
+                                    provider: 'kakaopay',
+                                    created_at: now.toISOString(),
+                                }, { onConflict: 'user_id' });
+                        } catch {
+                            // non-critical
+                        }
+                    }
 
                     // usage_tracking 갱신 (새 월 기준)
                     await resetUsageForNewPeriod(supabase, sub.user_id, plan.max_analyses);
@@ -130,7 +178,7 @@ export async function GET(request: Request) {
                     results.renewed++;
                 } else {
                     // 결제 실패
-                    results.errors.push(`구독 ${sub.id}: ${payResult.error}`);
+                    results.errors.push(`구독 ${sub.id}: ${payError}`);
 
                     // 첫 실패 → past_due로 전환 (다음 cron에서 재시도)
                     await markPastDue(supabase, sub.id);
