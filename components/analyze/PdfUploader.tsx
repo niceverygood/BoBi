@@ -211,31 +211,34 @@ export default function PdfUploader({ onFilesUploaded, customerId }: PdfUploader
 
         if (filesToUpload.length === 0) return;
 
-        // Add files as uploading
-        const uploadingFiles: UploadedFile[] = filesToUpload.map((file) => ({
+        // Add files as uploading with unique keys
+        const uploadingFiles: (UploadedFile & { _key: string })[] = filesToUpload.map((file, i) => ({
             file,
             fileType: 'unknown',
             status: 'uploading' as const,
+            _key: `${Date.now()}-${i}-${file.name}`,
         }));
 
         setFiles((prev) => [...prev, ...uploadingFiles]);
 
-        // Upload each file sequentially to avoid overwhelming
-        const results: UploadedFile[] = [];
-        for (const file of filesToUpload) {
-            const result = await uploadFile(file);
-            results.push(result);
+        // Upload all files in parallel
+        const allResults: UploadedFile[] = [];
 
-            // Update UI as each file completes
-            setFiles((prev) => {
-                const updated = prev.map((f) =>
-                    f.status === 'uploading' && f.file.name === file.name ? result : f
+        await Promise.allSettled(
+            uploadingFiles.map(async (uf) => {
+                const result = await uploadFile(uf.file);
+                allResults.push(result);
+
+                // Update this specific file's status immediately
+                setFiles((prev) =>
+                    prev.map((f) =>
+                        '_key' in f && (f as any)._key === uf._key ? { ...result, _key: uf._key } as any : f
+                    )
                 );
-                return updated;
-            });
-        }
+            })
+        );
 
-        onFilesUploaded(results.filter((r) => r.status === 'success'));
+        onFilesUploaded(allResults.filter((r) => r.status === 'success'));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [files, customerId, onFilesUploaded]);
 
