@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Check, Loader2, ArrowLeft, CreditCard, Shield, Zap, Crown, Apple, Smartphone, Users, Building } from 'lucide-react';
+import { Check, Loader2, ArrowLeft, CreditCard, Shield, Zap, Crown, Apple, Smartphone, Users, Building, Tag, X } from 'lucide-react';
 import { PLAN_LIMITS, type PlanSlug } from '@/lib/utils/constants';
 import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
@@ -43,6 +43,19 @@ function SubscribeContent() {
     const [platform, setPlatform] = useState<AppPlatform>('web');
     const [iapReady, setIapReady] = useState(false);
 
+    // Coupon
+    const [couponCode, setCouponCode] = useState('');
+    const [couponLoading, setCouponLoading] = useState(false);
+    const [couponError, setCouponError] = useState<string | null>(null);
+    const [appliedCoupon, setAppliedCoupon] = useState<{
+        id: string;
+        code: string;
+        description: string;
+        discountLabel: string;
+        discountAmount: number;
+        finalPrice: number;
+    } | null>(null);
+
     useEffect(() => {
         const detectedPlatform = getPlatform();
         setPlatform(detectedPlatform);
@@ -78,10 +91,65 @@ function SubscribeContent() {
     }, [searchParams]);
 
     const planInfo = PLAN_LIMITS[selectedPlan];
-    const amount = billingCycle === 'yearly' ? planInfo.priceYearly : planInfo.priceMonthly;
+    const originalAmount = billingCycle === 'yearly' ? planInfo.priceYearly : planInfo.priceMonthly;
+    const couponDiscount = appliedCoupon?.discountAmount || 0;
+    const amount = appliedCoupon ? appliedCoupon.finalPrice : originalAmount;
     const discount = billingCycle === 'yearly'
         ? Math.round((1 - planInfo.priceYearly / (planInfo.priceMonthly * 12)) * 100)
         : 0;
+
+    // 쿠폰 검증
+    const validateCoupon = async () => {
+        if (!couponCode.trim()) {
+            setCouponError('쿠폰 코드를 입력해주세요.');
+            return;
+        }
+        setCouponLoading(true);
+        setCouponError(null);
+
+        try {
+            const res = await fetch('/api/coupon/validate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    code: couponCode,
+                    planSlug: selectedPlan,
+                    billingCycle,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                setCouponError(data.error || '유효하지 않은 쿠폰입니다.');
+                return;
+            }
+            setAppliedCoupon({
+                id: data.coupon.id,
+                code: data.coupon.code,
+                description: data.coupon.description,
+                discountLabel: data.pricing.discountLabel,
+                discountAmount: data.pricing.discountAmount,
+                finalPrice: data.pricing.finalPrice,
+            });
+        } catch {
+            setCouponError('쿠폰 검증 중 오류가 발생했습니다.');
+        } finally {
+            setCouponLoading(false);
+        }
+    };
+
+    const removeCoupon = () => {
+        setAppliedCoupon(null);
+        setCouponCode('');
+        setCouponError(null);
+    };
+
+    // 플랜 변경 시 쿠폰 초기화
+    useEffect(() => {
+        if (appliedCoupon) {
+            removeCoupon();
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedPlan, billingCycle]);
 
     // 인앱결제 (iOS / Android)
     const handleIAPSubscribe = async () => {
@@ -486,10 +554,83 @@ function SubscribeContent() {
 
                                 <Separator />
 
+                                {/* 쿠폰 코드 입력 */}
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium flex items-center gap-1.5">
+                                        <Tag className="w-3.5 h-3.5 text-primary" />
+                                        할인 쿠폰
+                                    </p>
+
+                                    {appliedCoupon ? (
+                                        <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <code className="text-sm font-mono font-bold text-green-700 dark:text-green-400">{appliedCoupon.code}</code>
+                                                    <p className="text-xs text-green-600 dark:text-green-500 mt-0.5">
+                                                        {appliedCoupon.discountLabel}
+                                                        {appliedCoupon.description && ` — ${appliedCoupon.description}`}
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    onClick={removeCoupon}
+                                                    className="p-1 rounded-md hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                                                >
+                                                    <X className="w-4 h-4 text-green-600" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    className="flex-1 px-3 py-2 border rounded-lg text-sm bg-background font-mono uppercase tracking-wider placeholder:normal-case placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                    placeholder="쿠폰 코드 입력"
+                                                    value={couponCode}
+                                                    onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                                                    onKeyDown={e => e.key === 'Enter' && validateCoupon()}
+                                                />
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={validateCoupon}
+                                                    disabled={couponLoading || !couponCode.trim()}
+                                                    className="shrink-0"
+                                                >
+                                                    {couponLoading ? (
+                                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                                    ) : (
+                                                        '적용'
+                                                    )}
+                                                </Button>
+                                            </div>
+                                            {couponError && (
+                                                <p className="text-xs text-destructive">{couponError}</p>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+
+                                <Separator />
+
                                 <div className="flex justify-between items-baseline">
                                     <span className="text-muted-foreground text-sm">결제 금액</span>
                                     <div className="text-right">
-                                        <p className="text-2xl font-bold">{amount.toLocaleString()}원</p>
+                                        {appliedCoupon && (
+                                            <p className="text-sm text-muted-foreground line-through">
+                                                {originalAmount.toLocaleString()}원
+                                            </p>
+                                        )}
+                                        <p className="text-2xl font-bold">
+                                            {amount.toLocaleString()}원
+                                            {appliedCoupon && amount === 0 && (
+                                                <span className="text-sm font-normal text-green-600 ml-1">무료</span>
+                                            )}
+                                        </p>
+                                        {appliedCoupon && couponDiscount > 0 && (
+                                            <p className="text-xs text-green-600 font-medium">
+                                                -{couponDiscount.toLocaleString()}원 할인 적용
+                                            </p>
+                                        )}
                                         <p className="text-xs text-muted-foreground">
                                             {billingCycle === 'yearly' ? '연간' : '월간'} (VAT 포함)
                                         </p>

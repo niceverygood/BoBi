@@ -423,6 +423,8 @@ interface PromoCode {
     description: string;
     plan_slug: string;
     price_override: number;
+    discount_type: 'percent' | 'fixed' | 'price_override';
+    discount_value: number;
     duration_months: number;
     max_uses: number;
     used_count: number;
@@ -441,9 +443,11 @@ function PromoCodeManager() {
     // New code form
     const [newCode, setNewCode] = useState('');
     const [newDesc, setNewDesc] = useState('');
-    const [newPlan, setNewPlan] = useState('pro');
+    const [newPlan, setNewPlan] = useState('all');
+    const [newDiscountType, setNewDiscountType] = useState<'percent' | 'fixed' | 'price_override'>('percent');
+    const [newDiscountValue, setNewDiscountValue] = useState(10);
     const [newPrice, setNewPrice] = useState(0);
-    const [newDuration, setNewDuration] = useState(3);
+    const [newDuration, setNewDuration] = useState(-1);
     const [newMaxUses, setNewMaxUses] = useState(-1);
 
     const fetchCodes = useCallback(async () => {
@@ -478,7 +482,9 @@ function PromoCodeManager() {
                     code: newCode,
                     description: newDesc,
                     plan_slug: newPlan,
-                    price_override: newPrice,
+                    discount_type: newDiscountType,
+                    discount_value: newDiscountType === 'price_override' ? 0 : newDiscountValue,
+                    price_override: newDiscountType === 'price_override' ? newPrice : 0,
                     duration_months: newDuration,
                     max_uses: newMaxUses,
                 }),
@@ -530,7 +536,12 @@ function PromoCodeManager() {
         setNewCode(result);
     };
 
-    const PLAN_NAMES: Record<string, string> = { free: '무료', basic: '베이직', pro: '프로', team: '팀' };
+    const PLAN_NAMES: Record<string, string> = { free: '무료', basic: '베이직', pro: '프로', team_basic: '팀 베이직', team_pro: '팀 프로', all: '전체' };
+    const DISCOUNT_LABELS: Record<string, (v: number) => string> = {
+        percent: (v) => `${v}% 할인`,
+        fixed: (v) => `${v.toLocaleString()}원 할인`,
+        price_override: (v) => v === 0 ? '무료' : `${v.toLocaleString()}원 특별가`,
+    };
 
     return (
         <Card className="border-0 shadow-md mb-8">
@@ -561,7 +572,7 @@ function PromoCodeManager() {
                 <div className="mx-5 mb-4 p-4 border rounded-xl bg-muted/30 space-y-3">
                     <div className="grid grid-cols-2 gap-3">
                         <div className="col-span-2 sm:col-span-1">
-                            <label className="text-xs font-medium mb-1 block">코드 *</label>
+                            <label className="text-xs font-medium mb-1 block">쿠폰 코드 *</label>
                             <div className="flex gap-2">
                                 <input
                                     className="flex-1 px-3 py-2 border rounded-lg text-sm bg-background font-mono uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -578,25 +589,100 @@ function PromoCodeManager() {
                             <label className="text-xs font-medium mb-1 block">설명</label>
                             <input
                                 className="w-full px-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                placeholder="3개월 무료 이용 프로모션"
+                                placeholder="오픈 기념 30% 할인 프로모션"
                                 value={newDesc}
                                 onChange={e => setNewDesc(e.target.value)}
                             />
                         </div>
+
+                        {/* 할인 유형 */}
+                        <div className="col-span-2">
+                            <label className="text-xs font-medium mb-1.5 block">할인 유형</label>
+                            <div className="grid grid-cols-3 gap-2">
+                                {[
+                                    { value: 'percent' as const, label: '% 할인', desc: '정가 대비 할인율' },
+                                    { value: 'fixed' as const, label: '원 할인', desc: '고정 금액 차감' },
+                                    { value: 'price_override' as const, label: '특별가', desc: '결제 금액 직접 지정' },
+                                ].map(opt => (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => setNewDiscountType(opt.value)}
+                                        className={`p-2.5 rounded-lg border-2 text-center transition-all ${
+                                            newDiscountType === opt.value
+                                                ? 'border-primary bg-primary/5'
+                                                : 'border-muted hover:border-primary/30'
+                                        }`}
+                                    >
+                                        <p className="text-sm font-semibold">{opt.label}</p>
+                                        <p className="text-[10px] text-muted-foreground">{opt.desc}</p>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 할인 값 입력 */}
+                        {newDiscountType === 'percent' && (
+                            <div>
+                                <label className="text-xs font-medium mb-1 block">할인율 (%)</label>
+                                <div className="relative">
+                                    <input
+                                        type="number" min={1} max={100}
+                                        className="w-full px-3 py-2 pr-8 border rounded-lg text-sm bg-background"
+                                        value={newDiscountValue}
+                                        onChange={e => setNewDiscountValue(Math.min(100, Math.max(0, Number(e.target.value))))}
+                                    />
+                                    <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">%</span>
+                                </div>
+                                <p className="text-[10px] text-muted-foreground mt-0.5">
+                                    {newDiscountValue}% → 베이직 {Math.round(19900 * (100 - newDiscountValue) / 100).toLocaleString()}원, 프로 {Math.round(39900 * (100 - newDiscountValue) / 100).toLocaleString()}원
+                                </p>
+                            </div>
+                        )}
+                        {newDiscountType === 'fixed' && (
+                            <div>
+                                <label className="text-xs font-medium mb-1 block">할인 금액 (원)</label>
+                                <div className="relative">
+                                    <input
+                                        type="number" min={0}
+                                        className="w-full px-3 py-2 pr-8 border rounded-lg text-sm bg-background"
+                                        value={newDiscountValue}
+                                        onChange={e => setNewDiscountValue(Math.max(0, Number(e.target.value)))}
+                                    />
+                                    <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
+                                </div>
+                                <p className="text-[10px] text-muted-foreground mt-0.5">
+                                    베이직 {Math.max(0, 19900 - newDiscountValue).toLocaleString()}원, 프로 {Math.max(0, 39900 - newDiscountValue).toLocaleString()}원
+                                </p>
+                            </div>
+                        )}
+                        {newDiscountType === 'price_override' && (
+                            <div>
+                                <label className="text-xs font-medium mb-1 block">결제 금액 (0=무료)</label>
+                                <div className="relative">
+                                    <input
+                                        type="number" min={0}
+                                        className="w-full px-3 py-2 pr-8 border rounded-lg text-sm bg-background"
+                                        value={newPrice}
+                                        onChange={e => setNewPrice(Math.max(0, Number(e.target.value)))}
+                                    />
+                                    <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
+                                </div>
+                            </div>
+                        )}
+
                         <div>
                             <label className="text-xs font-medium mb-1 block">적용 플랜</label>
                             <select className="w-full px-3 py-2 border rounded-lg text-sm bg-background" value={newPlan} onChange={e => setNewPlan(e.target.value)}>
-                                <option value="basic">베이직</option>
-                                <option value="pro">프로</option>
-                                <option value="team">팀</option>
+                                <option value="all">전체 플랜</option>
+                                <option value="basic">베이직만</option>
+                                <option value="pro">프로만</option>
+                                <option value="team_basic">팀 베이직만</option>
+                                <option value="team_pro">팀 프로만</option>
+                                <option value="basic,pro">베이직+프로</option>
                             </select>
                         </div>
                         <div>
-                            <label className="text-xs font-medium mb-1 block">월 결제금액 (0=무료)</label>
-                            <input type="number" className="w-full px-3 py-2 border rounded-lg text-sm bg-background" value={newPrice} onChange={e => setNewPrice(Number(e.target.value))} />
-                        </div>
-                        <div>
-                            <label className="text-xs font-medium mb-1 block">기간 (개월, -1=무제한)</label>
+                            <label className="text-xs font-medium mb-1 block">유효 기간 (개월, -1=무제한)</label>
                             <input type="number" className="w-full px-3 py-2 border rounded-lg text-sm bg-background" value={newDuration} onChange={e => setNewDuration(Number(e.target.value))} />
                         </div>
                         <div>
@@ -604,8 +690,26 @@ function PromoCodeManager() {
                             <input type="number" className="w-full px-3 py-2 border rounded-lg text-sm bg-background" value={newMaxUses} onChange={e => setNewMaxUses(Number(e.target.value))} />
                         </div>
                     </div>
+
+                    {/* 미리보기 */}
+                    <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
+                        <p className="text-xs font-medium mb-1">📋 쿠폰 미리보기</p>
+                        <div className="flex items-center gap-2">
+                            <code className="text-sm font-mono font-bold text-primary">{newCode || 'BOBI-XXXXX'}</code>
+                            <span className="text-xs text-muted-foreground">→</span>
+                            <Badge variant="secondary" className="text-xs">
+                                {newDiscountType === 'percent' && `${newDiscountValue}% 할인`}
+                                {newDiscountType === 'fixed' && `${newDiscountValue.toLocaleString()}원 할인`}
+                                {newDiscountType === 'price_override' && (newPrice === 0 ? '무료' : `${newPrice.toLocaleString()}원`)}
+                            </Badge>
+                            <Badge variant="outline" className="text-[10px]">
+                                {newMaxUses === -1 ? '무제한' : `${newMaxUses}회`}
+                            </Badge>
+                        </div>
+                    </div>
+
                     <Button onClick={handleCreate} disabled={creating} className="w-full">
-                        {creating ? '생성 중...' : '프로모 코드 생성'}
+                        {creating ? '생성 중...' : '🎟️ 쿠폰 코드 생성'}
                     </Button>
                 </div>
             )}
@@ -639,9 +743,12 @@ function PromoCodeManager() {
                                         </Badge>
                                     </div>
                                     <p className="text-xs text-muted-foreground truncate mt-0.5">{c.description}</p>
-                                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-0.5">
-                                        <span>{c.price_override === 0 ? '무료' : `월 ${c.price_override.toLocaleString()}원`}</span>
-                                        <span>·</span>
+                                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-0.5 flex-wrap">
+                                        <Badge className="bg-green-100 text-green-700 text-[10px] px-1.5 py-0 h-4">
+                                            {c.discount_type && DISCOUNT_LABELS[c.discount_type]
+                                                ? DISCOUNT_LABELS[c.discount_type](c.discount_type === 'price_override' ? c.price_override : c.discount_value)
+                                                : (c.price_override === 0 ? '무료' : `월 ${c.price_override.toLocaleString()}원`)}
+                                        </Badge>
                                         <span>{c.duration_months === -1 ? '무기한' : `${c.duration_months}개월`}</span>
                                         <span>·</span>
                                         <span>사용 {c.used_count}{c.max_uses === -1 ? '회' : `/${c.max_uses}회`}</span>

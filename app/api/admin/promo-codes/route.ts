@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { code, description, plan_slug, price_override, duration_months, max_uses, expires_at } = body;
+    const { code, description, plan_slug, price_override, discount_type, discount_value, duration_months, max_uses, expires_at } = body;
 
     if (!code || !plan_slug) {
         return NextResponse.json({ error: '코드와 플랜을 입력해주세요.' }, { status: 400 });
@@ -55,7 +55,9 @@ export async function POST(request: Request) {
             description: description || '',
             plan_slug,
             price_override: price_override ?? 0,
-            duration_months: duration_months ?? 3,
+            discount_type: discount_type || 'price_override',
+            discount_value: discount_value ?? 0,
+            duration_months: duration_months ?? -1,
             max_uses: max_uses ?? -1,
             expires_at: expires_at || null,
             created_by: user.id,
