@@ -20,15 +20,15 @@ export default function AnalysisResultView({ result }: AnalysisResultProps) {
         <div className="space-y-6 animate-fade-in">
             {/* Overall Summary */}
             <Card className="border-0 shadow-sm bg-gradient-to-br from-primary/5 to-primary/10">
-                <CardContent className="p-6">
-                    <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                            <Shield className="w-6 h-6 text-primary" />
+                <CardContent className="p-4 sm:p-6">
+                    <div className="flex items-start gap-3 sm:gap-4">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                            <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                         </div>
-                        <div className="flex-1">
-                            <h3 className="font-semibold text-lg mb-2">분석 요약</h3>
-                            <p className="text-muted-foreground leading-relaxed">{result.overallSummary}</p>
-                            <div className="flex gap-4 mt-3 text-xs text-muted-foreground">
+                        <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-base sm:text-lg mb-2">분석 요약</h3>
+                            <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">{result.overallSummary}</p>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs text-muted-foreground">
                                 <span>분석일: {result.analysisDate}</span>
                                 <span>데이터 기간: {result.dataRange}</span>
                             </div>
@@ -39,7 +39,7 @@ export default function AnalysisResultView({ result }: AnalysisResultProps) {
 
             {/* Risk Flags */}
             {result.riskFlags.length > 0 && (
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                     {result.riskFlags.map((flag, index) => (
                         <Card key={index} className={cn(
                             'border-0 shadow-sm',
@@ -76,27 +76,31 @@ export default function AnalysisResultView({ result }: AnalysisResultProps) {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="grid gap-3 grid-cols-1 md:grid-cols-2">
                             {result.diseaseSummary.map((d, i) => (
-                                <div key={i} className="rounded-lg border p-4 space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-medium text-sm flex items-center gap-1.5">
-                                            <span className="text-base" title={d.diseaseCode}>{getBodyPartIcon(d.diseaseCode)}</span>
-                                            {d.diseaseName}
+                                <div key={i} className="rounded-lg border p-4 space-y-2 overflow-hidden">
+                                    {/* Disease Name + Code */}
+                                    <div className="flex items-start justify-between gap-2">
+                                        <span className="font-medium text-sm flex items-center gap-1.5 min-w-0">
+                                            <span className="text-base shrink-0" title={d.diseaseCode}>{getBodyPartIcon(d.diseaseCode)}</span>
+                                            <span className="break-words">{d.diseaseName}</span>
                                         </span>
-                                        <Badge variant="outline" className="text-xs font-mono">{d.diseaseCode}</Badge>
+                                        <Badge variant="outline" className="text-[10px] font-mono shrink-0 whitespace-nowrap">{d.diseaseCode}</Badge>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
-                                        <span>최초: {d.firstDate}</span>
-                                        <span>최근: {d.lastDate}</span>
-                                        <span>방문: {String(d.totalVisits).replace(/회$/, '')}회</span>
-                                        <span>기간: {d.treatmentPeriod}</span>
+                                    {/* Dates & Visits */}
+                                    <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                                        <span className="truncate">최초: {d.firstDate}</span>
+                                        <span className="truncate">최근: {d.lastDate}</span>
+                                        <span className="truncate">방문: {String(d.totalVisits).replace(/회$/, '')}회</span>
+                                        <span className="truncate">기간: {d.treatmentPeriod}</span>
                                     </div>
+                                    {/* Status */}
                                     <Badge variant={d.status === '현재 치료중' ? 'destructive' : 'secondary'} className="text-xs">
                                         {d.status}
                                     </Badge>
+                                    {/* Hospitals */}
                                     {d.hospitals && d.hospitals.length > 0 && (
-                                        <p className="text-xs text-muted-foreground">🏥 {d.hospitals.join(', ')}</p>
+                                        <p className="text-xs text-muted-foreground break-words line-clamp-2">🏥 {d.hospitals.join(', ')}</p>
                                     )}
                                 </div>
                             ))}
@@ -148,43 +152,70 @@ export default function AnalysisResultView({ result }: AnalysisResultProps) {
                                         </p>
 
                                         {item.details.length > 0 && (
-                                            <div className="overflow-x-auto">
-                                                <Table>
-                                                    <TableHeader>
-                                                        <TableRow>
-                                                            <TableHead className="text-xs">날짜</TableHead>
-                                                            <TableHead className="text-xs">병원</TableHead>
-                                                            <TableHead className="text-xs">진단코드</TableHead>
-                                                            <TableHead className="text-xs">진단명</TableHead>
-                                                            <TableHead className="text-xs">유형</TableHead>
-                                                            <TableHead className="text-xs">기간</TableHead>
-                                                            <TableHead className="text-xs">비고</TableHead>
-                                                        </TableRow>
-                                                    </TableHeader>
-                                                    <TableBody>
-                                                        {item.details.map((detail, dIndex) => (
-                                                            <TableRow key={dIndex}>
-                                                                <TableCell className="text-xs whitespace-nowrap">{detail.date}</TableCell>
-                                                                <TableCell className="text-xs">{detail.hospital}</TableCell>
-                                                                <TableCell className="text-xs font-mono">
-                                                                    <span className="inline-flex items-center gap-1">
-                                                                        <span className="text-sm">{getBodyPartIcon(detail.diagnosisCode)}</span>
-                                                                        {detail.diagnosisCode}
-                                                                    </span>
-                                                                </TableCell>
-                                                                <TableCell className="text-xs">{detail.diagnosisName}</TableCell>
-                                                                <TableCell className="text-xs">
-                                                                    <Badge variant="outline" className="text-xs">{detail.type}</Badge>
-                                                                </TableCell>
-                                                                <TableCell className="text-xs">{detail.duration}</TableCell>
-                                                                <TableCell className="text-xs text-muted-foreground">
-                                                                    {detail.medication || detail.note || '-'}
-                                                                </TableCell>
+                                            <>
+                                                {/* Desktop: Table */}
+                                                <div className="hidden md:block overflow-x-auto">
+                                                    <Table>
+                                                        <TableHeader>
+                                                            <TableRow>
+                                                                <TableHead className="text-xs">날짜</TableHead>
+                                                                <TableHead className="text-xs">병원</TableHead>
+                                                                <TableHead className="text-xs">진단코드</TableHead>
+                                                                <TableHead className="text-xs">진단명</TableHead>
+                                                                <TableHead className="text-xs">유형</TableHead>
+                                                                <TableHead className="text-xs">기간</TableHead>
+                                                                <TableHead className="text-xs">비고</TableHead>
                                                             </TableRow>
-                                                        ))}
-                                                    </TableBody>
-                                                </Table>
-                                            </div>
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                            {item.details.map((detail, dIndex) => (
+                                                                <TableRow key={dIndex}>
+                                                                    <TableCell className="text-xs whitespace-nowrap">{detail.date}</TableCell>
+                                                                    <TableCell className="text-xs">{detail.hospital}</TableCell>
+                                                                    <TableCell className="text-xs font-mono">
+                                                                        <span className="inline-flex items-center gap-1">
+                                                                            <span className="text-sm">{getBodyPartIcon(detail.diagnosisCode)}</span>
+                                                                            {detail.diagnosisCode}
+                                                                        </span>
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs">{detail.diagnosisName}</TableCell>
+                                                                    <TableCell className="text-xs">
+                                                                        <Badge variant="outline" className="text-xs">{detail.type}</Badge>
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs">{detail.duration}</TableCell>
+                                                                    <TableCell className="text-xs text-muted-foreground">
+                                                                        {detail.medication || detail.note || '-'}
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            ))}
+                                                        </TableBody>
+                                                    </Table>
+                                                </div>
+
+                                                {/* Mobile: Card Layout */}
+                                                <div className="md:hidden space-y-2">
+                                                    {item.details.map((detail, dIndex) => (
+                                                        <div key={dIndex} className="rounded-lg border p-3 space-y-1.5">
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-xs font-medium">{detail.date}</span>
+                                                                <Badge variant="outline" className="text-[10px]">{detail.type}</Badge>
+                                                            </div>
+                                                            <p className="text-sm font-medium flex items-center gap-1">
+                                                                <span>{getBodyPartIcon(detail.diagnosisCode)}</span>
+                                                                {detail.diagnosisName}
+                                                                <span className="text-[10px] font-mono text-muted-foreground ml-1">{detail.diagnosisCode}</span>
+                                                            </p>
+                                                            <div className="text-xs text-muted-foreground space-y-0.5">
+                                                                <p>🏥 {detail.hospital}</p>
+                                                                {detail.duration && <p>⏱ {detail.duration}</p>}
+                                                                {(detail.medication || detail.note) && (
+                                                                    <p>📝 {detail.medication || detail.note}</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </>
                                         )}
 
                                         {item.details.length === 0 && (
