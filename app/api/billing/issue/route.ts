@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
+import { payWithBillingKey } from '@/lib/portone/server';
 
 export async function POST(request: Request) {
     const supabase = await createClient();
@@ -35,6 +36,24 @@ export async function POST(request: Request) {
     const amount = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
     if (amount <= 0) {
         return NextResponse.json({ error: '무료 플랜은 결제가 필요하지 않습니다.' }, { status: 400 });
+    }
+
+    // 첫 결제 실행 (빌링키로 실제 결제)
+    const paymentId = `sub-${planSlug}-${billingCycle}-${Date.now()}`;
+    const cycleLabel = billingCycle === 'yearly' ? '연간' : '월간';
+
+    const payResult = await payWithBillingKey({
+        billingKey,
+        paymentId,
+        orderName: `보비 ${plan.display_name} 플랜 (${cycleLabel})`,
+        amount,
+    });
+
+    if (!payResult.success) {
+        return NextResponse.json(
+            { error: payResult.error || '첫 결제에 실패했습니다. 다시 시도해주세요.' },
+            { status: 402 }
+        );
     }
 
     // Calculate period
@@ -118,6 +137,23 @@ export async function POST(request: Request) {
             }, { onConflict: 'user_id' });
     } catch {
         // billing_keys table may not exist yet — non-critical
+    }
+
+    // Record payment history
+    try {
+        await serviceClient
+            .from('payment_history')
+            .insert({
+                user_id: user.id,
+                subscription_id: subscription.id,
+                payment_id: paymentId,
+                amount,
+                status: 'paid',
+                billing_cycle: billingCycle,
+                plan_slug: planSlug,
+            });
+    } catch {
+        // payment_history table may not exist yet — non-critical
     }
 
     return NextResponse.json({

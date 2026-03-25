@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'BoBi',
   webDir: 'out',
   server: {
-    url: 'https://bo-bi.vercel.app',
+    url: 'https://www.bobi.co.kr',
     cleartext: false,
   },
   plugins: {
