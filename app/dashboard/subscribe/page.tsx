@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Check, Loader2, ArrowLeft, CreditCard, Shield, Zap, Crown, Apple, Smartphone, Users, Building, Rocket } from 'lucide-react';
+import { Check, Loader2, ArrowLeft, CreditCard, Shield, Zap, Crown, Apple, Smartphone, Users, Building } from 'lucide-react';
 import { PLAN_LIMITS, type PlanSlug } from '@/lib/utils/constants';
 import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
@@ -16,9 +16,8 @@ import { getPlatform, isNative, type AppPlatform } from '@/lib/iap/platform';
 const PLAN_ICONS: Record<string, typeof Zap> = {
     basic: Zap,
     pro: Crown,
-    team: Users,
-    business: Building,
-    enterprise: Rocket,
+    team_basic: Users,
+    team_pro: Building,
 };
 
 export default function SubscribePage() {
@@ -300,11 +299,11 @@ function SubscribeContent() {
                                 );
                             })}
                             <p className="text-xs text-muted-foreground mb-2 mt-4 font-medium">팀 / GA 플랜</p>
-                            {(['team', 'business', 'enterprise'] as PlanSlug[]).map((slug) => {
+                            {(['team_basic', 'team_pro'] as PlanSlug[]).map((slug) => {
                                 const info = PLAN_LIMITS[slug];
                                 const Icon = PLAN_ICONS[slug];
-                                const colorMap: Record<string, string> = { team: 'bg-teal-100', business: 'bg-amber-100', enterprise: 'bg-rose-100' };
-                                const textMap: Record<string, string> = { team: 'text-teal-600', business: 'text-amber-600', enterprise: 'text-rose-600' };
+                                const colorMap: Record<string, string> = { team_basic: 'bg-teal-100', team_pro: 'bg-amber-100' };
+                                const textMap: Record<string, string> = { team_basic: 'text-teal-600', team_pro: 'text-amber-600' };
                                 return (
                                     <button
                                         key={slug}

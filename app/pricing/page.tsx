@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Check, X, ArrowLeft, Sparkles, Zap, Crown, Building, Users, Rocket } from 'lucide-react';
+import { Check, X, ArrowLeft, Sparkles, Zap, Crown, Building, Users } from 'lucide-react';
 import { PLAN_LIMITS, type PlanSlug, type IndividualPlanSlug, type TeamPlanSlug } from '@/lib/utils/constants';
 
 const INDIVIDUAL_PLAN_ICONS: Record<IndividualPlanSlug, typeof Sparkles> = {
@@ -18,15 +18,13 @@ const INDIVIDUAL_PLAN_COLORS: Record<IndividualPlanSlug, string> = {
 };
 
 const TEAM_PLAN_ICONS: Record<TeamPlanSlug, typeof Building> = {
-    team: Users,
-    business: Building,
-    enterprise: Rocket,
+    team_basic: Users,
+    team_pro: Building,
 };
 
 const TEAM_PLAN_COLORS: Record<TeamPlanSlug, string> = {
-    team: 'from-teal-500 to-teal-600',
-    business: 'from-amber-500 to-amber-600',
-    enterprise: 'from-rose-500 to-rose-600',
+    team_basic: 'from-teal-500 to-teal-600',
+    team_pro: 'from-amber-500 to-amber-600',
 };
 
 const INDIVIDUAL_FEATURES = [
@@ -41,20 +39,20 @@ const INDIVIDUAL_FEATURES = [
 ];
 
 const TEAM_FEATURES = [
-    { label: '프로의 모든 분석 기능', team: true, business: true, enterprise: true },
-    { label: '무제한 분석 (팀원 전체)', team: true, business: true, enterprise: true },
-    { label: '팀 관리 대시보드', team: true, business: true, enterprise: true },
-    { label: '팀원별 실적 리포트', team: true, business: true, enterprise: true },
-    { label: '전담 매니저 배정', team: false, business: true, enterprise: true },
-    { label: '온보딩 교육 지원', team: false, business: true, enterprise: true },
-    { label: '맞춤 API 연동', team: false, business: false, enterprise: true },
-    { label: 'SLA 99.9% 보장', team: false, business: false, enterprise: true },
-    { label: '보험사별 커스텀 분석 룰', team: false, business: false, enterprise: true },
+    { label: '기본 분석 기능 (고지사항·상품판단)', team_basic: true, team_pro: true },
+    { label: '결과 PDF 다운로드', team_basic: true, team_pro: true },
+    { label: '보험 자동 조회 (CODEF)', team_basic: true, team_pro: true },
+    { label: '팀 관리 대시보드', team_basic: true, team_pro: true },
+    { label: '팀원별 실적 리포트', team_basic: true, team_pro: true },
+    { label: '리모델링 제안서', team_basic: false, team_pro: true },
+    { label: '맞춤 보험사 상품DB', team_basic: false, team_pro: true },
+    { label: '전담 매니저 배정', team_basic: false, team_pro: true },
+    { label: '분석 이력 무제한 보관', team_basic: false, team_pro: true },
 ];
 
 export default function PricingPage() {
     const individualSlugs: IndividualPlanSlug[] = ['free', 'basic', 'pro'];
-    const teamSlugs: TeamPlanSlug[] = ['team', 'business', 'enterprise'];
+    const teamSlugs: TeamPlanSlug[] = ['team_basic', 'team_pro'];
 
     return (
         <div className="min-h-screen bg-gradient-hero">
@@ -231,21 +229,21 @@ export default function PricingPage() {
                         <CardContent className="p-6">
                             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-center">
                                 <div>
-                                    <p className="text-sm text-muted-foreground mb-1">개인 프로 플랜</p>
-                                    <p className="text-2xl font-bold line-through text-muted-foreground">39,900원<span className="text-sm font-normal">/인</span></p>
+                                    <p className="text-sm text-muted-foreground mb-1">개인 베이직 × 5명</p>
+                                    <p className="text-2xl font-bold line-through text-muted-foreground">99,500원<span className="text-sm font-normal">/월</span></p>
                                 </div>
                                 <div className="text-2xl text-primary font-bold">→</div>
                                 <div>
-                                    <p className="text-sm text-muted-foreground mb-1">엔터프라이즈 인당 단가</p>
-                                    <p className="text-2xl font-bold text-primary">14,900원<span className="text-sm font-normal">/인</span></p>
+                                    <p className="text-sm text-muted-foreground mb-1">팀 베이직 (5명 포함)</p>
+                                    <p className="text-2xl font-bold text-primary">79,000원<span className="text-sm font-normal">/월</span></p>
                                 </div>
-                                <Badge className="bg-red-500 text-white text-sm px-3 py-1">63% 할인</Badge>
+                                <Badge className="bg-red-500 text-white text-sm px-3 py-1">21% 할인</Badge>
                             </div>
                         </CardContent>
                     </Card>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16 stagger-children">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-16 stagger-children">
                     {teamSlugs.map((slug) => {
                         const plan = PLAN_LIMITS[slug];
                         const Icon = TEAM_PLAN_ICONS[slug];
@@ -301,12 +299,12 @@ export default function PricingPage() {
                                             </li>
                                         ))}
                                     </ul>
-                                    <Link href={slug === 'enterprise' ? '/auth/signup' : `/dashboard/subscribe?plan=${slug}`}>
+                                    <Link href={`/dashboard/subscribe?plan=${slug}`}>
                                         <Button
                                             className={`w-full ${isRecommended ? 'bg-gradient-primary hover:opacity-90' : ''}`}
                                             variant={isRecommended ? 'default' : 'outline'}
                                         >
-                                            {slug === 'enterprise' ? '도입 상담하기' : '구독 시작하기'}
+                                            구독 시작하기
                                         </Button>
                                     </Link>
                                 </CardContent>
@@ -334,38 +332,31 @@ export default function PricingPage() {
                                     <tbody>
                                         <tr className="border-b">
                                             <td className="p-4 text-sm font-medium">소규모 팀 (5명)</td>
-                                            <td className="p-4 text-center text-sm"><Badge variant="outline">팀</Badge></td>
-                                            <td className="p-4 text-center text-sm font-semibold">99,000원</td>
-                                            <td className="p-4 text-center text-sm">19,800원</td>
-                                            <td className="p-4 text-center text-sm text-muted-foreground">950,400원</td>
+                                            <td className="p-4 text-center text-sm"><Badge variant="outline">팀 베이직</Badge></td>
+                                            <td className="p-4 text-center text-sm font-semibold">79,000원</td>
+                                            <td className="p-4 text-center text-sm">15,800원</td>
+                                            <td className="p-4 text-center text-sm text-muted-foreground">758,400원</td>
                                         </tr>
                                         <tr className="border-b bg-muted/10">
-                                            <td className="p-4 text-sm font-medium">중소 GA (15명)</td>
-                                            <td className="p-4 text-center text-sm"><Badge variant="outline">팀</Badge></td>
-                                            <td className="p-4 text-center text-sm font-semibold">249,000원</td>
-                                            <td className="p-4 text-center text-sm">16,600원</td>
-                                            <td className="p-4 text-center text-sm text-muted-foreground">2,390,400원</td>
+                                            <td className="p-4 text-sm font-medium">중소 GA (10명)</td>
+                                            <td className="p-4 text-center text-sm"><Badge variant="outline">팀 베이직</Badge></td>
+                                            <td className="p-4 text-center text-sm font-semibold">139,000원</td>
+                                            <td className="p-4 text-center text-sm">13,900원</td>
+                                            <td className="p-4 text-center text-sm text-muted-foreground">1,334,400원</td>
                                         </tr>
                                         <tr className="border-b">
-                                            <td className="p-4 text-sm font-medium">중형 GA (50명)</td>
-                                            <td className="p-4 text-center text-sm"><Badge className="bg-amber-100 text-amber-700">비즈니스</Badge></td>
-                                            <td className="p-4 text-center text-sm font-semibold">930,000원</td>
-                                            <td className="p-4 text-center text-sm">18,600원</td>
-                                            <td className="p-4 text-center text-sm text-muted-foreground">8,928,000원</td>
+                                            <td className="p-4 text-sm font-medium">중형 GA (10명, 무제한)</td>
+                                            <td className="p-4 text-center text-sm"><Badge className="bg-amber-100 text-amber-700">팀 프로</Badge></td>
+                                            <td className="p-4 text-center text-sm font-semibold">274,000원</td>
+                                            <td className="p-4 text-center text-sm">27,400원</td>
+                                            <td className="p-4 text-center text-sm text-muted-foreground">2,630,400원</td>
                                         </tr>
                                         <tr className="border-b bg-primary/5">
-                                            <td className="p-4 text-sm font-bold">대형 GA (100명)</td>
-                                            <td className="p-4 text-center text-sm"><Badge className="bg-rose-100 text-rose-700">엔터프라이즈</Badge></td>
-                                            <td className="p-4 text-center text-sm font-bold text-primary">1,490,000원</td>
-                                            <td className="p-4 text-center text-sm font-bold text-primary">14,900원</td>
-                                            <td className="p-4 text-center text-sm text-muted-foreground">14,304,000원</td>
-                                        </tr>
-                                        <tr className="border-b bg-primary/5">
-                                            <td className="p-4 text-sm font-bold">대형 GA (200명)</td>
-                                            <td className="p-4 text-center text-sm"><Badge className="bg-rose-100 text-rose-700">엔터프라이즈</Badge></td>
-                                            <td className="p-4 text-center text-sm font-bold text-primary">2,780,000원</td>
-                                            <td className="p-4 text-center text-sm font-bold text-primary">13,900원</td>
-                                            <td className="p-4 text-center text-sm text-muted-foreground">26,688,000원</td>
+                                            <td className="p-4 text-sm font-bold">대형 GA (20명, 무제한)</td>
+                                            <td className="p-4 text-center text-sm"><Badge className="bg-amber-100 text-amber-700">팀 프로</Badge></td>
+                                            <td className="p-4 text-center text-sm font-bold text-primary">524,000원</td>
+                                            <td className="p-4 text-center text-sm font-bold text-primary">26,200원</td>
+                                            <td className="p-4 text-center text-sm text-muted-foreground">5,030,400원</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -393,14 +384,22 @@ export default function PricingPage() {
                                     </thead>
                                     <tbody>
                                         <tr className="border-b">
-                                            <td className="p-4 text-sm font-medium">포함 인원</td>
+                                            <td className="p-4 text-sm font-medium">월간 분석 건수</td>
                                             {teamSlugs.map((slug) => (
                                                 <td key={slug} className="p-4 text-center text-sm font-semibold">
-                                                    {PLAN_LIMITS[slug].includedSeats}명
+                                                    {PLAN_LIMITS[slug].analysisLimit === -1 ? '무제한' : `${PLAN_LIMITS[slug].analysisLimit}건/인`}
                                                 </td>
                                             ))}
                                         </tr>
                                         <tr className="border-b bg-muted/10">
+                                            <td className="p-4 text-sm font-medium">포함 인원</td>
+                                            {teamSlugs.map((slug) => (
+                                                <td key={slug} className="p-4 text-center text-sm">
+                                                    {PLAN_LIMITS[slug].includedSeats}명
+                                                </td>
+                                            ))}
+                                        </tr>
+                                        <tr className="border-b">
                                             <td className="p-4 text-sm font-medium">최대 인원</td>
                                             {teamSlugs.map((slug) => (
                                                 <td key={slug} className="p-4 text-center text-sm">
@@ -408,7 +407,7 @@ export default function PricingPage() {
                                                 </td>
                                             ))}
                                         </tr>
-                                        <tr className="border-b">
+                                        <tr className="border-b bg-muted/10">
                                             <td className="p-4 text-sm font-medium">추가 인당 비용</td>
                                             {teamSlugs.map((slug) => (
                                                 <td key={slug} className="p-4 text-center text-sm">
@@ -496,3 +495,4 @@ export default function PricingPage() {
         </div>
     );
 }
+

@@ -37,7 +37,8 @@ const PLAN_BADGE_COLORS: Record<string, string> = {
     free: 'bg-slate-100 text-slate-700 border-slate-200',
     basic: 'bg-blue-100 text-blue-700 border-blue-200',
     pro: 'bg-violet-100 text-violet-700 border-violet-200',
-    team: 'bg-amber-100 text-amber-700 border-amber-200',
+    team_basic: 'bg-teal-100 text-teal-700 border-teal-200',
+    team_pro: 'bg-amber-100 text-amber-700 border-amber-200',
 };
 
 type SortKey = 'created_at' | 'name' | 'email' | 'plan_slug';
@@ -115,7 +116,7 @@ export default function AdminPage() {
             setUsers((prev) =>
                 prev.map((u) =>
                     u.id === targetUserId
-                        ? { ...u, plan_slug: newPlan, plan_name: { free: '무료', basic: '베이직', pro: '프로', team: '팀' }[newPlan] || newPlan }
+                        ? { ...u, plan_slug: newPlan, plan_name: { free: '무료', basic: '베이직', pro: '프로', team_basic: '팀 베이직', team_pro: '팀 프로' }[newPlan] || newPlan }
                         : u
                 )
             );
@@ -159,7 +160,7 @@ export default function AdminPage() {
                     cmp = a.email.localeCompare(b.email);
                     break;
                 case 'plan_slug': {
-                    const order = { free: 0, basic: 1, pro: 2, team: 3 };
+                    const order = { free: 0, basic: 1, pro: 2, team_basic: 3, team_pro: 4 };
                     cmp = (order[a.plan_slug as keyof typeof order] ?? 0) - (order[b.plan_slug as keyof typeof order] ?? 0);
                     break;
                 }
@@ -361,7 +362,8 @@ export default function AdminPage() {
                                                     <option value="free">무료</option>
                                                     <option value="basic">베이직</option>
                                                     <option value="pro">프로</option>
-                                                    <option value="team">팀</option>
+                                                    <option value="team_basic">팀 베이직</option>
+                                                    <option value="team_pro">팀 프로</option>
                                                 </select>
                                                 <ChevronDown className="absolute right-1 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
                                             </div>

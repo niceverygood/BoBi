@@ -2,7 +2,7 @@
 
 export interface SubscriptionPlan {
     id: string;
-    slug: 'free' | 'basic' | 'pro' | 'team' | 'business' | 'enterprise';
+    slug: 'free' | 'basic' | 'pro' | 'team_basic' | 'team_pro';
     display_name: string;
     price_monthly: number;
     price_yearly: number;

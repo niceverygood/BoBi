@@ -1,11 +1,11 @@
 // lib/utils/constants.ts
 
-export type PlanSlug = 'free' | 'basic' | 'pro' | 'team' | 'business' | 'enterprise';
+export type PlanSlug = 'free' | 'basic' | 'pro' | 'team_basic' | 'team_pro';
 
 // 개인 플랜 (pricing 페이지 카드에 표시)
 export type IndividualPlanSlug = 'free' | 'basic' | 'pro';
 // 팀/조직 플랜 (팀 구독 섹션에 표시)
-export type TeamPlanSlug = 'team' | 'business' | 'enterprise';
+export type TeamPlanSlug = 'team_basic' | 'team_pro';
 
 // 관리자 이메일 목록
 export const ADMIN_EMAILS = ['niceverygood1@gmail.com'] as const;
@@ -108,86 +108,61 @@ export const PLAN_LIMITS: Record<PlanSlug, PlanInfo> = {
     },
 
     // ── 팀/조직 플랜 ──
-    team: {
-        name: '팀',
-        slug: 'team',
+    team_basic: {
+        name: '팀 베이직',
+        slug: 'team_basic',
+        analysisLimit: 50,
+        price: '79,000원/월',
+        priceMonthly: 79000,
+        priceYearly: 758400,
+        maxFileSizeMb: -1,
+        maxCustomers: -1,
+        historyDays: 180,
+        includedSeats: 5,
+        extraSeatPrice: 12000,
+        maxSeats: 20,
+        perSeatPrice: 15800,
+        features: [
+            '베이직 플랜의 모든 기능',
+            '팀원당 월 50건 분석',
+            '5명 포함 (최대 20명)',
+            '추가 1인당 월 12,000원',
+            '팀 관리 대시보드',
+            '팀원별 실적 리포트',
+            '분석 이력 6개월 보관',
+        ],
+        lockedFeatures: [
+            '리모델링 제안서',
+            '전담 매니저',
+            '맞춤 API 연동',
+        ],
+    },
+    team_pro: {
+        name: '팀 프로',
+        slug: 'team_pro',
         analysisLimit: -1,
-        price: '99,000원/월',
-        priceMonthly: 99000,
-        priceYearly: 950400,
+        price: '149,000원/월',
+        priceMonthly: 149000,
+        priceYearly: 1430400,
         maxFileSizeMb: -1,
         maxCustomers: -1,
         historyDays: -1,
         includedSeats: 5,
-        extraSeatPrice: 15000,
-        maxSeats: 20,
-        perSeatPrice: 19800,
-        features: [
-            '프로 플랜의 모든 기능',
-            '무제한 분석 (팀원 전체)',
-            '5명 포함 (최대 20명)',
-            '추가 1인당 월 15,000원',
-            '팀 관리 대시보드',
-            '팀원별 실적 리포트',
-        ],
-        lockedFeatures: [
-            '전담 매니저',
-            'API 연동',
-        ],
-    },
-    business: {
-        name: '비즈니스',
-        slug: 'business',
-        analysisLimit: -1,
-        price: '590,000원/월',
-        priceMonthly: 590000,
-        priceYearly: 5664000,
-        maxFileSizeMb: -1,
-        maxCustomers: -1,
-        historyDays: -1,
-        includedSeats: 30,
-        extraSeatPrice: 17000,
-        maxSeats: 100,
-        perSeatPrice: 19667,
+        extraSeatPrice: 25000,
+        maxSeats: -1,
+        perSeatPrice: 29800,
         recommended: true,
         features: [
             '프로 플랜의 모든 기능',
             '무제한 분석 (팀원 전체)',
-            '30명 포함 (최대 100명)',
-            '추가 1인당 월 17,000원',
+            '5명 포함 (인원 무제한)',
+            '추가 1인당 월 25,000원',
             '팀 관리 대시보드',
             '팀원별 실적 리포트',
+            '리모델링 제안서',
             '전담 매니저 배정',
-            '온보딩 교육 지원',
-        ],
-        lockedFeatures: [],
-    },
-    enterprise: {
-        name: '엔터프라이즈',
-        slug: 'enterprise',
-        analysisLimit: -1,
-        price: '1,490,000원/월',
-        priceMonthly: 1490000,
-        priceYearly: 14304000,
-        maxFileSizeMb: -1,
-        maxCustomers: -1,
-        historyDays: -1,
-        includedSeats: 100,
-        extraSeatPrice: 12900,
-        maxSeats: -1,
-        perSeatPrice: 14900,
-        features: [
-            '프로 플랜의 모든 기능',
-            '무제한 분석 (팀원 전체)',
-            '100명 포함 (인원 무제한)',
-            '추가 1인당 월 7,900원',
-            '팀 관리 대시보드',
-            '팀원별 실적 리포트',
-            '전담 매니저 배정',
-            '온보딩 교육 지원',
-            '맞춤 API 연동',
-            'SLA 99.9% 보장',
-            '보험사별 커스텀 분석 룰',
+            '맞춤 보험사 상품DB',
+            '분석 이력 무제한 보관',
         ],
         lockedFeatures: [],
     },

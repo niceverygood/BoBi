@@ -17,9 +17,8 @@ const PLAN_BADGE_COLORS: Record<PlanSlug, string> = {
     free: 'bg-slate-100 text-slate-700',
     basic: 'bg-blue-100 text-blue-700',
     pro: 'bg-violet-100 text-violet-700',
-    team: 'bg-amber-100 text-amber-700',
-    business: 'bg-emerald-100 text-emerald-700',
-    enterprise: 'bg-rose-100 text-rose-700',
+    team_basic: 'bg-teal-100 text-teal-700',
+    team_pro: 'bg-amber-100 text-amber-700',
 };
 
 export default function SettingsPage() {
@@ -126,7 +125,7 @@ export default function SettingsPage() {
                                 <span className="text-sm">
                                     {plan.price_monthly > 0
                                         ? `${plan.price_monthly.toLocaleString()}원/월`
-                                        : currentSlug === 'team' ? '별도 협의' : '무료'}
+                                        : '무료'}
                                 </span>
                             </>
                         )}
@@ -198,17 +197,10 @@ export default function SettingsPage() {
                                         </li>
                                     ))}
                                 </ul>
-                                {key !== currentSlug && key !== 'free' && key !== 'team' && (
+                                {key !== currentSlug && key !== 'free' && (
                                     <Link href={`/dashboard/subscribe?plan=${key}`}>
                                         <Button variant="outline" size="sm" className="w-full text-xs h-8">
                                             구독하기
-                                        </Button>
-                                    </Link>
-                                )}
-                                {key !== currentSlug && (key === 'free' || key === 'team') && (
-                                    <Link href="/pricing">
-                                        <Button variant="outline" size="sm" className="w-full text-xs h-8">
-                                            {key === 'team' ? '문의하기' : '자세히 보기'}
                                         </Button>
                                     </Link>
                                 )}
