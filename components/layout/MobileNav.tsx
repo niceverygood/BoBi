@@ -5,15 +5,17 @@ import { usePathname } from 'next/navigation';
 import { Shield, LayoutDashboard, FileSearch, History, Settings, Menu, ShieldCheck, ShieldPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
 import { useState } from 'react';
 import { useAdmin } from '@/hooks/useAdmin';
+import { FEATURE_FLAGS } from '@/lib/utils/constants';
 
 const navItems = [
     { title: '대시보드', href: '/dashboard', icon: LayoutDashboard },
     { title: '새 분석', href: '/dashboard/analyze', icon: FileSearch },
-    { title: '보장 분석', href: '/dashboard/coverage', icon: ShieldPlus },
+    { title: '보장 분석', href: '/dashboard/coverage', icon: ShieldPlus, disabled: !FEATURE_FLAGS.coverage_analysis, comingSoon: !FEATURE_FLAGS.coverage_analysis },
     { title: '분석 이력', href: '/dashboard/history', icon: History },
     { title: '설정', href: '/dashboard/settings', icon: Settings },
 ];
@@ -49,6 +51,27 @@ export default function MobileNav() {
                             const isActive = pathname === item.href ||
                                 (item.href !== '/dashboard' && pathname.startsWith(item.href));
                             const Icon = item.icon;
+                            const isDisabled = 'disabled' in item && item.disabled;
+                            const showComingSoon = 'comingSoon' in item && item.comingSoon;
+
+                            if (isDisabled) {
+                                return (
+                                    <div
+                                        key={item.href}
+                                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground opacity-50 cursor-not-allowed"
+                                    >
+                                        <Icon className="w-5 h-5" />
+                                        <span className="flex items-center gap-2">
+                                            {item.title}
+                                            {showComingSoon && (
+                                                <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 font-normal">
+                                                    준비 중
+                                                </Badge>
+                                            )}
+                                        </span>
+                                    </div>
+                                );
+                            }
 
                             return (
                                 <Link

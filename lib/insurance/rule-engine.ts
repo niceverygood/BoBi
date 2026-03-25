@@ -110,14 +110,38 @@ function subtractMonths(date: Date, months: number): Date {
     return result;
 }
 
-/** KCD 코드가 특정 prefix 목록에 해당하는지 확인 (KCD DB 기반) */
+/**
+ * KCD 코드가 특정 코드 목록에 해당하는지 확인 (exact match 기반)
+ *
+ * 매칭 규칙:
+ * 1. 코드가 정확히 일치하면 매칭 (예: "305" == "305")
+ * 2. prefix 매칭 시 KCD 코드 계층 경계를 존중 (알파벳+숫자 구조)
+ *    - "A31"은 "A31", "A31.0", "A31.1" 등과 매칭
+ *    - "A31"은 "A311"과 매칭되지 않음 (별도 코드)
+ *    - "A3"은 "A30", "A31" 등과 매칭 (상위 카테고리)
+ * 3. 숫자 코드 (상품코드)는 정확히 일치해야 매칭 ("305" != "3050", "31" != "311")
+ */
 function matchesCodePrefix(code: string, prefixes: string[]): boolean {
     if (!code) return false;
-    // KCD DB의 isInRange를 활용하되, prefix 리스트도 호환
     const normalizedCode = code.toUpperCase().trim();
-    return prefixes.some(prefix =>
-        normalizedCode.startsWith(prefix.toUpperCase())
-    );
+
+    return prefixes.some(prefix => {
+        const normalizedPrefix = prefix.toUpperCase().trim();
+
+        // 정확히 일치
+        if (normalizedCode === normalizedPrefix) return true;
+
+        // KCD 코드 계층 구조 매칭:
+        // prefix 뒤에 반드시 '.' 또는 끝이어야 함 (하위 분류)
+        // 예: prefix "A31" → "A31.0" ✅, "A311" ❌
+        if (normalizedCode.startsWith(normalizedPrefix)) {
+            const nextChar = normalizedCode[normalizedPrefix.length];
+            // 다음 문자가 '.', undefined(끝), 또는 공백이면 계층적 하위 코드
+            return nextChar === '.' || nextChar === undefined;
+        }
+
+        return false;
+    });
 }
 
 /** MedicalDetail에서 입원 여부 판단 */

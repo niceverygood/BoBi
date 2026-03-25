@@ -1,5 +1,14 @@
 // lib/utils/constants.ts
 
+// ── Feature Flags ──
+// 마이데이터 사업자 등록 완료 시 true로 변경
+export const FEATURE_FLAGS = {
+    coverage_analysis: false,  // 보장분석 (외부 연동 비용 이슈로 잠정 중단, 마이데이터 등록 후 활성화)
+    hira_api: true,            // 심평원 데이터 연동 (PDF 기반 — 활성)
+    mydata_api: false,         // 마이데이터 API (미등록 — 비활성)
+    remodeling_proposal: false, // 리모델링 제안서 (추후 활성화)
+} as const;
+
 export type PlanSlug = 'free' | 'basic' | 'pro' | 'team_basic' | 'team_pro';
 
 // 개인 플랜 (pricing 페이지 카드에 표시)

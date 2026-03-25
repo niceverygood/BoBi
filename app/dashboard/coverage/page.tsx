@@ -4,7 +4,16 @@
 import { useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Shield, History, BarChart3, FileText, Loader2, Sparkles } from 'lucide-react';
+import { ArrowLeft, Shield, History, BarChart3, FileText, Loader2, Sparkles, Clock } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { FEATURE_FLAGS } from '@/lib/utils/constants';
+
+// ── Feature Flag Guard ──
+// coverage_analysis가 false일 때 Coming Soon 페이지를 렌더링합니다.
+// 마이데이터 사업자 등록 완료 후 FEATURE_FLAGS.coverage_analysis = true로 변경하면 즉시 활성화됩니다.
+// 아래 기존 코드는 feature flag가 true일 때만 실행됩니다.
+
 import PolicyInputForm from '@/components/coverage/PolicyInputForm';
 import CoverageReport from '@/components/coverage/CoverageReport';
 import CoverageReportPrint from '@/components/coverage/CoverageReportPrint';
@@ -17,6 +26,41 @@ import { toast } from 'sonner';
 type ViewMode = 'report' | 'comparison' | 'remodeling';
 
 export default function CoveragePage() {
+    // ── Feature Flag Guard ──
+    if (!FEATURE_FLAGS.coverage_analysis) {
+        return (
+            <div className="max-w-2xl mx-auto py-12">
+                <Card className="border-0 shadow-sm">
+                    <CardContent className="p-8 flex flex-col items-center text-center gap-4">
+                        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                            <Shield className="w-8 h-8 text-primary" />
+                        </div>
+                        <div>
+                            <div className="flex items-center justify-center gap-2 mb-2">
+                                <h2 className="text-xl font-bold">보장 분석</h2>
+                                <Badge variant="secondary" className="text-xs">
+                                    <Clock className="w-3 h-3 mr-1" />
+                                    준비 중
+                                </Badge>
+                            </div>
+                            <p className="text-muted-foreground text-sm leading-relaxed max-w-md mx-auto">
+                                마이데이터 사업자 등록 후 보장분석 기능이 활성화됩니다.
+                                <br />
+                                현재는 <strong>고지사항 분석</strong>과 <strong>상품 판단</strong> 기능을 이용해주세요.
+                            </p>
+                        </div>
+                        <Link href="/dashboard/analyze">
+                            <Button className="bg-gradient-primary hover:opacity-90 mt-2">
+                                <Sparkles className="w-4 h-4 mr-2" />
+                                고지사항 분석하기
+                            </Button>
+                        </Link>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
     const [step, setStep] = useState<'input' | 'result'>('input');
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<CoverageAnalysisResult | null>(null);

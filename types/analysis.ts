@@ -69,6 +69,8 @@ export interface ExceptionDiseaseCheck {
 export interface ProductEligibility {
     productType: 'simple' | 'mild' | 'standard';
     productName: string;
+    productCode?: string;          // 예: "305", "삼태노" 등 상품 코드/유형명
+    insurers?: string[];           // 이 상품을 취급하는 보험사 목록
     eligible: 'O' | 'X' | '△';
     eligibleText: string;
     reasons: ProductReason[];

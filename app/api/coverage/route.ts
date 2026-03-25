@@ -3,10 +3,19 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { analyzeCoverage } from '@/lib/insurance/coverage-analyzer';
 import type { CoverageInput } from '@/types/coverage';
+import { FEATURE_FLAGS } from '@/lib/utils/constants';
 
 export const maxDuration = 120;
 
 export async function POST(request: Request) {
+    // Feature flag guard
+    if (!FEATURE_FLAGS.coverage_analysis) {
+        return NextResponse.json(
+            { error: '보장분석 기능은 현재 준비 중입니다. 마이데이터 사업자 등록 후 활성화 예정입니다.' },
+            { status: 503 }
+        );
+    }
+
     try {
         const supabase = await createClient();
         const { data: { user }, error: authError } = await supabase.auth.getUser();

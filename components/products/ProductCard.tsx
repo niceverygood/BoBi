@@ -1,9 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertTriangle, ChevronDown, Building2 } from 'lucide-react';
 import type { ProductEligibility } from '@/types/analysis';
 import { cn } from '@/lib/utils';
 
@@ -12,6 +13,8 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
+    const [insurersOpen, setInsurersOpen] = useState(false);
+
     const eligibleConfig = {
         'O': { icon: CheckCircle2, color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-950/20', border: 'border-green-200 dark:border-green-900' },
         'X': { icon: XCircle, color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-950/20', border: 'border-red-200 dark:border-red-900' },
@@ -27,26 +30,30 @@ export default function ProductCard({ product }: ProductCardProps) {
         standard: '일반 표준체',
     };
 
+    // 상품명에서 보험사 이름을 제거하고 상품 유형명만 표시
+    const displayName = product.productCode || extractProductTypeName(product.productName);
+    const insurers = product.insurers || extractInsurers(product.productName);
+
     return (
         <Card className={cn('border-0 shadow-sm overflow-hidden', config.bg)}>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-4">
-                    <div>
+                <div className="flex items-center justify-between mb-3">
+                    <div className="min-w-0 flex-1">
                         <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold mb-1">
                             {productTypeLabels[product.productType] || product.productType}
                         </p>
-                        <h3 className="text-lg font-bold">{product.productName}</h3>
+                        <h3 className="text-base sm:text-lg font-bold truncate">{displayName}</h3>
                     </div>
-                    <div className={cn('w-14 h-14 rounded-2xl flex items-center justify-center', config.bg, config.border, 'border-2')}>
-                        <Icon className={cn('w-8 h-8', config.color)} />
+                    <div className={cn('w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center shrink-0', config.bg, config.border, 'border-2')}>
+                        <Icon className={cn('w-6 h-6 sm:w-8 sm:h-8', config.color)} />
                     </div>
                 </div>
 
                 {/* Eligibility Badge */}
                 <Badge
                     className={cn(
-                        'text-sm px-3 py-1 mb-4',
+                        'text-sm px-3 py-1 mb-3',
                         product.eligible === 'O' && 'bg-green-500 hover:bg-green-600',
                         product.eligible === 'X' && 'bg-red-500 hover:bg-red-600',
                         product.eligible === '△' && 'bg-amber-500 hover:bg-amber-600'
@@ -56,9 +63,42 @@ export default function ProductCard({ product }: ProductCardProps) {
                 </Badge>
 
                 {/* Recommendation */}
-                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+                <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
                     {product.recommendation}
                 </p>
+
+                {/* 보험사 목록 (아코디언) */}
+                {insurers.length > 0 && (
+                    <div className="mb-3">
+                        <button
+                            onClick={() => setInsurersOpen(!insurersOpen)}
+                            className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors w-full py-2"
+                        >
+                            <Building2 className="w-4 h-4 shrink-0" />
+                            <span>취급 보험사 ({insurers.length}개사)</span>
+                            <ChevronDown className={cn(
+                                'w-4 h-4 ml-auto transition-transform duration-200',
+                                insurersOpen && 'rotate-180'
+                            )} />
+                        </button>
+                        <div className={cn(
+                            'overflow-hidden transition-all duration-300 ease-in-out',
+                            insurersOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
+                        )}>
+                            <div className="pl-6 pt-1 space-y-1.5">
+                                {insurers.map((insurer, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="flex items-center gap-2 text-sm text-muted-foreground py-1 px-2 rounded-md hover:bg-background/50 transition-colors"
+                                    >
+                                        <span className="w-1.5 h-1.5 rounded-full bg-primary/50 shrink-0" />
+                                        {insurer}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Detail Reasons */}
                 <Accordion>
@@ -131,4 +171,50 @@ export default function ProductCard({ product }: ProductCardProps) {
             </CardContent>
         </Card>
     );
+}
+
+/**
+ * 상품명에서 보험사 이름을 제거하고 상품 유형명만 추출
+ * 예: "삼성화재 삼태노" → "삼태노"
+ * 예: "DB손해보험 간편보험 305" → "간편보험 305"
+ */
+function extractProductTypeName(productName: string): string {
+    // 보험사 이름 목록 (앞에서 제거)
+    const insurerPrefixes = [
+        '삼성화재', '삼성생명', 'DB손해보험', 'DB손보', '흥국화재', '흥국생명',
+        '한화손해보험', '한화손보', '한화생명', '메리츠화재', '메리츠',
+        '현대해상', 'KB손해보험', 'KB손보', 'KB생명', 'NH농협생명', 'NH농협손해보험',
+        '교보생명', '신한라이프', 'AIA생명', '라이나생명', '처브', 'AXA손해보험',
+        'MG손해보험', 'ABL생명', '하나생명', '동양생명', '푸본현대생명',
+        'KDB생명', '미래에셋생명', '오렌지라이프', '카카오페이손해보험', '토스손해보험',
+    ];
+
+    let name = productName.trim();
+    for (const prefix of insurerPrefixes) {
+        if (name.startsWith(prefix)) {
+            name = name.slice(prefix.length).trim();
+            break;
+        }
+    }
+
+    return name || productName;
+}
+
+/**
+ * 상품명에서 보험사 이름 추출 (fallback용)
+ */
+function extractInsurers(productName: string): string[] {
+    // 보험사가 상품명에 포함된 경우 추출
+    const insurerPrefixes = [
+        '삼성화재', '삼성생명', 'DB손해보험', 'DB손보', '흥국화재', '흥국생명',
+        '한화손해보험', '한화손보', '한화생명', '메리츠화재', '메리츠',
+        '현대해상', 'KB손해보험', 'KB손보', 'KB생명',
+    ];
+
+    for (const prefix of insurerPrefixes) {
+        if (productName.startsWith(prefix)) {
+            return [prefix];
+        }
+    }
+    return [];
 }
