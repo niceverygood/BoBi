@@ -10,7 +10,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
     }
 
-    const { planSlug, billingCycle } = await request.json();
+    const { planSlug, billingCycle, upgradePlanSlug, couponCode } = await request.json();
 
     if (!planSlug || !billingCycle) {
         return NextResponse.json({ error: '필수 파라미터가 누락되었습니다.' }, { status: 400 });
@@ -56,6 +56,8 @@ export async function POST(request: Request) {
                 plan_slug: planSlug,
                 billing_cycle: billingCycle,
                 amount,
+                upgrade_plan_slug: upgradePlanSlug || null,
+                coupon_code: couponCode || null,
                 created_at: new Date().toISOString(),
             }, { onConflict: 'user_id' });
 

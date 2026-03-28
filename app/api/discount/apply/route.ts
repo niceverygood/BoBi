@@ -76,12 +76,14 @@ async function applyPromoCode(supabase: Awaited<ReturnType<typeof createClient>>
     const planSlug = promoCode.plan_slug as string;
     const durationMonths = promoCode.duration_months as number;
     const priceOverride = promoCode.price_override as number;
+    const upgradeToPlan = promoCode.upgrade_to_plan as string | null;
 
-    // 플랜 조회
+    // 플랜 조회 (upgrade_to_plan이 있으면 업그레이드 플랜 기준)
+    const actualPlanSlug = upgradeToPlan || planSlug;
     const { data: plan, error: planError } = await supabase
         .from('subscription_plans')
         .select('*')
-        .eq('slug', planSlug)
+        .eq('slug', actualPlanSlug)
         .single();
 
     if (planError || !plan) {
@@ -180,14 +182,16 @@ async function applyPromoCode(supabase: Awaited<ReturnType<typeof createClient>>
 
     const durationText = durationMonths === -1 ? '무기한' : `${durationMonths}개월`;
     const priceText = priceOverride === 0 ? '무료' : `월 ${priceOverride.toLocaleString()}원`;
+    const upgradeText = upgradeToPlan ? ` (${plan.display_name} 플랜으로 업그레이드!)` : '';
 
     return NextResponse.json({
         success: true,
-        message: `프로모션 코드가 적용되었습니다! ${plan.display_name} 플랜 ${durationText} ${priceText}`,
-        plan: { slug: planSlug, name: plan.display_name },
+        message: `프로모션 코드가 적용되었습니다! ${plan.display_name} 플랜 ${durationText} ${priceText}${upgradeText}`,
+        plan: { slug: actualPlanSlug, name: plan.display_name },
         price: priceOverride,
         duration: durationMonths,
         expiresAt: promoExpiresAt,
+        upgraded: upgradeToPlan ? true : false,
     });
 }
 
@@ -195,12 +199,14 @@ async function applyPromoCode(supabase: Awaited<ReturnType<typeof createClient>>
 async function applyLegacyCode(
     supabase: Awaited<ReturnType<typeof createClient>>,
     user: { id: string },
-    discount: { code: string; planSlug: string; priceOverride: number }
+    discount: { code: string; planSlug: string; priceOverride: number; upgradeToPlan?: string }
 ) {
+    // upgradeToPlan이 있으면 업그레이드 플랜 기준으로 조회
+    const actualPlanSlug = discount.upgradeToPlan || discount.planSlug;
     const { data: plan, error: planError } = await supabase
         .from('subscription_plans')
         .select('*')
-        .eq('slug', discount.planSlug)
+        .eq('slug', actualPlanSlug)
         .single();
 
     if (planError || !plan) {
@@ -247,10 +253,13 @@ async function applyLegacyCode(
         });
     }
 
+    const upgradeLabel = discount.upgradeToPlan ? ` → ${plan.display_name} 업그레이드!` : '';
+
     return NextResponse.json({
         success: true,
-        message: `할인코드가 적용되었습니다! ${plan.display_name} 플랜${discount.priceOverride === 0 ? ' (무료)' : ` (월 ${discount.priceOverride.toLocaleString()}원)`}`,
-        plan: { slug: discount.planSlug, name: plan.display_name },
+        message: `할인코드가 적용되었습니다! ${plan.display_name} 플랜${discount.priceOverride === 0 ? ' (무료)' : ` (월 ${discount.priceOverride.toLocaleString()}원)`}${upgradeLabel}`,
+        plan: { slug: actualPlanSlug, name: plan.display_name },
         price: discount.priceOverride,
+        upgraded: discount.upgradeToPlan ? true : false,
     });
 }

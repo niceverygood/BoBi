@@ -55,8 +55,8 @@ export async function POST(request: Request) {
         }
 
         // 플랜 호환성 확인 (쿠폰이 특정 플랜 전용인지)
+        // upgrade_to_plan이 있는 쿠폰은 plan_slug 기준으로 호환성 체크 (결제 플랜 기준)
         if (coupon.plan_slug && coupon.plan_slug !== 'all') {
-            // plan_slug가 일치하거나, 상위 플랜 코드에 포함되는지 확인
             const couponPlans = coupon.plan_slug.split(',').map((s: string) => s.trim());
             if (!couponPlans.includes(planSlug) && !couponPlans.includes('all')) {
                 const planNames: Record<string, string> = {
@@ -109,6 +109,22 @@ export async function POST(request: Request) {
             finalPrice = Math.max(0, originalPrice - discountAmount);
         }
 
+        // 업그레이드 플랜 정보 조회
+        let upgradePlan = null;
+        if (coupon.upgrade_to_plan) {
+            const { data: upgradePlanData } = await supabase
+                .from('subscription_plans')
+                .select('slug, display_name')
+                .eq('slug', coupon.upgrade_to_plan)
+                .single();
+            if (upgradePlanData) {
+                upgradePlan = {
+                    slug: upgradePlanData.slug,
+                    name: upgradePlanData.display_name,
+                };
+            }
+        }
+
         return NextResponse.json({
             valid: true,
             coupon: {
@@ -121,6 +137,7 @@ export async function POST(request: Request) {
                 discountLabel,
                 planSlug: coupon.plan_slug,
                 durationMonths: coupon.duration_months,
+                upgradeToPlan: coupon.upgrade_to_plan || null,
             },
             pricing: {
                 originalPrice,
@@ -128,6 +145,7 @@ export async function POST(request: Request) {
                 finalPrice,
                 discountLabel,
             },
+            upgradePlan,
         });
     } catch (error) {
         console.error('Coupon validation error:', error);

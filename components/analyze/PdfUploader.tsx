@@ -55,6 +55,7 @@ interface UploadedFile {
     status: 'uploading' | 'success' | 'error';
     error?: string;
     textPreview?: string;
+    uploadPhase?: string; // 업로드 단계 표시용
 }
 
 interface PdfUploaderProps {
@@ -66,9 +67,10 @@ export default function PdfUploader({ onFilesUploaded, customerId }: PdfUploader
     const [files, setFiles] = useState<UploadedFile[]>([]);
     const [isDragOver, setIsDragOver] = useState(false);
 
-    const uploadFile = async (file: File): Promise<UploadedFile> => {
+    const uploadFile = async (file: File, updatePhase?: (phase: string) => void): Promise<UploadedFile> => {
         try {
             // Step 1: Upload directly to Supabase Storage (bypasses Vercel 4.5MB limit)
+            updatePhase?.('파일 저장 중...');
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
 
@@ -97,6 +99,7 @@ export default function PdfUploader({ onFilesUploaded, customerId }: PdfUploader
             }
 
             // Step 2: Call API to extract text and create DB record (only sends file path, not file)
+            updatePhase?.('텍스트 추출 중...');
             const response = await fetch('/api/upload', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -123,6 +126,7 @@ export default function PdfUploader({ onFilesUploaded, customerId }: PdfUploader
 
             // Check if OCR is needed (image-based PDF)
             if (data.ocrNeeded) {
+                updatePhase?.('이미지 PDF 감지 — 변환 중...');
                 // Render PDF pages to images using pdfjs-dist
                 const pageImages = await renderPdfToImages(file);
                 if (pageImages.length === 0) {
@@ -134,9 +138,13 @@ export default function PdfUploader({ onFilesUploaded, customerId }: PdfUploader
 
                 // Send images in batches of 5 to stay under Vercel 4.5MB body limit
                 const BATCH_SIZE = 5;
+                const totalBatches = Math.ceil(pageImages.length / BATCH_SIZE);
                 let lastOcrData = null;
 
                 for (let i = 0; i < pageImages.length; i += BATCH_SIZE) {
+                    const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+                    updatePhase?.(`OCR 처리 중... (${batchNum}/${totalBatches})`);
+
                     const batch = pageImages.slice(i, i + BATCH_SIZE);
                     const isFirstBatch = i === 0;
                     const isLastBatch = i + BATCH_SIZE >= pageImages.length;
@@ -156,7 +164,7 @@ export default function PdfUploader({ onFilesUploaded, customerId }: PdfUploader
 
                     if (!ocrResponse.ok) {
                         const ocrErr = await ocrResponse.json().catch(() => ({}));
-                        console.error(`OCR batch ${Math.floor(i / BATCH_SIZE) + 1} failed:`, ocrErr);
+                        console.error(`OCR batch ${batchNum} failed:`, ocrErr);
                         // Continue with other batches
                         continue;
                     }
@@ -226,7 +234,18 @@ export default function PdfUploader({ onFilesUploaded, customerId }: PdfUploader
 
         await Promise.allSettled(
             uploadingFiles.map(async (uf) => {
-                const result = await uploadFile(uf.file);
+                // Phase update callback — shows live progress in the file list
+                const updatePhase = (phase: string) => {
+                    setFiles((prev) =>
+                        prev.map((f) =>
+                            '_key' in f && (f as any)._key === uf._key
+                                ? { ...f, uploadPhase: phase }
+                                : f
+                        )
+                    );
+                };
+
+                const result = await uploadFile(uf.file, updatePhase);
                 allResults.push(result);
 
                 // Update this specific file's status immediately
@@ -341,7 +360,7 @@ export default function PdfUploader({ onFilesUploaded, customerId }: PdfUploader
                                         <p className="text-xs text-destructive mt-1">{f.error}</p>
                                     )}
                                     {f.status === 'uploading' && (
-                                        <p className="text-xs text-muted-foreground mt-1">업로드 중...</p>
+                                        <p className="text-xs text-muted-foreground mt-1">{f.uploadPhase || '업로드 중...'}</p>
                                     )}
                                 </div>
 

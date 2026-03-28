@@ -148,7 +148,18 @@ function AnalyzeContent() {
                 }
 
                 if (data.medical_history) {
-                    setAnalysisResult(data.medical_history as unknown as AnalysisResult);
+                    let result = data.medical_history as unknown as AnalysisResult;
+
+                    // ⚠️ 기존 분석 결과도 오늘 날짜 기준으로 재검증
+                    const todayDate = new Date().toISOString().split('T')[0];
+                    const { validateAndCorrectDates } = await import('@/lib/ai/date-validator');
+                    const validation = validateAndCorrectDates(result, todayDate);
+                    if (validation.corrected) {
+                        console.log('[DateValidator] 기존 분석 재검증: 교정 적용됨');
+                    }
+                    result = validation.result;
+
+                    setAnalysisResult(result);
                     setAnalysisId(data.id);
                 }
             } catch {
@@ -189,7 +200,17 @@ function AnalyzeContent() {
                 throw new Error(data.error || '분석에 실패했습니다.');
             }
 
-            setAnalysisResult(data.result);
+            // ⚠️ 클라이언트 측에서도 날짜 교정 적용 (이중 방어)
+            let result = data.result as AnalysisResult;
+            const todayDate = new Date().toISOString().split('T')[0];
+            const { validateAndCorrectDates } = await import('@/lib/ai/date-validator');
+            const validation = validateAndCorrectDates(result, todayDate);
+            if (validation.corrected) {
+                console.log('[DateValidator] 신규 분석 결과 클라이언트 교정 적용');
+            }
+            result = validation.result;
+
+            setAnalysisResult(result);
             setAnalysisId(data.analysisId);
             refresh(); // Refresh usage count
         } catch (err) {

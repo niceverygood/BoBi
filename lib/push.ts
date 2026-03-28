@@ -1,44 +1,50 @@
 // lib/push.ts - FCM 푸시 알림 클라이언트 초기화
-import { Capacitor } from '@capacitor/core';
-import { PushNotifications } from '@capacitor/push-notifications';
-import { createClient } from '@/lib/supabase/client';
 
 export async function initPushNotifications() {
-  if (!Capacitor.isNativePlatform()) return;
+  try {
+    // Dynamic imports to avoid build failures on web
+    const { Capacitor } = await import('@capacitor/core');
+    if (!Capacitor.isNativePlatform()) return;
 
-  const permission = await PushNotifications.requestPermissions();
-  if (permission.receive !== 'granted') return;
+    const { PushNotifications } = await import('@capacitor/push-notifications');
 
-  await PushNotifications.register();
+    const permission = await PushNotifications.requestPermissions();
+    if (permission.receive !== 'granted') return;
 
-  PushNotifications.addListener('registration', async ({ value: token }) => {
-    console.log('[FCM] Token:', token);
-    await saveTokenToServer(token);
-  });
+    await PushNotifications.register();
 
-  PushNotifications.addListener('registrationError', (error) => {
-    console.error('[FCM] Registration error:', error);
-  });
+    PushNotifications.addListener('registration', async ({ value: token }) => {
+      console.log('[FCM] Token:', token);
+      await saveTokenToServer(token);
+    });
 
-  PushNotifications.addListener('pushNotificationReceived', (notification) => {
-    console.log('[FCM] Foreground notification:', notification);
-    // 포그라운드에서 받은 알림 처리 (필요시 커스텀 UI)
-  });
+    PushNotifications.addListener('registrationError', (error) => {
+      console.error('[FCM] Registration error:', error);
+    });
 
-  PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-    console.log('[FCM] Notification tapped:', action);
-    const url = action.notification.data?.url;
-    if (url) {
-      window.location.href = url;
-    }
-  });
+    PushNotifications.addListener('pushNotificationReceived', (notification) => {
+      console.log('[FCM] Foreground notification:', notification);
+    });
+
+    PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+      console.log('[FCM] Notification tapped:', action);
+      const url = action.notification.data?.url;
+      if (url) {
+        window.location.href = url;
+      }
+    });
+  } catch {
+    // Silently fail on web or when Capacitor plugins aren't available
+  }
 }
 
 async function saveTokenToServer(token: string) {
+  const { createClient } = await import('@/lib/supabase/client');
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
+  const { Capacitor } = await import('@capacitor/core');
   const platform = Capacitor.getPlatform(); // 'ios' | 'android'
 
   await fetch('/api/push/register', {

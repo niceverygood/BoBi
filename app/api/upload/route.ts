@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { extractPdfText, structureExtractedText } from '@/lib/pdf/extractor';
 
-export const maxDuration = 60;
+export const maxDuration = 120; // Allow more time for large PDFs and OCR fallback
 
 export async function POST(request: Request) {
     try {

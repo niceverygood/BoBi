@@ -340,6 +340,12 @@ function check5YearStandard(
     const hospSurg = findHospSurgInPeriod(items, startDate, analysisDate);
     evidence.push(...hospSurg.evidence);
 
+    // 5year_hospitalization 카테고리 참조
+    const step1_5yHosp = items.find(i => i.category === '5year_hospitalization');
+    if (step1_5yHosp?.applicable) {
+        evidence.push(`5년 이내 입원/수술: ${step1_5yHosp.summary}`);
+    }
+
     // 5year_major_disease 카테고리 참조
     const step1_5y = items.find(i => i.category === '5year_major_disease');
     if (step1_5y?.applicable) {

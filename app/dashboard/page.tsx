@@ -1,17 +1,81 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileSearch, TrendingUp, Clock, ArrowRight, Plus, FileText, Sparkles, Crown, ShieldPlus } from 'lucide-react';
+import { FileSearch, TrendingUp, Clock, ArrowRight, Plus, FileText, Sparkles, Crown, ShieldPlus, Eye, Loader2 } from 'lucide-react';
 import EmptyState from '@/components/common/EmptyState';
 import { useSubscription } from '@/hooks/useSubscription';
+import { createClient } from '@/lib/supabase/client';
+
+interface RecentAnalysis {
+    id: string;
+    status: string;
+    created_at: string;
+    medical_history: {
+        overallSummary?: string;
+        items?: Array<{ category: string; applicable: boolean }>;
+    } | null;
+    product_eligibility: Record<string, unknown> | null;
+    claim_assessment: Record<string, unknown> | null;
+}
 
 export default function DashboardPage() {
     const { plan, usage, remainingAnalyses, loading } = useSubscription();
+    const [recentAnalyses, setRecentAnalyses] = useState<RecentAnalysis[]>([]);
+    const [recentLoading, setRecentLoading] = useState(true);
 
     const displayRemaining = remainingAnalyses === -1 ? '무제한' : `${remainingAnalyses}건`;
+
+    useEffect(() => {
+        const fetchRecent = async () => {
+            try {
+                const supabase = createClient();
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+
+                const { data } = await supabase
+                    .from('analyses')
+                    .select('id, status, created_at, medical_history, product_eligibility, claim_assessment')
+                    .eq('user_id', user.id)
+                    .order('created_at', { ascending: false })
+                    .limit(5);
+
+                if (data) {
+                    setRecentAnalyses(data as unknown as RecentAnalysis[]);
+                }
+            } catch {
+                // ignore
+            } finally {
+                setRecentLoading(false);
+            }
+        };
+        fetchRecent();
+    }, []);
+
+    // 완료된 분석 중 product_eligibility가 있는 건수
+    const productCount = recentAnalyses.filter(a => a.product_eligibility).length;
+    const claimsCount = recentAnalyses.filter(a => a.claim_assessment).length;
+
+    const formatDate = (dateStr: string) => {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('ko-KR', {
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    };
+
+    const getSteps = (a: RecentAnalysis) => {
+        const steps = [];
+        if (a.medical_history) steps.push({ label: 'S1', color: 'bg-blue-500' });
+        if (a.product_eligibility) steps.push({ label: 'S2', color: 'bg-green-500' });
+        if (a.claim_assessment) steps.push({ label: 'S3', color: 'bg-violet-500' });
+        return steps;
+    };
 
     return (
         <div className="space-y-8 animate-fade-in">
@@ -73,7 +137,7 @@ export default function DashboardPage() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-muted-foreground">가입가능 판단</p>
-                                <p className="text-2xl font-bold mt-1">0건</p>
+                                <p className="text-2xl font-bold mt-1">{recentLoading ? '...' : `${productCount}건`}</p>
                             </div>
                             <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
                                 <TrendingUp className="w-5 h-5 text-green-500" />
@@ -87,7 +151,7 @@ export default function DashboardPage() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-muted-foreground">청구 안내</p>
-                                <p className="text-2xl font-bold mt-1">0건</p>
+                                <p className="text-2xl font-bold mt-1">{recentLoading ? '...' : `${claimsCount}건`}</p>
                             </div>
                             <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center">
                                 <FileText className="w-5 h-5 text-violet-500" />
@@ -152,18 +216,58 @@ export default function DashboardPage() {
                     </Link>
                 </CardHeader>
                 <CardContent>
-                    <EmptyState
-                        title="아직 분석 이력이 없습니다"
-                        description="PDF를 업로드하고 첫 번째 보험 분석을 시작해보세요."
-                        action={
-                            <Link href="/dashboard/analyze">
-                                <Button variant="outline" size="sm">
-                                    <Plus className="w-4 h-4 mr-2" />
-                                    새 분석 시작
-                                </Button>
-                            </Link>
-                        }
-                    />
+                    {recentLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                        </div>
+                    ) : recentAnalyses.length === 0 ? (
+                        <EmptyState
+                            title="아직 분석 이력이 없습니다"
+                            description="PDF를 업로드하고 첫 번째 보험 분석을 시작해보세요."
+                            action={
+                                <Link href="/dashboard/analyze">
+                                    <Button variant="outline" size="sm">
+                                        <Plus className="w-4 h-4 mr-2" />
+                                        새 분석 시작
+                                    </Button>
+                                </Link>
+                            }
+                        />
+                    ) : (
+                        <div className="space-y-2">
+                            {recentAnalyses.map((analysis) => (
+                                <Link key={analysis.id} href={`/dashboard/analyze?analysisId=${analysis.id}`}>
+                                    <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                                <FileSearch className="w-4 h-4 text-primary" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-medium truncate max-w-[300px]">
+                                                    {analysis.medical_history?.overallSummary
+                                                        ? String(analysis.medical_history.overallSummary).substring(0, 60) + '...'
+                                                        : '분석 결과 확인하기'}
+                                                </p>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {formatDate(analysis.created_at)}
+                                                    </span>
+                                                    <div className="flex gap-0.5">
+                                                        {getSteps(analysis).map((step) => (
+                                                            <Badge key={step.label} className={`text-[8px] px-1 py-0 ${step.color} text-white`}>
+                                                                {step.label}
+                                                            </Badge>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <Eye className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>

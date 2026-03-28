@@ -49,6 +49,29 @@ export async function GET(request: NextRequest) {
             return NextResponse.redirect(new URL('/dashboard/subscribe?status=fail&error=plan_not_found', request.url));
         }
 
+        // 업그레이드 플랜 처리
+        let actualPlan = plan;
+        if (session.upgrade_plan_slug && session.coupon_code) {
+            const { data: coupon } = await serviceClient
+                .from('promo_codes')
+                .select('upgrade_to_plan, active')
+                .eq('code', session.coupon_code.toUpperCase().trim())
+                .eq('active', true)
+                .single();
+
+            if (coupon && coupon.upgrade_to_plan === session.upgrade_plan_slug) {
+                const { data: upgradePlan } = await serviceClient
+                    .from('subscription_plans')
+                    .select('*')
+                    .eq('slug', session.upgrade_plan_slug)
+                    .single();
+
+                if (upgradePlan) {
+                    actualPlan = upgradePlan;
+                }
+            }
+        }
+
         // Calculate period
         const now = new Date();
         const periodEnd = new Date(now);
@@ -65,12 +88,12 @@ export async function GET(request: NextRequest) {
             .eq('user_id', partnerUserId)
             .eq('status', 'active');
 
-        // Create new subscription
+        // Create new subscription (actualPlan = 업그레이드된 플랜 또는 원래 플랜)
         const { data: subscription } = await serviceClient
             .from('subscriptions')
             .insert({
                 user_id: partnerUserId,
-                plan_id: plan.id,
+                plan_id: actualPlan.id,
                 status: 'active',
                 billing_cycle: session.billing_cycle,
                 current_period_start: now.toISOString(),
@@ -95,7 +118,7 @@ export async function GET(request: NextRequest) {
             .eq('period_start', periodStart)
             .maybeSingle();
 
-        const newLimit = plan.max_analyses === -1 ? 999999 : plan.max_analyses;
+        const newLimit = actualPlan.max_analyses === -1 ? 999999 : actualPlan.max_analyses;
 
         if (existingUsage) {
             await serviceClient
@@ -151,9 +174,9 @@ export async function GET(request: NextRequest) {
             .delete()
             .eq('user_id', partnerUserId);
 
-        // 성공 시 구독 완료 페이지로 리다이렉트
+        // 성공 시 구독 완료 페이지로 리다이렉트 (실제 적용된 플랜 표시)
         return NextResponse.redirect(
-            new URL(`/dashboard/subscribe?status=success&plan=${session.plan_slug}`, request.url)
+            new URL(`/dashboard/subscribe?status=success&plan=${actualPlan.slug}`, request.url)
         );
 
     } catch (error) {

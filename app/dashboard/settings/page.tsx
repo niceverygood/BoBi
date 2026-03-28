@@ -212,45 +212,97 @@ export default function SettingsPage() {
 
             <Separator />
 
-            {/* Discount Code */}
-            <Card className="border-0 shadow-sm">
-                <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                        <Tag className="w-5 h-5 text-primary" />
-                        할인코드
-                    </CardTitle>
-                    <CardDescription>할인코드가 있으시면 입력해주세요.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                    <div className="flex gap-2">
-                        <Input
-                            placeholder="할인코드 입력"
-                            value={discountCode}
-                            onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
-                            onKeyDown={(e) => e.key === 'Enter' && handleApplyDiscount()}
-                            className="font-mono tracking-wider uppercase"
-                        />
-                        <Button
-                            onClick={handleApplyDiscount}
-                            disabled={discountLoading}
-                            className="bg-gradient-primary hover:opacity-90 shrink-0"
-                        >
-                            {discountLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : '적용'}
-                        </Button>
-                    </div>
-                    {discountMessage && (
-                        <div className={`p-3 rounded-lg flex items-center gap-2 text-sm ${discountMessage.type === 'success'
-                            ? 'bg-green-50 text-green-700 border border-green-200'
-                            : 'bg-red-50 text-red-700 border border-red-200'
-                            }`}>
-                            {discountMessage.type === 'success'
-                                ? <CheckCircle2 className="w-4 h-4 shrink-0" />
-                                : <AlertCircle className="w-4 h-4 shrink-0" />}
-                            {discountMessage.text}
+            {/* Upgrade Coupon — Basic 플랜 사용자에게 업그레이드 쿠폰 강조 */}
+            {currentSlug === 'basic' && (
+                <Card className="border-0 shadow-lg overflow-hidden">
+                    <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 p-5 text-white">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
+                                <Crown className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-lg">프로 플랜 업그레이드 쿠폰</h3>
+                                <p className="text-white/80 text-sm">쿠폰 코드가 있으시면 입력하여 프로 플랜으로 업그레이드하세요!</p>
+                            </div>
                         </div>
-                    )}
-                </CardContent>
-            </Card>
+                        <div className="flex items-center gap-2 mt-3 text-xs text-white/70">
+                            <Sparkles className="w-3 h-3" />
+                            <span>베이직 가격 그대로, 프로 플랜의 모든 기능을 이용할 수 있습니다</span>
+                        </div>
+                    </div>
+                    <CardContent className="space-y-3 pt-5">
+                        <div className="flex gap-2">
+                            <Input
+                                placeholder="업그레이드 쿠폰 코드 입력"
+                                value={discountCode}
+                                onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                                onKeyDown={(e) => e.key === 'Enter' && handleApplyDiscount()}
+                                className="font-mono tracking-wider uppercase border-violet-200 focus-visible:ring-violet-500"
+                            />
+                            <Button
+                                onClick={handleApplyDiscount}
+                                disabled={discountLoading}
+                                className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:opacity-90 shrink-0 text-white"
+                            >
+                                {discountLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : '🚀 업그레이드'}
+                            </Button>
+                        </div>
+                        {discountMessage && (
+                            <div className={`p-3 rounded-lg flex items-center gap-2 text-sm ${discountMessage.type === 'success'
+                                ? 'bg-green-50 text-green-700 border border-green-200 dark:bg-green-950/20 dark:text-green-400 dark:border-green-900'
+                                : 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900'
+                                }`}>
+                                {discountMessage.type === 'success'
+                                    ? <CheckCircle2 className="w-4 h-4 shrink-0" />
+                                    : <AlertCircle className="w-4 h-4 shrink-0" />}
+                                {discountMessage.text}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Discount Code — 일반 할인코드 (비구독자 또는 Basic 이외 사용자) */}
+            {currentSlug !== 'basic' && (
+                <Card className="border-0 shadow-sm">
+                    <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <Tag className="w-5 h-5 text-primary" />
+                            프로모션 코드
+                        </CardTitle>
+                        <CardDescription>프로모션 코드 또는 할인코드가 있으시면 입력해주세요.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        <div className="flex gap-2">
+                            <Input
+                                placeholder="코드 입력"
+                                value={discountCode}
+                                onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                                onKeyDown={(e) => e.key === 'Enter' && handleApplyDiscount()}
+                                className="font-mono tracking-wider uppercase"
+                            />
+                            <Button
+                                onClick={handleApplyDiscount}
+                                disabled={discountLoading}
+                                className="bg-gradient-primary hover:opacity-90 shrink-0"
+                            >
+                                {discountLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : '적용'}
+                            </Button>
+                        </div>
+                        {discountMessage && (
+                            <div className={`p-3 rounded-lg flex items-center gap-2 text-sm ${discountMessage.type === 'success'
+                                ? 'bg-green-50 text-green-700 border border-green-200'
+                                : 'bg-red-50 text-red-700 border border-red-200'
+                                }`}>
+                                {discountMessage.type === 'success'
+                                    ? <CheckCircle2 className="w-4 h-4 shrink-0" />
+                                    : <AlertCircle className="w-4 h-4 shrink-0" />}
+                                {discountMessage.text}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
 
             <Separator />
 

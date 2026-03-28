@@ -54,6 +54,8 @@ function SubscribeContent() {
         discountLabel: string;
         discountAmount: number;
         finalPrice: number;
+        upgradeToPlan?: string | null;
+        upgradePlanName?: string | null;
     } | null>(null);
 
     useEffect(() => {
@@ -129,6 +131,8 @@ function SubscribeContent() {
                 discountLabel: data.pricing.discountLabel,
                 discountAmount: data.pricing.discountAmount,
                 finalPrice: data.pricing.finalPrice,
+                upgradeToPlan: data.coupon.upgradeToPlan || null,
+                upgradePlanName: data.upgradePlan?.name || null,
             });
         } catch {
             setCouponError('쿠폰 검증 중 오류가 발생했습니다.');
@@ -206,6 +210,7 @@ function SubscribeContent() {
                 body: JSON.stringify({
                     planSlug: selectedPlan,
                     billingCycle,
+                    ...(appliedCoupon?.upgradeToPlan ? { upgradePlanSlug: appliedCoupon.upgradeToPlan, couponCode: appliedCoupon.code } : {}),
                 }),
             });
 
@@ -272,6 +277,7 @@ function SubscribeContent() {
                     planSlug: selectedPlan,
                     billingCycle,
                     paymentMethod: 'card',
+                    ...(appliedCoupon?.upgradeToPlan ? { upgradePlanSlug: appliedCoupon.upgradeToPlan, couponCode: appliedCoupon.code } : {}),
                 }),
             });
 
@@ -562,22 +568,39 @@ function SubscribeContent() {
                                     </p>
 
                                     {appliedCoupon ? (
-                                        <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <code className="text-sm font-mono font-bold text-green-700 dark:text-green-400">{appliedCoupon.code}</code>
-                                                    <p className="text-xs text-green-600 dark:text-green-500 mt-0.5">
-                                                        {appliedCoupon.discountLabel}
-                                                        {appliedCoupon.description && ` — ${appliedCoupon.description}`}
-                                                    </p>
+                                        <div className="space-y-2">
+                                            <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900">
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <code className="text-sm font-mono font-bold text-green-700 dark:text-green-400">{appliedCoupon.code}</code>
+                                                        <p className="text-xs text-green-600 dark:text-green-500 mt-0.5">
+                                                            {appliedCoupon.discountLabel}
+                                                            {appliedCoupon.description && ` — ${appliedCoupon.description}`}
+                                                        </p>
+                                                    </div>
+                                                    <button
+                                                        onClick={removeCoupon}
+                                                        className="p-1 rounded-md hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                                                    >
+                                                        <X className="w-4 h-4 text-green-600" />
+                                                    </button>
                                                 </div>
-                                                <button
-                                                    onClick={removeCoupon}
-                                                    className="p-1 rounded-md hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
-                                                >
-                                                    <X className="w-4 h-4 text-green-600" />
-                                                </button>
                                             </div>
+                                            {appliedCoupon.upgradeToPlan && appliedCoupon.upgradePlanName && (
+                                                <div className="p-3 rounded-lg bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-900">
+                                                    <div className="flex items-center gap-2">
+                                                        <Crown className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                                                        <div>
+                                                            <p className="text-sm font-semibold text-violet-700 dark:text-violet-400">
+                                                                🚀 {appliedCoupon.upgradePlanName} 플랜으로 업그레이드!
+                                                            </p>
+                                                            <p className="text-xs text-violet-600 dark:text-violet-500">
+                                                                {planInfo.name} 가격으로 {appliedCoupon.upgradePlanName} 플랜의 모든 기능을 이용할 수 있습니다.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     ) : (
                                         <>

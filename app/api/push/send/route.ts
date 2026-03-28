@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No tokens found' }, { status: 404 });
     }
 
-    const messaging = getFirebaseMessaging();
+    const messaging = await getFirebaseMessaging();
 
     // 멀티캐스트 발송
     const tokenList = tokens.map((t) => t.token);
@@ -57,7 +57,8 @@ export async function POST(req: NextRequest) {
 
     // 실패한 토큰 정리 (만료/무효)
     const failedTokens: string[] = [];
-    response.responses.forEach((res, i) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    response.responses.forEach((res: any, i: number) => {
       if (!res.success && res.error?.code === 'messaging/registration-token-not-registered') {
         failedTokens.push(tokenList[i]);
       }

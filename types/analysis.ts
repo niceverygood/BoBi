@@ -18,6 +18,7 @@ export interface AnalysisItem {
     | '3months_medication'
     | '1year_hospitalization'
     | '2year_hospitalization'
+    | '5year_hospitalization'
     | '5year_major_disease'
     | 'ongoing_medication';
     question: string;

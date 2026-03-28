@@ -10,7 +10,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
     }
 
-    const { billingKey, planSlug, billingCycle, paymentMethod } = await request.json();
+    const { billingKey, planSlug, billingCycle, paymentMethod, upgradePlanSlug, couponCode } = await request.json();
 
     if (!billingKey || !planSlug || !billingCycle) {
         return NextResponse.json({ error: '필수 파라미터가 누락되었습니다.' }, { status: 400 });
@@ -56,6 +56,30 @@ export async function POST(request: Request) {
         );
     }
 
+    // 업그레이드 플랜 처리: 쿠폰코드로 검증 후 실제 구독 플랜 결정
+    let actualPlan = plan;
+    if (upgradePlanSlug && couponCode) {
+        // 쿠폰 재검증 (보안)
+        const { data: coupon } = await serviceClient
+            .from('promo_codes')
+            .select('upgrade_to_plan, active')
+            .eq('code', couponCode.toUpperCase().trim())
+            .eq('active', true)
+            .single();
+
+        if (coupon && coupon.upgrade_to_plan === upgradePlanSlug) {
+            const { data: upgradePlan } = await serviceClient
+                .from('subscription_plans')
+                .select('*')
+                .eq('slug', upgradePlanSlug)
+                .single();
+
+            if (upgradePlan) {
+                actualPlan = upgradePlan;
+            }
+        }
+    }
+
     // Calculate period
     const now = new Date();
     const periodEnd = new Date(now);
@@ -72,12 +96,12 @@ export async function POST(request: Request) {
         .eq('user_id', user.id)
         .eq('status', 'active');
 
-    // Create new subscription
+    // Create new subscription (actualPlan = 업그레이드된 플랜 또는 원래 플랜)
     const { data: subscription, error: subError } = await serviceClient
         .from('subscriptions')
         .insert({
             user_id: user.id,
-            plan_id: plan.id,
+            plan_id: actualPlan.id,
             status: 'active',
             billing_cycle: billingCycle,
             current_period_start: now.toISOString(),
@@ -106,7 +130,7 @@ export async function POST(request: Request) {
         .eq('period_start', periodStart)
         .maybeSingle();
 
-    const newLimit = plan.max_analyses === -1 ? 999999 : plan.max_analyses;
+    const newLimit = actualPlan.max_analyses === -1 ? 999999 : actualPlan.max_analyses;
 
     if (existingUsage) {
         await serviceClient
@@ -159,8 +183,9 @@ export async function POST(request: Request) {
     return NextResponse.json({
         success: true,
         subscription,
-        plan: plan.slug,
+        plan: actualPlan.slug,
         amount,
         billingCycle,
+        upgraded: actualPlan.slug !== planSlug ? actualPlan.slug : undefined,
     });
 }

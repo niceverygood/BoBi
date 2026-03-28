@@ -4,13 +4,15 @@ import { createClient } from '@/lib/supabase/server';
 import { callOpenAI } from '@/lib/ai/openai';
 import { STEP1_ANALYSIS_PROMPT } from '@/lib/ai/prompts';
 import { parseAIResponse, validateAnalysisResult } from '@/lib/ai/parser';
+import { validateAndCorrectDates, formatCorrections } from '@/lib/ai/date-validator';
 import type { AnalysisResult } from '@/types/analysis';
 
-export const maxDuration = 120; // Claude Opus needs more time
-// Truncate text to stay within OpenAI token limits
-// ~4 chars per token, keep under 24K chars total (~6K tokens)
-const MAX_CHARS_PER_FILE = 8000;
-const MAX_TOTAL_CHARS = 24000;
+export const maxDuration = 120; // Claude needs more time for complex analyses
+// Truncate text to stay within Claude's context window
+// Claude Sonnet 4.5 supports 200K tokens (~800K chars), but we keep it reasonable
+// ~4 chars per token, keep under 60K chars total (~15K tokens input)
+const MAX_CHARS_PER_FILE = 20000;
+const MAX_TOTAL_CHARS = 60000;
 
 function truncateText(text: string, maxChars: number): string {
     if (text.length <= maxChars) return text;
@@ -105,14 +107,33 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: '분석 기록 생성에 실패했습니다.' }, { status: 500 });
         }
 
-        // Call Claude AI
-        const prompt = STEP1_ANALYSIS_PROMPT.replace('{PDF_TEXT}', combinedText);
-        const aiResponse = await callOpenAI({ prompt, maxTokens: 16384 });
-        const result = parseAIResponse<AnalysisResult>(aiResponse);
+        // Call Claude AI — inject today's date so the AI calculates time periods correctly
+        const todayDate = new Date().toISOString().split('T')[0]; // e.g. "2026-03-28"
+        const prompt = STEP1_ANALYSIS_PROMPT
+            .replace(/{TODAY_DATE}/g, todayDate)
+            .replace('{PDF_TEXT}', combinedText);
+        const aiResponse = await callOpenAI({ prompt, maxTokens: 32000 });
+
+        let result: AnalysisResult;
+        try {
+            result = parseAIResponse<AnalysisResult>(aiResponse);
+        } catch (parseError) {
+            console.error('AI response parse failed:', (parseError as Error).message);
+            console.error('Raw AI response (first 500 chars):', aiResponse.substring(0, 500));
+            throw new Error('AI 응답을 파싱할 수 없습니다. 다시 시도해주세요.');
+        }
 
         if (!validateAnalysisResult(result as unknown as Record<string, unknown>)) {
-            throw new Error('AI 분석 결과 형식이 올바르지 않습니다.');
+            console.error('Validation failed for result:', JSON.stringify(result).substring(0, 500));
+            throw new Error('AI 분석 결과 형식이 올바르지 않습니다. 다시 시도해주세요.');
         }
+
+        // ⚠️ 핵심: 서버 사이드 날짜 검증 — AI의 기간 판정을 오늘 날짜 기준으로 재검증
+        const dateValidation = validateAndCorrectDates(result, todayDate);
+        if (dateValidation.corrected) {
+            console.log('[DateValidator]', formatCorrections(dateValidation.corrections));
+        }
+        result = dateValidation.result;
 
         // Update analysis with results
         const { error: updateError } = await supabase

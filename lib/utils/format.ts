@@ -31,6 +31,7 @@ export function getCategoryLabel(category: string): string {
         '3months_medication': '최근 3개월 투약',
         '1year_hospitalization': '최근 1년 입원/수술',
         '2year_hospitalization': '최근 2년 입원/수술',
+        '5year_hospitalization': '최근 5년 입원/수술',
         '5year_major_disease': '최근 5년 주요질병',
         'ongoing_medication': '상시 복용약',
     };
