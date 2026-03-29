@@ -447,6 +447,12 @@ function SubAdminManager() {
     const [adding, setAdding] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+    // User search
+    const [allUsers, setAllUsers] = useState<AdminUser[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showDropdown, setShowDropdown] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+
     // Form
     const [newEmail, setNewEmail] = useState('');
     const [newKakaoId, setNewKakaoId] = useState('');
@@ -466,9 +472,55 @@ function SubAdminManager() {
         }
     }, []);
 
+    // 가입자 목록 불러오기
+    const fetchUsers = useCallback(async () => {
+        try {
+            const res = await fetch('/api/admin/users');
+            if (!res.ok) throw new Error('Failed');
+            const data = await res.json();
+            setAllUsers(data.users || []);
+        } catch {
+            console.error('Failed to fetch users');
+        }
+    }, []);
+
     useEffect(() => {
         fetchSubAdmins();
-    }, [fetchSubAdmins]);
+        fetchUsers();
+    }, [fetchSubAdmins, fetchUsers]);
+
+    // 검색 필터링
+    const filteredUsers = useMemo(() => {
+        if (!searchQuery.trim()) return [];
+        const q = searchQuery.toLowerCase();
+        const existingEmails = new Set(subAdmins.map(s => s.email.toLowerCase()));
+        return allUsers
+            .filter(u =>
+                (u.email.toLowerCase().includes(q) ||
+                 u.name.toLowerCase().includes(q) ||
+                 u.company.toLowerCase().includes(q)) &&
+                !existingEmails.has(u.email.toLowerCase())
+            )
+            .slice(0, 8);
+    }, [searchQuery, allUsers, subAdmins]);
+
+    const handleSelectUser = (user: AdminUser) => {
+        setSelectedUser(user);
+        setNewEmail(user.email);
+        setNewName(user.name || '');
+        setSearchQuery(user.email);
+        setShowDropdown(false);
+    };
+
+    const handleSearchChange = (value: string) => {
+        setSearchQuery(value);
+        setShowDropdown(value.length > 0);
+        // 직접 입력도 허용
+        if (!selectedUser || selectedUser.email !== value) {
+            setSelectedUser(null);
+            setNewEmail(value);
+        }
+    };
 
     const handleAdd = async () => {
         if (!newEmail.trim()) {
@@ -495,6 +547,8 @@ function SubAdminManager() {
             setNewKakaoId('');
             setNewName('');
             setNewNote('');
+            setSearchQuery('');
+            setSelectedUser(null);
             setShowAdd(false);
             fetchSubAdmins();
         } catch (err) {
@@ -559,32 +613,95 @@ function SubAdminManager() {
             {/* Add form */}
             {showAdd && (
                 <div className="mx-5 mb-4 p-4 border rounded-xl bg-muted/30 space-y-3">
+                    {/* User search */}
+                    <div className="relative">
+                        <label className="text-xs font-medium mb-1 block">🔍 가입자 검색 (이메일, 이름, 소속)</label>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <input
+                                className="w-full pl-9 pr-3 py-2.5 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                placeholder="이메일 또는 이름으로 검색..."
+                                value={searchQuery}
+                                onChange={e => handleSearchChange(e.target.value)}
+                                onFocus={() => searchQuery.length > 0 && setShowDropdown(true)}
+                                onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                            />
+                        </div>
+
+                        {/* Search dropdown */}
+                        {showDropdown && filteredUsers.length > 0 && (
+                            <div className="absolute z-50 w-full mt-1 bg-background border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                {filteredUsers.map(u => (
+                                    <button
+                                        key={u.id}
+                                        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/50 transition-colors text-left border-b last:border-b-0"
+                                        onMouseDown={() => handleSelectUser(u)}
+                                    >
+                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                            <span className="text-xs font-semibold text-primary">
+                                                {(u.name || u.email).charAt(0).toUpperCase()}
+                                            </span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium truncate">
+                                                {u.name || '(이름 없음)'}
+                                                {u.company && <span className="text-xs text-muted-foreground ml-1">({u.company})</span>}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                                        </div>
+                                        <Badge variant="outline" className={`text-[10px] shrink-0 ${PLAN_BADGE_COLORS[u.plan_slug] || PLAN_BADGE_COLORS.free}`}>
+                                            {u.plan_name}
+                                        </Badge>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        {showDropdown && searchQuery.length > 0 && filteredUsers.length === 0 && (
+                            <div className="absolute z-50 w-full mt-1 bg-background border rounded-lg shadow-lg p-4 text-center text-sm text-muted-foreground">
+                                검색 결과가 없습니다
+                            </div>
+                        )}
+                    </div>
+
+                    {/* 선택된 사용자 표시 */}
+                    {selectedUser && (
+                        <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 border border-blue-200">
+                            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                <span className="text-xs font-semibold text-blue-600">
+                                    {(selectedUser.name || selectedUser.email).charAt(0).toUpperCase()}
+                                </span>
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-sm font-medium">{selectedUser.name || selectedUser.email}</p>
+                                <p className="text-xs text-muted-foreground">{selectedUser.email}</p>
+                            </div>
+                            <Badge variant="outline" className="text-[10px]">
+                                {selectedUser.plan_name}
+                            </Badge>
+                            <button onClick={() => { setSelectedUser(null); setSearchQuery(''); setNewEmail(''); setNewName(''); }}
+                                className="text-xs text-muted-foreground hover:text-foreground">✕</button>
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-2 gap-3">
-                        <div className="col-span-2 sm:col-span-1">
-                            <label className="text-xs font-medium mb-1 block">이메일 (서비스 가입 이메일) *</label>
+                        {!selectedUser && (
+                        <div className="col-span-2">
+                            <label className="text-xs font-medium mb-1 block">이메일 (직접 입력) *</label>
                             <input
                                 className="w-full px-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                placeholder="manager@example.com"
+                                placeholder="위에서 검색하거나 직접 입력"
                                 value={newEmail}
                                 onChange={e => setNewEmail(e.target.value)}
                             />
                         </div>
-                        <div className="col-span-2 sm:col-span-1">
+                        )}
+                        <div>
                             <label className="text-xs font-medium mb-1 block">카카오톡 ID (선택)</label>
                             <input
                                 className="w-full px-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
                                 placeholder="kakao_id"
                                 value={newKakaoId}
                                 onChange={e => setNewKakaoId(e.target.value)}
-                            />
-                        </div>
-                        <div>
-                            <label className="text-xs font-medium mb-1 block">이름 (선택)</label>
-                            <input
-                                className="w-full px-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                placeholder="홍길동"
-                                value={newName}
-                                onChange={e => setNewName(e.target.value)}
                             />
                         </div>
                         <div>
@@ -597,7 +714,7 @@ function SubAdminManager() {
                             />
                         </div>
                     </div>
-                    <Button onClick={handleAdd} disabled={adding} className="w-full">
+                    <Button onClick={handleAdd} disabled={adding || !newEmail.trim()} className="w-full">
                         {adding ? '등록 중...' : '👤 중간관리자 등록'}
                     </Button>
                 </div>
