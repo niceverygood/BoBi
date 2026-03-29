@@ -17,7 +17,7 @@ export type IndividualPlanSlug = 'free' | 'basic' | 'pro';
 export type TeamPlanSlug = 'team_basic' | 'team_pro';
 
 // 관리자 이메일 목록
-export const ADMIN_EMAILS = ['niceverygood1@gmail.com'] as const;
+export const ADMIN_EMAILS = ['niceverygood@naver.com'] as const;
 
 export interface PlanInfo {
     name: string;

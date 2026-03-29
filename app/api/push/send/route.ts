@@ -3,10 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { getFirebaseMessaging } from '@/lib/firebase-admin';
 
-const ADMIN_EMAILS = [
-  'dev@bottlecorp.kr',
-  'admin@bobi.kr',
-];
+import { ADMIN_EMAILS } from '@/lib/utils/constants';
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,7 +18,7 @@ export async function POST(req: NextRequest) {
     } else if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.replace('Bearer ', '');
       const { data: { user } } = await supabase.auth.getUser(token);
-      if (!user || !ADMIN_EMAILS.includes(user.email || '')) {
+      if (!user || !(ADMIN_EMAILS as readonly string[]).includes(user.email || '')) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
     } else {
