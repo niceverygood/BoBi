@@ -44,7 +44,7 @@ const PLAN_BADGE_COLORS: Record<string, string> = {
 type SortKey = 'created_at' | 'name' | 'email' | 'plan_slug';
 
 export default function AdminPage() {
-    const { isAdmin, loading: adminLoading } = useAdmin();
+    const { isAdmin, isSubAdmin, hasAdminAccess, loading: adminLoading } = useAdmin();
     const router = useRouter();
 
     // Stats
@@ -90,7 +90,7 @@ export default function AdminPage() {
     }, []);
 
     useEffect(() => {
-        if (!adminLoading && !isAdmin) {
+        if (!adminLoading && !hasAdminAccess) {
             router.replace('/dashboard');
             return;
         }
@@ -98,7 +98,7 @@ export default function AdminPage() {
             fetchStats();
             fetchUsers();
         }
-    }, [isAdmin, adminLoading, router, fetchStats, fetchUsers]);
+    }, [isAdmin, hasAdminAccess, adminLoading, router, fetchStats, fetchUsers]);
 
     const handlePlanChange = async (targetUserId: string, targetEmail: string, newPlan: string) => {
         setChangingPlan(targetUserId);
@@ -169,7 +169,7 @@ export default function AdminPage() {
         });
     }, [users, searchQuery, sortKey, sortAsc]);
 
-    if (adminLoading || (!isAdmin && !error)) {
+    if (adminLoading || (!hasAdminAccess && !error)) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
@@ -185,19 +185,23 @@ export default function AdminPage() {
                     <MobileNav />
                     <span className="font-semibold">보비 BoBi</span>
                 </div>
-                <Header title="관리자 대시보드" />
+                <Header title={isAdmin ? '관리자 대시보드' : '코드 관리'} />
 
                 <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
                     {/* Admin Badge */}
                     <div className="flex items-center gap-3 mb-6">
-                        <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isAdmin ? 'bg-gradient-to-br from-red-500 to-orange-500' : 'bg-gradient-to-br from-blue-500 to-cyan-500'}`}>
                             <Shield className="w-5 h-5 text-white" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold">총괄 관리자</h2>
-                            <p className="text-sm text-muted-foreground">시스템 전체 현황을 관리합니다</p>
+                            <h2 className="text-xl font-bold">{isAdmin ? '총괄 관리자' : '코드 관리자'}</h2>
+                            <p className="text-sm text-muted-foreground">
+                                {isAdmin ? '시스템 전체 현황을 관리합니다' : '프로모션 코드를 발행하고 관리합니다'}
+                            </p>
                         </div>
-                        <Badge variant="destructive" className="ml-auto">ADMIN</Badge>
+                        <Badge variant={isAdmin ? 'destructive' : 'default'} className="ml-auto">
+                            {isAdmin ? 'ADMIN' : 'MANAGER'}
+                        </Badge>
                     </div>
 
                     {error && (
@@ -221,7 +225,8 @@ export default function AdminPage() {
                         </div>
                     )}
 
-                    {/* Stats Cards */}
+                    {/* Stats Cards - 총괄관리자만 */}
+                    {isAdmin && (
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                         {[
                             { label: '전체 사용자', value: stats?.totalUsers ?? 0, icon: Users, color: 'bg-blue-100 text-blue-600' },
@@ -249,8 +254,10 @@ export default function AdminPage() {
                             );
                         })}
                     </div>
+                    )}
 
-                    {/* User Management */}
+                    {/* User Management - 총괄관리자만 */}
+                    {isAdmin && (
                     <Card className="border-0 shadow-md mb-8">
                         <CardHeader className="pb-3">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -373,11 +380,16 @@ export default function AdminPage() {
                             )}
                         </CardContent>
                     </Card>
+                    )}
 
-                    {/* Promo Code Management */}
+                    {/* Sub Admin Management - 총괄관리자만 */}
+                    {isAdmin && <SubAdminManager />}
+
+                    {/* Promo Code Management - 총괄 + 중간관리자 */}
                     <PromoCodeManager />
 
-                    {/* Quick Actions */}
+                    {/* Quick Actions - 총괄관리자만 */}
+                    {isAdmin && (
                     <div>
                         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
                             빠른 작업
@@ -409,9 +421,246 @@ export default function AdminPage() {
                             </Button>
                         </div>
                     </div>
+                    )}
                 </main>
             </div>
         </div>
+    );
+}
+
+// ─── 중간관리자 관리 컴포넌트 (총괄관리자 전용) ──────────────────────
+
+interface SubAdmin {
+    id: string;
+    email: string;
+    kakao_id: string | null;
+    name: string | null;
+    note: string;
+    active: boolean;
+    created_at: string;
+}
+
+function SubAdminManager() {
+    const [subAdmins, setSubAdmins] = useState<SubAdmin[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [showAdd, setShowAdd] = useState(false);
+    const [adding, setAdding] = useState(false);
+    const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    // Form
+    const [newEmail, setNewEmail] = useState('');
+    const [newKakaoId, setNewKakaoId] = useState('');
+    const [newName, setNewName] = useState('');
+    const [newNote, setNewNote] = useState('');
+
+    const fetchSubAdmins = useCallback(async () => {
+        try {
+            const res = await fetch('/api/admin/sub-admins');
+            if (!res.ok) throw new Error('Failed');
+            const data = await res.json();
+            setSubAdmins(data.subAdmins || []);
+        } catch {
+            console.error('Failed to fetch sub-admins');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchSubAdmins();
+    }, [fetchSubAdmins]);
+
+    const handleAdd = async () => {
+        if (!newEmail.trim()) {
+            setMessage({ type: 'error', text: '이메일을 입력해주세요.' });
+            return;
+        }
+        setAdding(true);
+        setMessage(null);
+        try {
+            const res = await fetch('/api/admin/sub-admins', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: newEmail,
+                    kakao_id: newKakaoId || null,
+                    name: newName || null,
+                    note: newNote,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            setMessage({ type: 'success', text: `"${newEmail}" 중간관리자로 등록되었습니다.` });
+            setNewEmail('');
+            setNewKakaoId('');
+            setNewName('');
+            setNewNote('');
+            setShowAdd(false);
+            fetchSubAdmins();
+        } catch (err) {
+            setMessage({ type: 'error', text: (err as Error).message });
+        } finally {
+            setAdding(false);
+        }
+    };
+
+    const toggleActive = async (id: string, currentActive: boolean) => {
+        try {
+            const res = await fetch('/api/admin/sub-admins', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, active: !currentActive }),
+            });
+            if (!res.ok) throw new Error('Failed');
+            setSubAdmins(prev => prev.map(s => s.id === id ? { ...s, active: !currentActive } : s));
+        } catch {
+            setMessage({ type: 'error', text: '상태 변경 실패' });
+        }
+    };
+
+    const handleDelete = async (id: string, email: string) => {
+        if (!confirm(`"${email}" 중간관리자를 삭제하시겠습니까?`)) return;
+        try {
+            const res = await fetch(`/api/admin/sub-admins?id=${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed');
+            setSubAdmins(prev => prev.filter(s => s.id !== id));
+            setMessage({ type: 'success', text: `"${email}" 삭제 완료` });
+        } catch {
+            setMessage({ type: 'error', text: '삭제 실패' });
+        }
+    };
+
+    return (
+        <Card className="border-0 shadow-md mb-8">
+            <CardHeader className="pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                        <Users className="w-4 h-4" />
+                        중간관리자 관리
+                        <Badge variant="secondary" className="ml-1 text-xs">{subAdmins.length}명</Badge>
+                    </CardTitle>
+                    <Button size="sm" onClick={() => setShowAdd(!showAdd)}>
+                        {showAdd ? '취소' : '+ 관리자 추가'}
+                    </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                    중간관리자는 프로모션 코드 발행/관리만 할 수 있습니다. /admin 경로로 접근합니다.
+                </p>
+            </CardHeader>
+
+            {message && (
+                <div className={`mx-5 mb-3 p-3 rounded-lg flex items-center gap-2 text-sm ${message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                    {message.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                    {message.text}
+                    <button onClick={() => setMessage(null)} className="ml-auto text-xs opacity-60 hover:opacity-100">✕</button>
+                </div>
+            )}
+
+            {/* Add form */}
+            {showAdd && (
+                <div className="mx-5 mb-4 p-4 border rounded-xl bg-muted/30 space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="col-span-2 sm:col-span-1">
+                            <label className="text-xs font-medium mb-1 block">이메일 (서비스 가입 이메일) *</label>
+                            <input
+                                className="w-full px-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                placeholder="manager@example.com"
+                                value={newEmail}
+                                onChange={e => setNewEmail(e.target.value)}
+                            />
+                        </div>
+                        <div className="col-span-2 sm:col-span-1">
+                            <label className="text-xs font-medium mb-1 block">카카오톡 ID (선택)</label>
+                            <input
+                                className="w-full px-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                placeholder="kakao_id"
+                                value={newKakaoId}
+                                onChange={e => setNewKakaoId(e.target.value)}
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium mb-1 block">이름 (선택)</label>
+                            <input
+                                className="w-full px-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                placeholder="홍길동"
+                                value={newName}
+                                onChange={e => setNewName(e.target.value)}
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium mb-1 block">메모 (선택)</label>
+                            <input
+                                className="w-full px-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                placeholder="원금융서비스 팀장"
+                                value={newNote}
+                                onChange={e => setNewNote(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <Button onClick={handleAdd} disabled={adding} className="w-full">
+                        {adding ? '등록 중...' : '👤 중간관리자 등록'}
+                    </Button>
+                </div>
+            )}
+
+            <Separator />
+
+            {/* List */}
+            <CardContent className="p-0">
+                {loading ? (
+                    <div className="p-8 text-center text-sm text-muted-foreground">
+                        <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2" />
+                        로딩 중...
+                    </div>
+                ) : subAdmins.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-muted-foreground">
+                        등록된 중간관리자가 없습니다.
+                    </div>
+                ) : (
+                    <div className="divide-y">
+                        {subAdmins.map(s => (
+                            <div key={s.id} className="flex items-center gap-3 px-5 py-3 hover:bg-muted/30 transition-colors">
+                                <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                                    <span className="text-xs font-semibold text-blue-600">
+                                        {(s.name || s.email).charAt(0).toUpperCase()}
+                                    </span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-sm font-medium truncate">{s.name || s.email}</p>
+                                        {s.kakao_id && (
+                                            <span className="text-[10px] text-muted-foreground bg-yellow-100 text-yellow-700 px-1.5 rounded">
+                                                카톡: {s.kakao_id}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground truncate">
+                                        {s.email}{s.note ? ` · ${s.note}` : ''}
+                                    </p>
+                                </div>
+                                <Badge variant={s.active ? 'default' : 'secondary'} className="text-[10px] shrink-0">
+                                    {s.active ? '활성' : '비활성'}
+                                </Badge>
+                                <div className="flex items-center gap-1 shrink-0">
+                                    <Button
+                                        variant="ghost" size="sm" className="text-xs h-7 px-2"
+                                        onClick={() => toggleActive(s.id, s.active)}
+                                    >
+                                        {s.active ? '비활성화' : '활성화'}
+                                    </Button>
+                                    <Button
+                                        variant="ghost" size="sm" className="text-xs h-7 px-2 text-destructive hover:text-destructive"
+                                        onClick={() => handleDelete(s.id, s.email)}
+                                    >
+                                        삭제
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
     );
 }
 
