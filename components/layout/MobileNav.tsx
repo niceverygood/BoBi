@@ -23,9 +23,9 @@ const navItems = [
 export default function MobileNav() {
     const pathname = usePathname();
     const [open, setOpen] = useState(false);
-    const { isAdmin } = useAdmin();
+    const { hasAdminAccess } = useAdmin();
 
-    const allNavItems = isAdmin
+    const allNavItems = hasAdminAccess
         ? [...navItems, { title: '관리자', href: '/admin', icon: ShieldCheck }]
         : navItems;
 

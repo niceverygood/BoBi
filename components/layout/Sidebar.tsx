@@ -27,9 +27,9 @@ interface SidebarProps {
 export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
     const pathname = usePathname();
     const { plan, remainingAnalyses, loading } = useSubscription();
-    const { isAdmin } = useAdmin();
+    const { hasAdminAccess } = useAdmin();
 
-    const allNavItems = isAdmin
+    const allNavItems = hasAdminAccess
         ? [...navItems, { title: '관리자', href: '/admin', icon: ShieldCheck }]
         : navItems;
 
