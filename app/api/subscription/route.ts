@@ -10,16 +10,20 @@ export async function GET() {
     }
 
     // Fetch active subscription with plan details
-    const { data: subscription, error: subError } = await supabase
+    // 같은 user_id로 active 구독이 여러 개 있을 수 있으므로, 최신 1건만 가져옴
+    const { data: subscriptions, error: subError } = await supabase
         .from('subscriptions')
         .select('*, plan:subscription_plans(*)')
         .eq('user_id', user.id)
         .eq('status', 'active')
-        .maybeSingle();
+        .order('updated_at', { ascending: false })
+        .limit(1);
 
-    if (subError && subError.code !== 'PGRST116') {
+    if (subError) {
         return NextResponse.json({ error: subError.message }, { status: 500 });
     }
+
+    const subscription = subscriptions?.[0] || null;
 
     // Fetch current month usage (use local date to avoid timezone issues)
     const now = new Date();

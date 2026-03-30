@@ -149,13 +149,13 @@ async function applyPromoCode(supabase: Awaited<ReturnType<typeof createClient>>
         promoExpiresAt = periodEnd;
     }
 
-    // 구독 업데이트/생성
-    const { data: existingSub } = await supabase
+    // 구독 업데이트/생성 (중복 active 구독 정리)
+    const { data: existingSubs } = await supabase
         .from('subscriptions')
         .select('id')
         .eq('user_id', user.id)
         .eq('status', 'active')
-        .maybeSingle();
+        .order('updated_at', { ascending: false });
 
     const subData = {
         plan_id: plan.id,
@@ -166,8 +166,16 @@ async function applyPromoCode(supabase: Awaited<ReturnType<typeof createClient>>
         updated_at: new Date().toISOString(),
     };
 
-    if (existingSub) {
-        await supabase.from('subscriptions').update(subData).eq('id', existingSub.id);
+    if (existingSubs && existingSubs.length > 0) {
+        // 최신 구독만 업데이트
+        await supabase.from('subscriptions').update(subData).eq('id', existingSubs[0].id);
+        // 나머지 중복 구독은 cancelled 처리
+        if (existingSubs.length > 1) {
+            const duplicateIds = existingSubs.slice(1).map(s => s.id);
+            await supabase.from('subscriptions')
+                .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+                .in('id', duplicateIds);
+        }
     } else {
         await supabase.from('subscriptions').insert({
             user_id: user.id,

@@ -100,38 +100,24 @@ export async function POST(request: Request) {
         const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
         const periodEnd = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
 
-        // Check if subscription exists
-        const { data: existingSub } = await supabase
+        // Cancel all existing active subscriptions for this user
+        await supabase
             .from('subscriptions')
-            .select('id')
+            .update({ status: 'cancelled', updated_at: new Date().toISOString() })
             .eq('user_id', targetUserId)
-            .eq('status', 'active')
-            .maybeSingle();
+            .eq('status', 'active');
 
-        if (existingSub) {
-            // Update existing subscription
-            await supabase
-                .from('subscriptions')
-                .update({
-                    plan_id: plan.id,
-                    current_period_start: periodStart,
-                    current_period_end: periodEnd,
-                    updated_at: new Date().toISOString(),
-                })
-                .eq('id', existingSub.id);
-        } else {
-            // Create new subscription
-            await supabase
-                .from('subscriptions')
-                .insert({
-                    user_id: targetUserId,
-                    plan_id: plan.id,
-                    status: 'active',
-                    billing_cycle: 'monthly',
-                    current_period_start: periodStart,
-                    current_period_end: periodEnd,
-                });
-        }
+        // Create new subscription
+        await supabase
+            .from('subscriptions')
+            .insert({
+                user_id: targetUserId,
+                plan_id: plan.id,
+                status: 'active',
+                billing_cycle: 'monthly',
+                current_period_start: periodStart,
+                current_period_end: periodEnd,
+            });
 
         // Update usage_tracking limits for current period
         const analysesLimit = plan.max_analyses === -1 ? 999999 : plan.max_analyses;
