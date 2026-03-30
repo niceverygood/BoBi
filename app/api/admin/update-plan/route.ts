@@ -11,8 +11,22 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
     }
 
-    // Admin only
-    if (!user.email || !(ADMIN_EMAILS as readonly string[]).includes(user.email)) {
+    // Admin or Sub-Admin check
+    let hasAccess = false;
+    if (user.email && (ADMIN_EMAILS as readonly string[]).includes(user.email)) {
+        hasAccess = true;
+    } else {
+        // Check sub-admin
+        const { data: subAdmin } = await supabase
+            .from('sub_admins')
+            .select('id')
+            .eq('email', user.email)
+            .eq('active', true)
+            .maybeSingle();
+        if (subAdmin) hasAccess = true;
+    }
+
+    if (!hasAccess) {
         return NextResponse.json({ error: '관리자 권한이 필요합니다.' }, { status: 403 });
     }
 
@@ -22,7 +36,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: '이메일과 플랜을 입력해주세요.' }, { status: 400 });
     }
 
-    const validPlans = ['free', 'basic', 'pro', 'team'];
+    const validPlans = ['free', 'basic', 'pro', 'team_basic', 'team_pro'];
     if (!validPlans.includes(planSlug)) {
         return NextResponse.json({ error: '유효하지 않은 플랜입니다.' }, { status: 400 });
     }

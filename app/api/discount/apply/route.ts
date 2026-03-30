@@ -96,6 +96,37 @@ async function applyPromoCode(supabase: Awaited<ReturnType<typeof createClient>>
         return NextResponse.json({ error: `플랜을 찾을 수 없습니다. (${resolvedPlanSlug})` }, { status: 500 });
     }
 
+    // 유료 코드 체크: price_override > 0 이거나 할인 유형이 percent/fixed이면 결제 필요
+    const discountType = promoCode.discount_type as string;
+    const needsPayment = priceOverride > 0 || discountType === 'percent' || discountType === 'fixed';
+
+    if (needsPayment) {
+        // 결제가 필요한 코드 → 직접 구독 생성하지 않고 구독 페이지로 유도
+        // 사용 이력은 결제 완료 시 기록됨
+        let discountLabel = '';
+        const discountValue = promoCode.discount_value as number || 0;
+        if (discountType === 'percent') {
+            discountLabel = `${discountValue}% 할인`;
+        } else if (discountType === 'fixed') {
+            discountLabel = `${discountValue.toLocaleString()}원 할인`;
+        } else {
+            discountLabel = `${priceOverride.toLocaleString()}원 특별가`;
+        }
+
+        return NextResponse.json({
+            success: true,
+            requiresPayment: true,
+            message: `할인 코드가 확인되었습니다! (${discountLabel}) 결제 페이지에서 이 코드를 입력하고 결제를 진행해주세요.`,
+            plan: { slug: resolvedPlanSlug, name: plan.display_name },
+            code: promoCode.code,
+            discountType,
+            discountValue,
+            priceOverride,
+            redirectTo: `/dashboard/subscribe?coupon=${promoCode.code}`,
+        });
+    }
+
+    // 무료 코드 (price_override === 0) → 직접 구독 생성
     // 기간 계산
     const now = new Date();
     const year = now.getFullYear();

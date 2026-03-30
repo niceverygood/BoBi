@@ -11,7 +11,21 @@ export async function GET() {
         return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
     }
 
-    if (!user.email || !(ADMIN_EMAILS as readonly string[]).includes(user.email)) {
+    // Admin or Sub-Admin check
+    let hasAccess = false;
+    if (user.email && (ADMIN_EMAILS as readonly string[]).includes(user.email)) {
+        hasAccess = true;
+    } else {
+        const { data: subAdmin } = await supabase
+            .from('sub_admins')
+            .select('id')
+            .eq('email', user.email)
+            .eq('active', true)
+            .maybeSingle();
+        if (subAdmin) hasAccess = true;
+    }
+
+    if (!hasAccess) {
         return NextResponse.json({ error: '관리자 권한이 필요합니다.' }, { status: 403 });
     }
 

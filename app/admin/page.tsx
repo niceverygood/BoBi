@@ -96,6 +96,8 @@ export default function AdminPage() {
         }
         if (isAdmin) {
             fetchStats();
+        }
+        if (hasAdminAccess) {
             fetchUsers();
         }
     }, [isAdmin, hasAdminAccess, adminLoading, router, fetchStats, fetchUsers]);
@@ -256,8 +258,8 @@ export default function AdminPage() {
                     </div>
                     )}
 
-                    {/* User Management - 총괄관리자만 */}
-                    {isAdmin && (
+                    {/* User Management - 관리자 + 중간관리자 */}
+                    {hasAdminAccess && (
                     <Card className="border-0 shadow-md mb-8">
                         <CardHeader className="pb-3">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

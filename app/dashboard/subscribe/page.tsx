@@ -44,7 +44,9 @@ function SubscribeContent() {
     const [iapReady, setIapReady] = useState(false);
 
     // Coupon
-    const [couponCode, setCouponCode] = useState('');
+    const couponParam = searchParams.get('coupon');
+    const [couponCode, setCouponCode] = useState(couponParam || '');
+    const [couponAutoApplied, setCouponAutoApplied] = useState(false);
     const [couponLoading, setCouponLoading] = useState(false);
     const [couponError, setCouponError] = useState<string | null>(null);
     const [appliedCoupon, setAppliedCoupon] = useState<{

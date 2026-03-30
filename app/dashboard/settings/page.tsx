@@ -45,10 +45,19 @@ export default function SettingsPage() {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
-            setDiscountMessage({ type: 'success', text: data.message });
-            setDiscountCode('');
-            // Refresh page to update plan info
-            setTimeout(() => window.location.reload(), 1500);
+
+            if (data.requiresPayment) {
+                // 유료 코드 → 결제 페이지로 리다이렉트
+                setDiscountMessage({ type: 'success', text: `${data.message} 결제 페이지로 이동합니다...` });
+                setTimeout(() => {
+                    window.location.href = data.redirectTo || `/dashboard/subscribe?coupon=${discountCode.trim()}`;
+                }, 1500);
+            } else {
+                // 무료 코드 → 직접 적용됨
+                setDiscountMessage({ type: 'success', text: data.message });
+                setDiscountCode('');
+                setTimeout(() => window.location.reload(), 1500);
+            }
         } catch (err) {
             setDiscountMessage({ type: 'error', text: (err as Error).message });
         } finally {
