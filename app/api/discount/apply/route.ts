@@ -79,15 +79,21 @@ async function applyPromoCode(supabase: Awaited<ReturnType<typeof createClient>>
     const upgradeToPlan = promoCode.upgrade_to_plan as string | null;
 
     // 플랜 조회 (upgrade_to_plan이 있으면 업그레이드 플랜 기준)
-    const actualPlanSlug = upgradeToPlan || planSlug;
+    // plan_slug가 'all'이거나 쉼표로 구분된 경우 → 기본 'pro' 사용
+    let resolvedPlanSlug = upgradeToPlan || planSlug;
+    if (resolvedPlanSlug === 'all' || resolvedPlanSlug.includes(',')) {
+        // 'all' → 'pro' 기본, 'basic,pro' → 첫 번째 값 사용
+        resolvedPlanSlug = resolvedPlanSlug === 'all' ? 'pro' : resolvedPlanSlug.split(',')[0].trim();
+    }
     const { data: plan, error: planError } = await supabase
         .from('subscription_plans')
         .select('*')
-        .eq('slug', actualPlanSlug)
+        .eq('slug', resolvedPlanSlug)
         .single();
 
     if (planError || !plan) {
-        return NextResponse.json({ error: '플랜을 찾을 수 없습니다.' }, { status: 500 });
+        console.error('Plan lookup failed:', { resolvedPlanSlug, planSlug, upgradeToPlan, error: planError });
+        return NextResponse.json({ error: `플랜을 찾을 수 없습니다. (${resolvedPlanSlug})` }, { status: 500 });
     }
 
     // 기간 계산
@@ -183,10 +189,11 @@ async function applyPromoCode(supabase: Awaited<ReturnType<typeof createClient>>
     const durationText = durationMonths === -1 ? '무기한' : `${durationMonths}개월`;
     const priceText = priceOverride === 0 ? '무료' : `월 ${priceOverride.toLocaleString()}원`;
     const upgradeText = upgradeToPlan ? ` (${plan.display_name} 플랜으로 업그레이드!)` : '';
+    const actualPlanSlug = resolvedPlanSlug;
 
     return NextResponse.json({
         success: true,
-        message: `프로모션 코드가 적용되었습니다! ${plan.display_name} 플랜 ${durationText} ${priceText}${upgradeText}`,
+        message: `프로모션 코드가 적용되었습니다! ${plan.display_name} 플랜 활성화 ${priceText}${upgradeText}`,
         plan: { slug: actualPlanSlug, name: plan.display_name },
         price: priceOverride,
         duration: durationMonths,
