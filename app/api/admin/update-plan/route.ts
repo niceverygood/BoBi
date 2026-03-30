@@ -42,11 +42,22 @@ export async function POST(request: Request) {
     }
 
     try {
-        // Find user by email - try profiles table first, then service role admin API
+        // Service Role client 준비 (RLS 우회 필요)
+        const { createClient: createServiceClient } = await import('@supabase/supabase-js');
+        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        if (!serviceKey || serviceKey === 'your_service_role_key') {
+            return NextResponse.json({ error: 'SUPABASE_SERVICE_ROLE_KEY가 설정되지 않았습니다.' }, { status: 500 });
+        }
+        const adminSupabase = createServiceClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            serviceKey,
+        );
+
+        // Find user by email
         let targetUserId: string | null = null;
 
-        // Method 1: Look up in profiles table (has email field)
-        const { data: profile } = await supabase
+        // Method 1: Look up in profiles table
+        const { data: profile } = await adminSupabase
             .from('profiles')
             .select('id, email')
             .eq('email', targetEmail)
@@ -56,13 +67,8 @@ export async function POST(request: Request) {
             targetUserId = profile.id;
         }
 
-        // Method 2: If profiles doesn't have email, try via service role
-        if (!targetUserId && process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY !== 'your_service_role_key') {
-            const { createClient: createAdminClient } = await import('@supabase/supabase-js');
-            const adminSupabase = createAdminClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                process.env.SUPABASE_SERVICE_ROLE_KEY!,
-            );
+        // Method 2: Try auth admin API
+        if (!targetUserId) {
             const { data: usersData } = await adminSupabase.auth.admin.listUsers({ perPage: 100 });
             const targetUser = usersData?.users?.find((u) => u.email === targetEmail);
             if (targetUser) {
@@ -70,19 +76,19 @@ export async function POST(request: Request) {
             }
         }
 
-        // Method 3: If still not found, check if the admin's own email matches (for self-test)
+        // Method 3: Self-test
         if (!targetUserId && user.email === targetEmail) {
             targetUserId = user.id;
         }
 
         if (!targetUserId) {
             return NextResponse.json({
-                error: `사용자를 찾을 수 없습니다: ${targetEmail}. profiles 테이블에 email 필드가 있는지 확인하거나, SUPABASE_SERVICE_ROLE_KEY를 설정해주세요.`,
+                error: `사용자를 찾을 수 없습니다: ${targetEmail}`,
             }, { status: 404 });
         }
 
-        // Get the target plan
-        const { data: plan, error: planError } = await supabase
+        // Get the target plan (service role로 조회)
+        const { data: plan, error: planError } = await adminSupabase
             .from('subscription_plans')
             .select('*')
             .eq('slug', planSlug)
@@ -100,15 +106,19 @@ export async function POST(request: Request) {
         const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
         const periodEnd = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
 
-        // Cancel all existing active subscriptions for this user
-        await supabase
+        // Cancel all existing active subscriptions (service role로 RLS 우회)
+        const { error: cancelError } = await adminSupabase
             .from('subscriptions')
             .update({ status: 'cancelled', updated_at: new Date().toISOString() })
             .eq('user_id', targetUserId)
             .eq('status', 'active');
 
-        // Create new subscription
-        await supabase
+        if (cancelError) {
+            console.error('Cancel subscription error:', cancelError);
+        }
+
+        // Create new subscription (service role로 RLS 우회)
+        const { error: insertError } = await adminSupabase
             .from('subscriptions')
             .insert({
                 user_id: targetUserId,
@@ -119,10 +129,15 @@ export async function POST(request: Request) {
                 current_period_end: periodEnd,
             });
 
-        // Update usage_tracking limits for current period
+        if (insertError) {
+            console.error('Insert subscription error:', insertError);
+            return NextResponse.json({ error: `구독 생성 실패: ${insertError.message}` }, { status: 500 });
+        }
+
+        // Update usage_tracking limits (service role로 RLS 우회)
         const analysesLimit = plan.max_analyses === -1 ? 999999 : plan.max_analyses;
 
-        const { data: existingUsage } = await supabase
+        const { data: existingUsage } = await adminSupabase
             .from('usage_tracking')
             .select('id')
             .eq('user_id', targetUserId)
@@ -130,7 +145,7 @@ export async function POST(request: Request) {
             .maybeSingle();
 
         if (existingUsage) {
-            await supabase
+            await adminSupabase
                 .from('usage_tracking')
                 .update({
                     analyses_limit: analysesLimit,
@@ -138,7 +153,7 @@ export async function POST(request: Request) {
                 })
                 .eq('id', existingUsage.id);
         } else {
-            await supabase
+            await adminSupabase
                 .from('usage_tracking')
                 .insert({
                     user_id: targetUserId,
