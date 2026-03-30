@@ -4,9 +4,9 @@ import { getPlatform, type AppPlatform } from './platform';
 // App Store Connect / Google Play Console에서 등록한 상품 ID
 export const IAP_PRODUCTS = {
   basic_monthly: 'kr.bobi.app.basic.monthly',      // 19,900원/월
-  basic_yearly: 'kr.bobi.app.basic.yearly',         // 190,800원/년
+  basic_yearly: 'kr.bobi.app.basic.yearly',         // 190,000원/년
   pro_monthly: 'kr.bobi.app.pro.monthly',           // 39,900원/월
-  pro_yearly: 'kr.bobi.app.pro.yearly',             // 382,800원/년
+  pro_yearly: 'kr.bobi.app.pro.yearly',             // 380,000원/년
 } as const;
 
 // 크레딧 상품 ID (소모성 아이템)
