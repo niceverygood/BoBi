@@ -28,9 +28,9 @@ const TELECOM_PROVIDERS = [
     { id: '1', name: 'SKT', icon: '🔴' },
     { id: '2', name: 'KT', icon: '🟠' },
     { id: '3', name: 'LGU+', icon: '🟣' },
-    { id: '4', name: 'SKT 알뜨폰', icon: '🔴' },
-    { id: '5', name: 'KT 알뜨폰', icon: '🟠' },
-    { id: '6', name: 'LGU+ 알뜨폰', icon: '🟣' },
+    { id: '4', name: 'SKT 알뜰폰', icon: '🔴' },
+    { id: '5', name: 'KT 알뜰폰', icon: '🟠' },
+    { id: '6', name: 'LGU+ 알뜰폰', icon: '🟣' },
 ];
 
 // 조회 타입
