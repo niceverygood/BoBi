@@ -7,6 +7,21 @@ const CODEF_API_URL = process.env.CODEF_API_URL || 'https://api.codef.io';
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
+// ─── CODEF 응답 파싱 (URL 디코딩 필요) ──────────────
+// CODEF API는 응답 body를 URL 인코딩하여 반환함
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function parseCodefResponse<T = any>(res: Response): Promise<T> {
+    const text = await res.text();
+    try {
+        // 먼저 직접 JSON 파싱 시도
+        return JSON.parse(text) as T;
+    } catch {
+        // URL 디코딩 후 JSON 파싱
+        const decoded = decodeURIComponent(text);
+        return JSON.parse(decoded) as T;
+    }
+}
+
 // ─── 토큰 발급 ──────────────────────────────────────
 
 export async function getAccessToken(): Promise<string> {
@@ -83,7 +98,7 @@ export async function createConnectedId(params: CreateConnectedIdParams): Promis
         }),
     });
 
-    const data = await res.json();
+    const data = await parseCodefResponse<{ result?: { code: string; message: string }; data?: Record<string, unknown> }>(res);
 
     if (data.result?.code !== 'CF-00000') {
         // 2-Way 인증 필요
@@ -101,7 +116,7 @@ export async function createConnectedId(params: CreateConnectedIdParams): Promis
         throw new Error(`Connected ID 생성 실패: ${data.result?.code} ${data.result?.message}`);
     }
 
-    return data.data?.connectedId || '';
+    return (data.data?.connectedId as string) || '';
 }
 
 // ─── 내보험다보여 계약정보 조회 ───────────────────────
@@ -162,7 +177,7 @@ export async function fetchInsuranceContracts(connectedId: string): Promise<Insu
         }),
     });
 
-    const data: CodefInsuranceResponse = await res.json();
+    const data: CodefInsuranceResponse = await parseCodefResponse(res);
 
     if (data.result?.code !== 'CF-00000') {
         // 2-Way 추가 인증 필요
@@ -242,7 +257,7 @@ export async function fetchInsurerContractDetail(
         }),
     });
 
-    const data = await res.json();
+    const data = await parseCodefResponse(res);
 
     if (data.result?.code !== 'CF-00000') {
         if (data.result?.code === 'CF-03002') {
@@ -597,7 +612,7 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
         body: JSON.stringify(body),
     });
 
-    const data: HiraMedicalResponse = await res.json();
+    const data: HiraMedicalResponse = await parseCodefResponse(res);
 
     // 2-Way 추가인증 필요
     if (data.result?.code === 'CF-03002') {
@@ -692,7 +707,7 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
         body: JSON.stringify(body),
     });
 
-    const data: HiraCarInsuranceResponse = await res.json();
+    const data: HiraCarInsuranceResponse = await parseCodefResponse(res);
 
     if (data.result?.code === 'CF-03002') {
         const d = data.data as Record<string, unknown>;
