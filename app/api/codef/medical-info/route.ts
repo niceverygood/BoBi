@@ -22,7 +22,7 @@ export async function POST(request: Request) {
         const body = await request.json();
         const {
             userName,
-            birthDate,         // 생년월일 (YYYYMMDD)
+            identity,          // 주민등록번호 13자리
             phoneNo,           // 01012345678
             loginType = '5',   // '5': 간편인증
             loginTypeLevel,    // 간편인증사 코드
@@ -35,9 +35,9 @@ export async function POST(request: Request) {
             secureNoRefresh,
         } = body;
 
-        if (!userName || !birthDate || !phoneNo) {
+        if (!userName || !identity || !phoneNo) {
             return NextResponse.json({
-                error: '이름, 생년월일, 전화번호를 입력해주세요.',
+                error: '이름, 주민등록번호, 전화번호를 입력해주세요.',
             }, { status: 400 });
         }
 
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
         const params: HiraMedicalRequest = {
             userName,
-            birthDate: birthDate.replace(/\D/g, ''),
+            identity: identity.replace(/\D/g, ''),
             phoneNo: phoneNo.replace(/-/g, ''),
             loginType,
             loginTypeLevel,

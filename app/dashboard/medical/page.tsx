@@ -51,7 +51,7 @@ function MedicalInfoContent() {
 
     // 폼 입력
     const [userName, setUserName] = useState('');
-    const [birthDate, setBirthDate] = useState('');
+    const [identity, setIdentity] = useState('');
     const [phoneNo, setPhoneNo] = useState('');
     const [authMode, setAuthMode] = useState<AuthMode>('simple');
     const [authProvider, setAuthProvider] = useState('1'); // 간편인증 기본: 카카오
@@ -75,9 +75,11 @@ function MedicalInfoContent() {
         return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
     };
 
-    // 생년월일 포맷팅 (YYYYMMDD 8자리)
-    const formatBirthDate = (value: string) => {
-        return value.replace(/\D/g, '').slice(0, 8);
+    // 주민등록번호 포맷팅 (13자리, 하이픈 자동 삽입)
+    const formatIdentity = (value: string) => {
+        const digits = value.replace(/\D/g, '').slice(0, 13);
+        if (digits.length <= 6) return digits;
+        return `${digits.slice(0, 6)}-${digits.slice(6)}`;
     };
 
     // 금액 포맷팅
@@ -99,7 +101,7 @@ function MedicalInfoContent() {
     // API 요청 body 생성
     const buildRequestBody = (extraFields?: Record<string, unknown>) => ({
         userName: userName.trim(),
-        birthDate: birthDate.replace(/\D/g, ''),
+        identity: identity.replace(/\D/g, ''),
         phoneNo: phoneNo.replace(/-/g, ''),
         loginType: authMode === 'simple' ? '5' : '6',
         ...(authMode === 'simple' ? { loginTypeLevel: authProvider } : { telecom }),
@@ -109,14 +111,14 @@ function MedicalInfoContent() {
 
     // 제출
     const handleSubmit = async () => {
-        if (!userName.trim() || !birthDate.trim() || !phoneNo.trim()) {
-            setError('이름, 생년월일, 전화번호를 모두 입력해주세요.');
+        if (!userName.trim() || !identity.trim() || !phoneNo.trim()) {
+            setError('이름, 주민등록번호, 전화번호를 모두 입력해주세요.');
             return;
         }
 
-        const birthDigits = birthDate.replace(/\D/g, '');
-        if (birthDigits.length !== 8) {
-            setError('생년월일 8자리를 정확히 입력해주세요. (예: 19900101)');
+        const identityDigits = identity.replace(/\D/g, '');
+        if (identityDigits.length !== 13) {
+            setError('주민등록번호 13자리를 모두 입력해주세요.');
             return;
         }
 
@@ -291,16 +293,16 @@ function MedicalInfoContent() {
                             />
                         </div>
                         <div>
-                            <label className="text-sm font-medium mb-1.5 block">생년월일</label>
+                            <label className="text-sm font-medium mb-1.5 block">주민등록번호</label>
                             <input
-                                type="text"
-                                value={birthDate}
-                                onChange={(e) => setBirthDate(formatBirthDate(e.target.value))}
-                                placeholder="19900101"
-                                maxLength={8}
+                                type="password"
+                                value={identity}
+                                onChange={(e) => setIdentity(formatIdentity(e.target.value))}
+                                placeholder="주민등록번호 13자리"
+                                maxLength={14}
                                 className="w-full px-3 py-2.5 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-mono"
                             />
-                            <p className="text-[11px] text-muted-foreground mt-1">생년월일 8자리 (예: 19900101)</p>
+                            <p className="text-[11px] text-muted-foreground mt-1">13자리 전체 입력 (예: 900101-1234567)</p>
                         </div>
                         <div>
                             <label className="text-sm font-medium mb-1.5 block">전화번호</label>
@@ -416,7 +418,7 @@ function MedicalInfoContent() {
                 {/* 조회 버튼 */}
                 <Button
                     onClick={handleSubmit}
-                    disabled={loading || !userName || !birthDate || !phoneNo}
+                    disabled={loading || !userName || !identity || !phoneNo}
                     className="w-full bg-gradient-primary hover:opacity-90 h-12 text-base"
                 >
                     {loading ? (

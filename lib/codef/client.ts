@@ -508,7 +508,7 @@ export function transformCodefToBobi(
 
 export interface HiraMedicalRequest {
     userName: string;          // 이름
-    birthDate: string;         // 생년월일 (YYYYMMDD)
+    identity: string;          // 주민등록번호 13자리 (하이픈 제거, 예: 9103251234567)
     phoneNo: string;           // 전화번호 (01012345678)
     loginType: string;         // '5': 간편인증, '6': 휴대폰인증
     loginTypeLevel?: string;   // 간편인증사 ('1': 카카오, '2': 페이코, '5': 네이버, '6': 신한, '7': PASS, '8': 삼성, '9': KB, '12': toss)
@@ -576,7 +576,7 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
         organization: '0020',       // 건강보험심사평가원
         loginType: params.loginType,
         userName: params.userName,
-        birthDate: params.birthDate,
+        identity: params.identity,
         phoneNo: params.phoneNo,
     };
 
@@ -682,7 +682,7 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
         organization: '0020',       // 건강보험심사평가원
         loginType: params.loginType,
         userName: params.userName,
-        birthDate: params.birthDate,
+        identity: params.identity,
         phoneNo: params.phoneNo,
     };
 
