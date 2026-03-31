@@ -1,4 +1,6 @@
 // lib/utils/discount-codes.ts
+// ⛔ 하드코딩 할인코드 — 전체 비활성화
+// 모든 쿠폰/할인은 구독 페이지(subscribe)에서 DB 기반으로만 운영
 
 export interface DiscountCode {
     code: string;
@@ -7,49 +9,48 @@ export interface DiscountCode {
     priceOverride: number; // 월 결제 금액 (0 = 무료)
     maxUses: number; // -1 = 무제한
     active: boolean;
-    upgradeToPlan?: string; // 업그레이드 대상 플랜 (예: 'pro') — 있으면 해당 플랜으로 구독 생성
+    upgradeToPlan?: string;
 }
 
-// 하드코딩된 할인코드 (추후 DB로 이동 가능)
+// 모든 코드 비활성화 — 결제 없이 구독 생성 차단
 export const DISCOUNT_CODES: Record<string, DiscountCode> = {
     'WONFIN2026': {
         code: 'WONFIN2026',
-        description: '원금융서비스 직원 전용 (베이직 월 10,000원)',
+        description: '원금융서비스 직원 전용 (비활성)',
         planSlug: 'basic',
         priceOverride: 10000,
         maxUses: -1,
-        active: true,
+        active: false,
     },
     'JONGIN-FREE': {
         code: 'JONGIN-FREE',
-        description: '이종인 팀 무료 사용',
+        description: '이종인 팀 (비활성 — 관리자 페이지에서 직접 설정)',
         planSlug: 'pro',
         priceOverride: 0,
         maxUses: -1,
-        active: true,
+        active: false,
     },
     'BOBI-ALL': {
         code: 'BOBI-ALL',
-        description: 'BoBi 종합분석 프로모션 (프로 월 60,000원)',
+        description: 'BoBi 종합분석 프로모션 (비활성)',
         planSlug: 'pro',
         priceOverride: 60000,
         maxUses: -1,
-        active: true,
+        active: false,
     },
     'BOBI-PRO': {
         code: 'BOBI-PRO',
-        description: '베이직 가격으로 프로 업그레이드 프로모션',
+        description: '프로 업그레이드 프로모션 (비활성)',
         planSlug: 'basic',
         priceOverride: 19900,
         maxUses: -1,
-        active: true,
+        active: false,
         upgradeToPlan: 'pro',
     },
 };
 
-export function validateDiscountCode(code: string): DiscountCode | null {
-    const upper = code.toUpperCase().trim();
-    const discount = DISCOUNT_CODES[upper];
-    if (!discount || !discount.active) return null;
-    return discount;
+// ⛔ 항상 null 반환 — 하드코딩 코드 사용 차단
+export function validateDiscountCode(_code: string): DiscountCode | null {
+    return null;
 }
+

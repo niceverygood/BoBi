@@ -390,6 +390,9 @@ export default function AdminPage() {
                     {/* Promo Code Management - 총괄 + 중간관리자 */}
                     <PromoCodeManager />
 
+                    {/* Promo Code Cleanup - 총괄관리자만 */}
+                    {isAdmin && <PromoSubCleanup />}
+
                     {/* Quick Actions - 총괄관리자만 */}
                     {isAdmin && (
                     <div>
@@ -1138,6 +1141,137 @@ function PromoCodeManager() {
                                         삭제
                                     </Button>
                                 </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
+// ─── 프로모 코드 구독 정리 컴포넌트 (총괄관리자 전용) ──────────────────────
+
+interface PromoSubInfo {
+    id: string;
+    user_id: string;
+    email: string;
+    plan: string;
+    plan_slug: string;
+    promo_code: string;
+    created_at: string;
+}
+
+function PromoSubCleanup() {
+    const [promoSubs, setPromoSubs] = useState<PromoSubInfo[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [cleaning, setCleaning] = useState(false);
+    const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    const fetchPromoSubs = useCallback(async () => {
+        try {
+            const res = await fetch('/api/admin/cleanup-promo-subs');
+            if (!res.ok) throw new Error('Failed');
+            const data = await res.json();
+            setPromoSubs(data.subscriptions || []);
+        } catch {
+            console.error('Failed to fetch promo subscriptions');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchPromoSubs();
+    }, [fetchPromoSubs]);
+
+    const handleCleanup = async () => {
+        if (!confirm(`프로모 코드로 생성된 ${promoSubs.length}건의 구독을 모두 취소하시겠습니까?\n\n취소된 사용자는 무료 플랜으로 전환됩니다.`)) return;
+
+        setCleaning(true);
+        setMessage(null);
+        try {
+            const res = await fetch('/api/admin/cleanup-promo-subs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            setMessage({ type: 'success', text: data.message });
+            fetchPromoSubs(); // 새로고침
+        } catch (err) {
+            setMessage({ type: 'error', text: (err as Error).message });
+        } finally {
+            setCleaning(false);
+        }
+    };
+
+    return (
+        <Card className="border-0 shadow-md mb-8">
+            <CardHeader className="pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-amber-500" />
+                        프로모 코드 구독 정리
+                        <Badge variant="secondary" className="ml-1 text-xs">
+                            {loading ? '...' : `${promoSubs.length}건`}
+                        </Badge>
+                    </CardTitle>
+                    {promoSubs.length > 0 && (
+                        <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={handleCleanup}
+                            disabled={cleaning}
+                        >
+                            {cleaning ? '정리 중...' : `🧹 ${promoSubs.length}건 일괄 취소`}
+                        </Button>
+                    )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                    결제 없이 프로모 코드로 직접 생성된 구독 목록입니다. 취소하면 무료 플랜으로 전환됩니다.
+                </p>
+            </CardHeader>
+
+            {message && (
+                <div className={`mx-5 mb-3 p-3 rounded-lg flex items-center gap-2 text-sm ${message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                    {message.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                    {message.text}
+                    <button onClick={() => setMessage(null)} className="ml-auto text-xs opacity-60 hover:opacity-100">✕</button>
+                </div>
+            )}
+
+            <Separator />
+
+            <CardContent className="p-0">
+                {loading ? (
+                    <div className="p-8 text-center text-sm text-muted-foreground">
+                        <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2" />
+                        로딩 중...
+                    </div>
+                ) : promoSubs.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-muted-foreground">
+                        ✅ 정리할 프로모 코드 구독이 없습니다.
+                    </div>
+                ) : (
+                    <div className="divide-y max-h-[300px] overflow-y-auto">
+                        {promoSubs.map(s => (
+                            <div key={s.id} className="flex items-center gap-3 px-5 py-3 hover:bg-muted/30 transition-colors">
+                                <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                                    <Tag className="w-4 h-4 text-amber-600" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium truncate">{s.email}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        코드: <code className="font-mono bg-muted px-1 rounded">{s.promo_code}</code>
+                                        {' · '}
+                                        {new Date(s.created_at).toLocaleDateString('ko-KR')}
+                                    </p>
+                                </div>
+                                <Badge variant="outline" className="text-xs shrink-0 bg-violet-100 text-violet-700 border-violet-200">
+                                    {s.plan}
+                                </Badge>
                             </div>
                         ))}
                     </div>
