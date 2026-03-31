@@ -84,7 +84,7 @@ function AnalyzeContent() {
                 const PortOne = await import('@portone/browser-sdk/v2');
 
                 const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID!;
-                const channelKey = process.env.NEXT_PUBLIC_PORTONE_INICIS_CHANNEL_KEY!;
+                const channelKey = process.env.NEXT_PUBLIC_PORTONE_INICIS_CHANNEL_KEY || process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY!;
 
                 const paymentId = `credit-${packId}-${Date.now()}`;
 
