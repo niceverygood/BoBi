@@ -573,7 +573,7 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
     const token = await getAccessToken();
 
     const body: Record<string, unknown> = {
-        organization: '0011',       // 건강보험심사평가원
+        organization: '0020',       // 건강보험심사평가원
         loginType: params.loginType,
         userName: params.userName,
         identity: params.identity,
@@ -679,7 +679,7 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
     const token = await getAccessToken();
 
     const body: Record<string, unknown> = {
-        organization: '0011',       // 건강보험심사평가원
+        organization: '0020',       // 건강보험심사평가원
         loginType: params.loginType,
         userName: params.userName,
         identity: params.identity,
