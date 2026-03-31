@@ -257,8 +257,15 @@ function SubscribeContent() {
         try {
             const PortOne = await import('@portone/browser-sdk/v2');
 
-            const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID!;
-            const channelKey = process.env.NEXT_PUBLIC_PORTONE_INICIS_CHANNEL_KEY!;
+            const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID;
+            const channelKey = process.env.NEXT_PUBLIC_PORTONE_INICIS_CHANNEL_KEY;
+
+            if (!storeId || !channelKey) {
+                console.error('[PortOne] Missing env vars:', { storeId: !!storeId, channelKey: !!channelKey });
+                setError('결제 설정이 올바르지 않습니다. 관리자에게 문의해주세요. (PORTONE_KEY_MISSING)');
+                setLoading(false);
+                return;
+            }
 
             const response = await PortOne.requestIssueBillingKey({
                 storeId,
@@ -401,13 +408,15 @@ function SubscribeContent() {
         );
     }
 
-    const paymentLabel = platform === 'ios'
-        ? 'Apple로 결제하기'
-        : platform === 'android'
-            ? 'Google Play로 결제하기'
-            : paymentMethod === 'kakaopay'
-                ? '카카오페이로 결제하기'
-                : '신용카드로 결제하기';
+    const paymentLabel = (amount === 0 && appliedCoupon)
+        ? '🎉 무료 쿠폰 적용하기'
+        : platform === 'ios'
+            ? 'Apple로 결제하기'
+            : platform === 'android'
+                ? 'Google Play로 결제하기'
+                : paymentMethod === 'kakaopay'
+                    ? '카카오페이로 결제하기'
+                    : '신용카드로 결제하기';
 
     const paymentProviderLabel = platform === 'ios'
         ? 'Apple App Store'
