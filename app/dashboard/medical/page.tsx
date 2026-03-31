@@ -23,14 +23,14 @@ const AUTH_PROVIDERS = [
     { id: '8', name: '삼성패스', icon: '🔵', color: 'bg-indigo-500/10 border-indigo-500/30' },
 ];
 
-// 통신사 목록 (휴대폰 인증용)
+// 통신사 목록 (휴대폰 인증용) - CODEF 공식 코드
 const TELECOM_PROVIDERS = [
-    { id: '0', name: 'SKT', icon: '🔴' },
-    { id: '1', name: 'KT', icon: '🟠' },
-    { id: '2', name: 'LGU+', icon: '🟣' },
-    { id: '3', name: 'SKT 알뜰폰', icon: '🔴' },
-    { id: '4', name: 'KT 알뜰폰', icon: '🟠' },
-    { id: '5', name: 'LGU+ 알뜰폰', icon: '🟣' },
+    { id: '1', name: 'SKT', icon: '🔴' },
+    { id: '2', name: 'KT', icon: '🟠' },
+    { id: '3', name: 'LGU+', icon: '🟣' },
+    { id: '4', name: 'SKT 알뜨폰', icon: '🔴' },
+    { id: '5', name: 'KT 알뜨폰', icon: '🟠' },
+    { id: '6', name: 'LGU+ 알뜨폰', icon: '🟣' },
 ];
 
 // 조회 타입
@@ -51,11 +51,11 @@ function MedicalInfoContent() {
 
     // 폼 입력
     const [userName, setUserName] = useState('');
-    const [identity, setIdentity] = useState('');
+    const [birthDate, setBirthDate] = useState('');
     const [phoneNo, setPhoneNo] = useState('');
     const [authMode, setAuthMode] = useState<AuthMode>('simple');
     const [authProvider, setAuthProvider] = useState('1'); // 간편인증 기본: 카카오
-    const [telecom, setTelecom] = useState('0');            // 휴대폰인증 기본: SKT
+    const [telecom, setTelecom] = useState('1');            // 휴대폰인증 기본: SKT
     const [queryType, setQueryType] = useState<QueryType>('medical');
 
     // 2-Way 인증 관련
@@ -75,11 +75,9 @@ function MedicalInfoContent() {
         return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
     };
 
-    // 주민번호 포맷팅 (13자리, 하이픈 자동 삽입)
-    const formatIdentity = (value: string) => {
-        const digits = value.replace(/\D/g, '').slice(0, 13);
-        if (digits.length <= 6) return digits;
-        return `${digits.slice(0, 6)}-${digits.slice(6)}`;
+    // 생년월일 포맷팅 (YYYYMMDD 8자리)
+    const formatBirthDate = (value: string) => {
+        return value.replace(/\D/g, '').slice(0, 8);
     };
 
     // 금액 포맷팅
@@ -101,7 +99,7 @@ function MedicalInfoContent() {
     // API 요청 body 생성
     const buildRequestBody = (extraFields?: Record<string, unknown>) => ({
         userName: userName.trim(),
-        identity: identity.replace(/\D/g, ''),
+        birthDate: birthDate.replace(/\D/g, ''),
         phoneNo: phoneNo.replace(/-/g, ''),
         loginType: authMode === 'simple' ? '5' : '6',
         ...(authMode === 'simple' ? { loginTypeLevel: authProvider } : { telecom }),
@@ -111,14 +109,14 @@ function MedicalInfoContent() {
 
     // 제출
     const handleSubmit = async () => {
-        if (!userName.trim() || !identity.trim() || !phoneNo.trim()) {
-            setError('이름, 주민등록번호(13자리), 전화번호를 모두 입력해주세요.');
+        if (!userName.trim() || !birthDate.trim() || !phoneNo.trim()) {
+            setError('이름, 생년월일, 전화번호를 모두 입력해주세요.');
             return;
         }
 
-        const identityDigits = identity.replace(/\D/g, '');
-        if (identityDigits.length !== 13) {
-            setError('주민등록번호 13자리를 모두 입력해주세요.');
+        const birthDigits = birthDate.replace(/\D/g, '');
+        if (birthDigits.length !== 8) {
+            setError('생년월일 8자리를 정확히 입력해주세요. (예: 19900101)');
             return;
         }
 
@@ -167,6 +165,7 @@ function MedicalInfoContent() {
 
     // 2-Way 인증 완료 후 재조회
     const handleAuthComplete = async () => {
+        if (loading) return; // 중복 제출 방지
         setLoading(true);
         setError(null);
 
@@ -292,16 +291,16 @@ function MedicalInfoContent() {
                             />
                         </div>
                         <div>
-                            <label className="text-sm font-medium mb-1.5 block">주민등록번호</label>
+                            <label className="text-sm font-medium mb-1.5 block">생년월일</label>
                             <input
-                                type="password"
-                                value={identity}
-                                onChange={(e) => setIdentity(formatIdentity(e.target.value))}
-                                placeholder="생년월일 6자리 + 뒷자리 7자리"
-                                maxLength={14}
+                                type="text"
+                                value={birthDate}
+                                onChange={(e) => setBirthDate(formatBirthDate(e.target.value))}
+                                placeholder="19900101"
+                                maxLength={8}
                                 className="w-full px-3 py-2.5 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-mono"
                             />
-                            <p className="text-[11px] text-muted-foreground mt-1">13자리 전체 입력 (예: 900101-1234567)</p>
+                            <p className="text-[11px] text-muted-foreground mt-1">생년월일 8자리 (예: 19900101)</p>
                         </div>
                         <div>
                             <label className="text-sm font-medium mb-1.5 block">전화번호</label>
@@ -417,7 +416,7 @@ function MedicalInfoContent() {
                 {/* 조회 버튼 */}
                 <Button
                     onClick={handleSubmit}
-                    disabled={loading || !userName || !identity || !phoneNo}
+                    disabled={loading || !userName || !birthDate || !phoneNo}
                     className="w-full bg-gradient-primary hover:opacity-90 h-12 text-base"
                 >
                     {loading ? (
