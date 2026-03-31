@@ -155,10 +155,18 @@ export async function POST(request: Request) {
         let userMessage = errorMessage;
         if (errorMessage.includes('CF-13002')) {
             userMessage = '요청 파라미터 오류입니다. 주민등록번호 13자리를 정확히 입력했는지 확인해주세요.';
+        } else if (errorMessage.includes('CF-12871')) {
+            userMessage = '선택하신 인증 앱이 설치되지 않았거나 인증서가 발급되지 않았습니다. 앱 설치 및 인증서 발급 후 다시 시도하시거나, 다른 인증 방식(카카오톡, 토스 등)을 이용해주세요.';
+        } else if (errorMessage.includes('CF-12872')) {
+            userMessage = '인증서가 만료되었습니다. 인증서를 재발급 후 다시 시도해주세요.';
         } else if (errorMessage.includes('CF-11021')) {
             userMessage = '인증 시간이 초과되었습니다. 다시 시도해주세요.';
         } else if (errorMessage.includes('CF-03002')) {
             userMessage = '추가 인증이 필요합니다. 앱에서 인증을 완료해주세요.';
+        } else if (errorMessage.includes('CF-12801') || errorMessage.includes('CF-12802')) {
+            userMessage = '본인인증에 실패했습니다. 입력 정보를 확인하시고 다시 시도해주세요.';
+        } else if (errorMessage.includes('CF-00023') || errorMessage.includes('CF-09999')) {
+            userMessage = '서버 통신 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
         }
 
         return NextResponse.json({
