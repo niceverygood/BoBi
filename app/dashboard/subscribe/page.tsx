@@ -228,7 +228,8 @@ function SubscribeContent() {
                 body: JSON.stringify({
                     planSlug: selectedPlan,
                     billingCycle,
-                    ...(appliedCoupon?.upgradeToPlan ? { upgradePlanSlug: appliedCoupon.upgradeToPlan, couponCode: appliedCoupon.code } : {}),
+                    ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
+                    ...(appliedCoupon?.upgradeToPlan ? { upgradePlanSlug: appliedCoupon.upgradeToPlan } : {}),
                 }),
             });
 
@@ -302,7 +303,8 @@ function SubscribeContent() {
                     planSlug: selectedPlan,
                     billingCycle,
                     paymentMethod: 'card',
-                    ...(appliedCoupon?.upgradeToPlan ? { upgradePlanSlug: appliedCoupon.upgradeToPlan, couponCode: appliedCoupon.code } : {}),
+                    ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
+                    ...(appliedCoupon?.upgradeToPlan ? { upgradePlanSlug: appliedCoupon.upgradeToPlan } : {}),
                 }),
             });
 

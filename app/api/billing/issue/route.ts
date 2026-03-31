@@ -33,9 +33,31 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: '존재하지 않는 플랜입니다.' }, { status: 400 });
     }
 
-    const amount = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
+    let amount = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
+
+    // 쿠폰 할인 적용
+    if (couponCode) {
+        const { data: coupon } = await serviceClient
+            .from('promo_codes')
+            .select('*')
+            .eq('code', couponCode.toUpperCase().trim())
+            .eq('active', true)
+            .single();
+
+        if (coupon) {
+            if (coupon.discount_type === 'percent') {
+                const percent = Math.min(coupon.discount_value, 100);
+                amount = Math.max(0, amount - Math.round(amount * percent / 100));
+            } else if (coupon.discount_type === 'fixed') {
+                amount = Math.max(0, amount - coupon.discount_value);
+            } else if (coupon.discount_type === 'price_override' || coupon.price_override !== null) {
+                amount = Math.max(0, coupon.price_override ?? amount);
+            }
+        }
+    }
+
     if (amount <= 0) {
-        return NextResponse.json({ error: '무료 플랜은 결제가 필요하지 않습니다.' }, { status: 400 });
+        return NextResponse.json({ error: '결제 금액이 0원입니다. 무료 쿠폰은 결제 없이 적용됩니다.' }, { status: 400 });
     }
 
     // 첫 결제 실행 (빌링키로 실제 결제)

@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     const results = { renewed: 0, failed: 0, pastDue: 0, errors: [] as string[] };
 
     try {
-        // 1. 갱신 대상 조회: 만료된 active 구독 (관리자 수동 설정 제외)
+        // 1. 갱신 대상 조회: 만료된 active 구독 (빌링키 없는 provider 제외)
         const { data: expiredSubs, error: fetchError } = await supabase
             .from('subscriptions')
             .select(`
@@ -27,6 +27,9 @@ export async function GET(request: Request) {
             `)
             .eq('status', 'active')
             .neq('payment_provider', 'admin_manual')
+            .neq('payment_provider', 'coupon_free')
+            .neq('payment_provider', 'promo_code')
+            .neq('payment_provider', 'discount_code')
             .lt('current_period_end', now.toISOString());
 
         if (fetchError) {
