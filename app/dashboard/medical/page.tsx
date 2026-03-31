@@ -75,9 +75,11 @@ function MedicalInfoContent() {
         return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
     };
 
-    // 주민번호 앞자리 포맷팅
+    // 주민번호 포맷팅 (13자리, 하이픈 자동 삽입)
     const formatIdentity = (value: string) => {
-        return value.replace(/\D/g, '').slice(0, 8);
+        const digits = value.replace(/\D/g, '').slice(0, 13);
+        if (digits.length <= 6) return digits;
+        return `${digits.slice(0, 6)}-${digits.slice(6)}`;
     };
 
     // 금액 포맷팅
@@ -110,7 +112,13 @@ function MedicalInfoContent() {
     // 제출
     const handleSubmit = async () => {
         if (!userName.trim() || !identity.trim() || !phoneNo.trim()) {
-            setError('이름, 주민등록번호(앞 8자리), 전화번호를 모두 입력해주세요.');
+            setError('이름, 주민등록번호(13자리), 전화번호를 모두 입력해주세요.');
+            return;
+        }
+
+        const identityDigits = identity.replace(/\D/g, '');
+        if (identityDigits.length !== 13) {
+            setError('주민등록번호 13자리를 모두 입력해주세요.');
             return;
         }
 
@@ -284,16 +292,16 @@ function MedicalInfoContent() {
                             />
                         </div>
                         <div>
-                            <label className="text-sm font-medium mb-1.5 block">주민등록번호 (앞 8자리)</label>
+                            <label className="text-sm font-medium mb-1.5 block">주민등록번호</label>
                             <input
-                                type="text"
+                                type="password"
                                 value={identity}
                                 onChange={(e) => setIdentity(formatIdentity(e.target.value))}
-                                placeholder="YYYYMMDD"
-                                maxLength={8}
+                                placeholder="생년월일 6자리 + 뒷자리 7자리"
+                                maxLength={14}
                                 className="w-full px-3 py-2.5 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-mono"
                             />
-                            <p className="text-[11px] text-muted-foreground mt-1">생년월일 8자리 (예: 19900101)</p>
+                            <p className="text-[11px] text-muted-foreground mt-1">13자리 전체 입력 (예: 900101-1234567)</p>
                         </div>
                         <div>
                             <label className="text-sm font-medium mb-1.5 block">전화번호</label>
