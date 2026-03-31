@@ -54,7 +54,7 @@ export async function kakaoPayReady(params: KakaoPayReadyRequest): Promise<Kakao
         fail_url: `${baseUrl}/dashboard/subscribe?status=fail`,
     };
 
-    const response = await fetch(`${KAKAOPAY_API_BASE}/subscription/ready`, {
+    const response = await fetch(`${KAKAOPAY_API_BASE}/ready`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(body),
@@ -103,7 +103,7 @@ export async function kakaoPayApprove(params: KakaoPayApproveRequest): Promise<K
         pg_token: params.pgToken,
     };
 
-    const response = await fetch(`${KAKAOPAY_API_BASE}/subscription/approve`, {
+    const response = await fetch(`${KAKAOPAY_API_BASE}/approve`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(body),
