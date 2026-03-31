@@ -23,6 +23,16 @@ const AUTH_PROVIDERS = [
     { id: '8', name: '삼성패스', icon: '🔵', color: 'bg-indigo-500/10 border-indigo-500/30' },
 ];
 
+// 통신사 목록 (휴대폰 인증용)
+const TELECOM_PROVIDERS = [
+    { id: '0', name: 'SKT', icon: '🔴' },
+    { id: '1', name: 'KT', icon: '🟠' },
+    { id: '2', name: 'LGU+', icon: '🟣' },
+    { id: '3', name: 'SKT 알뜰폰', icon: '🔴' },
+    { id: '4', name: 'KT 알뜰폰', icon: '🟠' },
+    { id: '5', name: 'LGU+ 알뜰폰', icon: '🟣' },
+];
+
 // 조회 타입
 const QUERY_TYPES = [
     { id: 'medical', name: '내 진료정보', icon: Stethoscope, description: '최대 5년간 진료 이력 조회' },
@@ -32,6 +42,7 @@ const QUERY_TYPES = [
 
 type Step = 'form' | 'auth-waiting' | 'results';
 type QueryType = 'medical' | 'car' | 'both';
+type AuthMode = 'simple' | 'phone'; // 간편인증 / 휴대폰인증
 
 function MedicalInfoContent() {
     const [step, setStep] = useState<Step>('form');
@@ -42,7 +53,9 @@ function MedicalInfoContent() {
     const [userName, setUserName] = useState('');
     const [identity, setIdentity] = useState('');
     const [phoneNo, setPhoneNo] = useState('');
-    const [authProvider, setAuthProvider] = useState('1'); // 카카오 기본
+    const [authMode, setAuthMode] = useState<AuthMode>('simple');
+    const [authProvider, setAuthProvider] = useState('1'); // 간편인증 기본: 카카오
+    const [telecom, setTelecom] = useState('0');            // 휴대폰인증 기본: SKT
     const [queryType, setQueryType] = useState<QueryType>('medical');
 
     // 2-Way 인증 관련
@@ -83,6 +96,17 @@ function MedicalInfoContent() {
         return dateStr;
     };
 
+    // API 요청 body 생성
+    const buildRequestBody = (extraFields?: Record<string, unknown>) => ({
+        userName: userName.trim(),
+        identity: identity.replace(/\D/g, ''),
+        phoneNo: phoneNo.replace(/-/g, ''),
+        loginType: authMode === 'simple' ? '5' : '6',
+        ...(authMode === 'simple' ? { loginTypeLevel: authProvider } : { telecom }),
+        queryType,
+        ...extraFields,
+    });
+
     // 제출
     const handleSubmit = async () => {
         if (!userName.trim() || !identity.trim() || !phoneNo.trim()) {
@@ -97,20 +121,9 @@ function MedicalInfoContent() {
             const res = await fetch('/api/codef/medical-info', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userName: userName.trim(),
-                    identity: identity.replace(/\D/g, ''),
-                    phoneNo: phoneNo.replace(/-/g, ''),
-                    loginType: '5', // 간편인증
-                    loginTypeLevel: authProvider,
-                    queryType,
-                    // 2-Way 재시도 시
-                    ...(twoWayData ? {
-                        is2Way: true,
-                        twoWayInfo: twoWayData,
-                        sessionId,
-                    } : {}),
-                }),
+                body: JSON.stringify(buildRequestBody(
+                    twoWayData ? { is2Way: true, twoWayInfo: twoWayData, sessionId } : {}
+                )),
             });
 
             const data = await res.json();
@@ -153,17 +166,11 @@ function MedicalInfoContent() {
             const res = await fetch('/api/codef/medical-info', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userName: userName.trim(),
-                    identity: identity.replace(/\D/g, ''),
-                    phoneNo: phoneNo.replace(/-/g, ''),
-                    loginType: '5',
-                    loginTypeLevel: authProvider,
-                    queryType,
+                body: JSON.stringify(buildRequestBody({
                     is2Way: true,
                     twoWayInfo: twoWayData,
                     sessionId,
-                }),
+                })),
             });
 
             const data = await res.json();
@@ -173,7 +180,9 @@ function MedicalInfoContent() {
             }
 
             if (data.requires2Way) {
-                setError('간편인증 앱에서 인증을 완료해주세요.');
+                setError(authMode === 'simple'
+                    ? '간편인증 앱에서 인증을 완료해주세요.'
+                    : '휴대폰에서 인증번호를 확인해주세요.');
                 setLoading(false);
                 return;
             }
@@ -299,32 +308,88 @@ function MedicalInfoContent() {
                     </CardContent>
                 </Card>
 
-                {/* 간편인증사 선택 */}
+                {/* 인증 방식 선택 */}
                 <Card className="border-0 shadow-sm">
                     <CardHeader className="pb-3">
                         <CardTitle className="text-base flex items-center gap-2">
                             <Smartphone className="w-4 h-4" />
-                            간편인증 선택
+                            인증 방식 선택
                         </CardTitle>
-                        <CardDescription>인증 요청이 선택한 앱으로 전송됩니다</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            {AUTH_PROVIDERS.map((ap) => (
-                                <button
-                                    key={ap.id}
-                                    onClick={() => setAuthProvider(ap.id)}
-                                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
-                                        authProvider === ap.id
-                                            ? `${ap.color} border-primary`
-                                            : 'border-muted hover:border-muted-foreground/30'
-                                    }`}
-                                >
-                                    <span className="text-lg">{ap.icon}</span>
-                                    <span>{ap.name}</span>
-                                </button>
-                            ))}
+                    <CardContent className="space-y-4">
+                        {/* 인증 방식 탭 */}
+                        <div className="flex rounded-lg border overflow-hidden">
+                            <button
+                                onClick={() => setAuthMode('simple')}
+                                className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+                                    authMode === 'simple'
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'bg-background text-muted-foreground hover:bg-muted/50'
+                                }`}
+                            >
+                                📱 간편인증
+                            </button>
+                            <button
+                                onClick={() => setAuthMode('phone')}
+                                className={`flex-1 py-2.5 text-sm font-medium transition-colors border-l ${
+                                    authMode === 'phone'
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'bg-background text-muted-foreground hover:bg-muted/50'
+                                }`}
+                            >
+                                💬 휴대폰 인증
+                            </button>
                         </div>
+
+                        {/* 간편인증 */}
+                        {authMode === 'simple' && (
+                            <>
+                                <p className="text-xs text-muted-foreground">
+                                    인증 요청이 선택한 앱으로 전송됩니다
+                                </p>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                    {AUTH_PROVIDERS.map((ap) => (
+                                        <button
+                                            key={ap.id}
+                                            onClick={() => setAuthProvider(ap.id)}
+                                            className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+                                                authProvider === ap.id
+                                                    ? `${ap.color} border-primary`
+                                                    : 'border-muted hover:border-muted-foreground/30'
+                                            }`}
+                                        >
+                                            <span className="text-lg">{ap.icon}</span>
+                                            <span>{ap.name}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+
+                        {/* 휴대폰 인증 */}
+                        {authMode === 'phone' && (
+                            <>
+                                <p className="text-xs text-muted-foreground">
+                                    SMS 인증번호가 입력한 전화번호로 전송됩니다
+                                </p>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                    {TELECOM_PROVIDERS.map((tp) => (
+                                        <button
+                                            key={tp.id}
+                                            onClick={() => setTelecom(tp.id)}
+                                            className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+                                                telecom === tp.id
+                                                    ? 'bg-primary/5 border-primary'
+                                                    : 'border-muted hover:border-muted-foreground/30'
+                                            }`}
+                                        >
+                                            <span>{tp.icon}</span>
+                                            <span>{tp.name}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -363,9 +428,12 @@ function MedicalInfoContent() {
         );
     }
 
-    // ─── STEP 2: 간편인증 대기 ──────────────────────
+    // ─── STEP 2: 인증 대기 ──────────────────────────
     if (step === 'auth-waiting') {
         const selectedAuth = AUTH_PROVIDERS.find(a => a.id === authProvider);
+        const selectedTelecom = TELECOM_PROVIDERS.find(t => t.id === telecom);
+        const isSimple = authMode === 'simple';
+
         return (
             <div className="max-w-md mx-auto mt-12 space-y-6 animate-fade-in text-center">
                 <Card className="border-0 shadow-xl">
@@ -374,10 +442,25 @@ function MedicalInfoContent() {
                             <Smartphone className="w-10 h-10 text-primary animate-pulse" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold mb-2">간편인증 요청됨</h2>
+                            <h2 className="text-xl font-bold mb-2">
+                                {isSimple ? '간편인증 요청됨' : '휴대폰 인증 요청됨'}
+                            </h2>
                             <p className="text-muted-foreground text-sm">
-                                <span className="font-semibold text-foreground">{selectedAuth?.icon} {selectedAuth?.name}</span> 앱에서
-                                <br />인증을 완료해주세요
+                                {isSimple ? (
+                                    <>
+                                        <span className="font-semibold text-foreground">
+                                            {selectedAuth?.icon} {selectedAuth?.name}
+                                        </span> 앱에서
+                                        <br />인증을 완료해주세요
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="font-semibold text-foreground">
+                                            {selectedTelecom?.icon} {selectedTelecom?.name}
+                                        </span> 인증번호가
+                                        <br />SMS로 발송되었습니다
+                                    </>
+                                )}
                             </p>
                         </div>
 
@@ -388,7 +471,9 @@ function MedicalInfoContent() {
                             </div>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <Loader2 className="w-4 h-4 animate-spin" />
-                                <span>앱에서 인증 대기 중...</span>
+                                <span>
+                                    {isSimple ? '앱에서 인증 대기 중...' : 'SMS 인증 대기 중...'}
+                                </span>
                             </div>
                         </div>
 
@@ -407,7 +492,7 @@ function MedicalInfoContent() {
                                 {loading ? (
                                     <><Loader2 className="w-4 h-4 mr-2 animate-spin" />확인 중...</>
                                 ) : (
-                                    '인증 완료했어요'
+                                    isSimple ? '인증 완료했어요' : '인증번호 입력 완료'
                                 )}
                             </Button>
                             <Button variant="ghost" size="sm" onClick={reset}>
