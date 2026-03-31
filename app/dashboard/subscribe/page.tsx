@@ -64,8 +64,12 @@ function SubscribeContent() {
         const detectedPlatform = getPlatform();
         setPlatform(detectedPlatform);
 
-        // 네이티브 앱이면 인앱결제 초기화
+        // 네이티브 앱이면 인앱결제 초기화 + 쿠폰 비활성화
         if (detectedPlatform !== 'web') {
+            // IAP에서는 쿠폰 사용 불가 → 기존 적용된 쿠폰 제거
+            setAppliedCoupon(null);
+            setCouponCode('');
+
             import('@/lib/iap/store').then(({ initializeStore }) => {
                 initializeStore().then(setIapReady);
             });
@@ -631,14 +635,21 @@ function SubscribeContent() {
 
                                 <Separator />
 
-                                {/* 쿠폰 코드 입력 */}
+                                {/* 쿠폰 코드 입력 — 네이티브 앱에서는 비활성화 */}
                                 <div className="space-y-2">
                                     <p className="text-sm font-medium flex items-center gap-1.5">
                                         <Tag className="w-3.5 h-3.5 text-primary" />
                                         할인 쿠폰
                                     </p>
 
-                                    {appliedCoupon ? (
+                                    {platform !== 'web' ? (
+                                        <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900">
+                                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                                                ⚠️ {platform === 'ios' ? 'App Store' : 'Google Play'} 결제에는 쿠폰 할인이 적용되지 않습니다.
+                                                웹(bo-bi.vercel.app)에서 결제하시면 쿠폰을 사용할 수 있습니다.
+                                            </p>
+                                        </div>
+                                    ) : appliedCoupon ? (
                                         <div className="space-y-2">
                                             <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900">
                                                 <div className="flex items-center justify-between">
