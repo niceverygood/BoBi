@@ -3,7 +3,7 @@
 // 내보험다보여 계약정보 조회 연동
 
 const CODEF_TOKEN_URL = 'https://oauth.codef.io/oauth/token';
-const CODEF_API_URL = process.env.CODEF_API_URL || 'https://development.codef.io'; // 정식: https://api.codef.io
+const CODEF_API_URL = process.env.CODEF_API_URL || 'https://api.codef.io';
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
@@ -486,3 +486,235 @@ export function transformCodefToBobi(
         policies: policies.filter(p => p.insurer && p.coverages.length > 0), // 보장 있는 것만
     };
 }
+
+// ─── HIRA 내진료정보 조회 API ────────────────────────
+// 건강보험심사평가원 내진료정보열람
+// /v1/kr/public/hw/hira-list/my-medical-information
+
+export interface HiraMedicalRequest {
+    userName: string;          // 이름
+    identity: string;          // 주민등록번호 (YYYYMMDD 또는 전체)
+    phoneNo: string;           // 전화번호 (01012345678)
+    loginType: string;         // '5': 간편인증, '6': 휴대폰인증
+    loginTypeLevel?: string;   // 간편인증사 ('1': 카카오, '2': 페이코, '5': 네이버, '6': 신한, '7': PASS, '8': 삼성, '9': KB, '12': toss)
+    telecom?: string;          // 통신사 ('0': SKT, '1': KT, '2': LGU+, '3': SKT알뜰, '4': KT알뜰, '5': LGU+알뜰)
+    id?: string;               // 세션 식별 ID (다건 요청 시)
+    // 2-Way 추가인증 관련
+    twoWayInfo?: {
+        jobIndex: number;
+        threadIndex: number;
+        jti: string;
+        twoWayTimestamp: number;
+    };
+    is2Way?: boolean;
+    secureNo?: string;         // 보안 번호 (2-Way)
+    secureNoRefresh?: string;  // 보안 번호 갱신 여부
+}
+
+export interface HiraMedicalRecord {
+    resReceiptDate?: string;       // 진료일
+    resHospitalName?: string;      // 요양기관명
+    resMedicalSubject?: string;    // 진료과목
+    resTreatmentContent?: string;  // 진료내용
+    resPrescriptionCount?: string; // 처방횟수
+    resTotalDays?: string;         // 총진료일수
+    resTotalAmount?: string;       // 총진료비
+    resPatientAmount?: string;     // 본인부담금
+    resInsuranceAmount?: string;   // 보험자부담금
+    resNonPaymentAmount?: string;  // 비급여
+    resMedicalTypeName?: string;   // 진료유형
+    resVisitDays?: string;         // 방문일수
+    resPrescriptionDays?: string;  // 투약일수
+    // 처방전 정보 (있는 경우)
+    resPrescriptionList?: {
+        resMedicineName?: string;  // 의약품명
+        resDosagePerTime?: string; // 1회투약량
+        resDailyDoses?: string;    // 1일투여횟수
+        resTotalDoseDays?: string; // 총투약일수
+        resUsageInfo?: string;     // 용법
+    }[];
+}
+
+export interface HiraMedicalResponse {
+    result: { code: string; message: string };
+    data: {
+        resResultList?: HiraMedicalRecord[];
+        // 2-Way 관련 필드
+        continue2Way?: boolean;
+        method?: string;
+        jobIndex?: number;
+        threadIndex?: number;
+        jti?: string;
+        twoWayTimestamp?: number;
+        extraInfo?: string;
+    } | HiraMedicalRecord[];
+}
+
+export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
+    records: HiraMedicalRecord[];
+    requires2Way?: boolean;
+    twoWayData?: Record<string, unknown>;
+}> {
+    const token = await getAccessToken();
+
+    const body: Record<string, unknown> = {
+        organization: '0011',       // 건강보험심사평가원
+        loginType: params.loginType,
+        userName: params.userName,
+        identity: params.identity,
+        phoneNo: params.phoneNo,
+    };
+
+    // 간편인증사 구분
+    if (params.loginTypeLevel) {
+        body.loginTypeLevel = params.loginTypeLevel;
+    }
+
+    // 통신사 (휴대폰 인증 시)
+    if (params.telecom) {
+        body.telecom = params.telecom;
+    }
+
+    // 세션 ID (다건 요청 시 동일한 ID 사용)
+    if (params.id) {
+        body.id = params.id;
+    }
+
+    // 2-Way 추가인증 데이터
+    if (params.is2Way && params.twoWayInfo) {
+        body.is2Way = true;
+        body.twoWayInfo = params.twoWayInfo;
+        if (params.secureNo) body.secureNo = params.secureNo;
+        if (params.secureNoRefresh) body.secureNoRefresh = params.secureNoRefresh;
+    }
+
+    const res = await fetch(`${CODEF_API_URL}/v1/kr/public/hw/hira-list/my-medical-information`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+    });
+
+    const data: HiraMedicalResponse = await res.json();
+
+    // 2-Way 추가인증 필요
+    if (data.result?.code === 'CF-03002') {
+        const d = data.data as Record<string, unknown>;
+        return {
+            records: [],
+            requires2Way: true,
+            twoWayData: d,
+        };
+    }
+
+    if (data.result?.code !== 'CF-00000') {
+        throw new Error(`내진료정보 조회 실패: ${data.result?.code} ${data.result?.message}`);
+    }
+
+    // 응답 구조에 따라 파싱
+    const responseData = data.data;
+    let records: HiraMedicalRecord[] = [];
+    if (Array.isArray(responseData)) {
+        records = responseData;
+    } else if (responseData && 'resResultList' in responseData && responseData.resResultList) {
+        records = responseData.resResultList;
+    }
+
+    return { records };
+}
+
+// ─── HIRA 자동차보험 진료정보 조회 API ───────────────
+// 건강보험심사평가원 내 진료정보 열람(자동차보험)
+// /v1/kr/public/hw/hira-list/my-car-insurance
+
+export interface HiraCarInsuranceRecord {
+    resAccidentDate?: string;       // 사고일
+    resReceiptDate?: string;        // 진료일
+    resHospitalName?: string;       // 요양기관명
+    resMedicalSubject?: string;     // 진료과목
+    resTreatmentContent?: string;   // 진료내역
+    resTotalDays?: string;          // 총진료일수
+    resTotalAmount?: string;        // 총진료비
+    resPatientAmount?: string;      // 본인부담금
+    resInsuranceCompany?: string;   // 보험회사
+    resPolicyNumber?: string;       // 증권번호
+    resClaimStatus?: string;        // 청구상태
+}
+
+export interface HiraCarInsuranceResponse {
+    result: { code: string; message: string };
+    data: {
+        resResultList?: HiraCarInsuranceRecord[];
+        continue2Way?: boolean;
+        method?: string;
+        jobIndex?: number;
+        threadIndex?: number;
+        jti?: string;
+        twoWayTimestamp?: number;
+    } | HiraCarInsuranceRecord[];
+}
+
+export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
+    records: HiraCarInsuranceRecord[];
+    requires2Way?: boolean;
+    twoWayData?: Record<string, unknown>;
+}> {
+    const token = await getAccessToken();
+
+    const body: Record<string, unknown> = {
+        organization: '0011',       // 건강보험심사평가원
+        loginType: params.loginType,
+        userName: params.userName,
+        identity: params.identity,
+        phoneNo: params.phoneNo,
+    };
+
+    if (params.loginTypeLevel) body.loginTypeLevel = params.loginTypeLevel;
+    if (params.telecom) body.telecom = params.telecom;
+    if (params.id) body.id = params.id;
+
+    // 2-Way 추가인증
+    if (params.is2Way && params.twoWayInfo) {
+        body.is2Way = true;
+        body.twoWayInfo = params.twoWayInfo;
+        if (params.secureNo) body.secureNo = params.secureNo;
+        if (params.secureNoRefresh) body.secureNoRefresh = params.secureNoRefresh;
+    }
+
+    const res = await fetch(`${CODEF_API_URL}/v1/kr/public/hw/hira-list/my-car-insurance`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+    });
+
+    const data: HiraCarInsuranceResponse = await res.json();
+
+    if (data.result?.code === 'CF-03002') {
+        const d = data.data as Record<string, unknown>;
+        return {
+            records: [],
+            requires2Way: true,
+            twoWayData: d,
+        };
+    }
+
+    if (data.result?.code !== 'CF-00000') {
+        throw new Error(`자동차보험 조회 실패: ${data.result?.code} ${data.result?.message}`);
+    }
+
+    const responseData = data.data;
+    let records: HiraCarInsuranceRecord[] = [];
+    if (Array.isArray(responseData)) {
+        records = responseData;
+    } else if (responseData && 'resResultList' in responseData && responseData.resResultList) {
+        records = responseData.resResultList;
+    }
+
+    return { records };
+}
+
