@@ -22,12 +22,16 @@ export async function POST(request: Request) {
         const body = await request.json();
         const {
             userName,
-            identity,          // 주민등록번호 13자리
-            phoneNo,           // 01012345678
-            loginType = '5',   // '5': 간편인증
-            loginTypeLevel,    // 간편인증사 코드
-            telecom,           // 통신사 (휴대폰인증 시)
+            identity,               // 주민등록번호 13자리
+            phoneNo,                // 01012345678
+            loginType = '5',        // '5': 간편인증 (HIRA는 항상 간편인증)
+            loginTypeLevel,         // 간편인증사 코드 (CODEF 공식: '1'=카카오, '5'=PASS, '6'=네이버 등)
+            telecom,                // 통신사 (PASS 인증 시 필수, '0'=SKT, '1'=KT, '2'=LGU+)
             queryType = 'medical',  // 'medical' | 'car' | 'both'
+            // 조회 조건
+            searchStartDay,         // 조회시작일 YYYYMMDD (기본: 5년전)
+            searchEndDay,           // 조회종료일 YYYYMMDD (기본: 오늘)
+            inquiryType,            // '0'=전체, '1'=급여, '2'=비급여
             // 2-Way 관련
             is2Way,
             twoWayInfo,
@@ -41,22 +45,51 @@ export async function POST(request: Request) {
             }, { status: 400 });
         }
 
+        // 주민등록번호 13자리 검증
+        const cleanIdentity = identity.replace(/\D/g, '');
+        if (cleanIdentity.length !== 13) {
+            return NextResponse.json({
+                error: `주민등록번호가 올바르지 않습니다. (${cleanIdentity.length}자리 입력됨, 13자리 필요)`,
+            }, { status: 400 });
+        }
+
         // 세션 ID 생성 (동일 사용자의 다건 요청을 하나의 인증으로 처리)
         const sessionId = body.sessionId || `bobi-${user.id}-${Date.now()}`;
 
         const params: HiraMedicalRequest = {
             userName,
-            identity: identity.replace(/\D/g, ''),
+            identity: cleanIdentity,
             phoneNo: phoneNo.replace(/-/g, ''),
             loginType,
             loginTypeLevel,
             telecom,
             id: sessionId,
+            // HIRA 필수 조회조건
+            searchStartDay,
+            searchEndDay,
+            inquiryType: inquiryType || '0', // 기본: 전체
+            // 2-Way
             is2Way,
             twoWayInfo,
             secureNo,
             secureNoRefresh,
         };
+
+        // 디버그 로깅 (민감정보 마스킹)
+        console.log('[HIRA] Request params:', {
+            userName: userName ? `${userName[0]}**` : 'N/A',
+            identityLength: cleanIdentity.length,
+            phoneNo: phoneNo ? `***${phoneNo.slice(-4)}` : 'N/A',
+            loginType,
+            loginTypeLevel,
+            telecom: telecom || 'N/A',
+            queryType,
+            searchStartDay: params.searchStartDay || '(auto: 5yr ago)',
+            searchEndDay: params.searchEndDay || '(auto: today)',
+            inquiryType: params.inquiryType,
+            is2Way: !!is2Way,
+            sessionId,
+        });
 
         const result: {
             sessionId: string;
@@ -71,6 +104,7 @@ export async function POST(request: Request) {
             const medicalResult = await fetchMyMedicalInfo(params);
 
             if (medicalResult.requires2Way) {
+                console.log('[HIRA] 2-Way 인증 요청됨 (medical)');
                 return NextResponse.json({
                     requires2Way: true,
                     twoWayData: medicalResult.twoWayData,
@@ -83,20 +117,20 @@ export async function POST(request: Request) {
                 records: medicalResult.records,
                 count: medicalResult.records.length,
             };
+            console.log(`[HIRA] 내진료정보 조회 완료: ${medicalResult.records.length}건`);
         }
 
         // 자동차보험 조회
         if (queryType === 'car' || queryType === 'both') {
-            // 이미 인증 세션이 있으면 동일 세션으로 조회 (재인증 불필요)
             const carResult = await fetchMyCarInsurance(params);
 
             if (carResult.requires2Way) {
+                console.log('[HIRA] 2-Way 인증 요청됨 (car)');
                 return NextResponse.json({
                     requires2Way: true,
                     twoWayData: carResult.twoWayData,
                     sessionId,
                     queryType,
-                    // medical 결과가 이미 있으면 같이 전달
                     ...(result.medical ? { medical: result.medical } : {}),
                 });
             }
@@ -105,6 +139,7 @@ export async function POST(request: Request) {
                 records: carResult.records,
                 count: carResult.records.length,
             };
+            console.log(`[HIRA] 자동차보험 조회 완료: ${carResult.records.length}건`);
         }
 
         return NextResponse.json({
@@ -113,9 +148,22 @@ export async function POST(request: Request) {
         });
     } catch (error) {
         const errorMessage = (error as Error).message;
-        console.error('HIRA medical info error:', error);
+        console.error('[HIRA] Error:', errorMessage);
+        console.error('[HIRA] Full error:', error);
+
+        // 에러 메시지 사용자 친화적으로 가공
+        let userMessage = errorMessage;
+        if (errorMessage.includes('CF-13002')) {
+            userMessage = '요청 파라미터 오류입니다. 주민등록번호 13자리를 정확히 입력했는지 확인해주세요.';
+        } else if (errorMessage.includes('CF-11021')) {
+            userMessage = '인증 시간이 초과되었습니다. 다시 시도해주세요.';
+        } else if (errorMessage.includes('CF-03002')) {
+            userMessage = '추가 인증이 필요합니다. 앱에서 인증을 완료해주세요.';
+        }
+
         return NextResponse.json({
-            error: `진료정보 조회 중 오류가 발생했습니다: ${errorMessage}`,
+            error: `진료정보 조회 중 오류가 발생했습니다: ${userMessage}`,
+            errorCode: errorMessage.match(/CF-\d+/)?.[0] || undefined,
         }, { status: 500 });
     }
 }

@@ -510,10 +510,14 @@ export interface HiraMedicalRequest {
     userName: string;          // 이름
     identity: string;          // 주민등록번호 13자리 (하이픈 제거, 예: 9103251234567)
     phoneNo: string;           // 전화번호 (01012345678)
-    loginType: string;         // '5': 간편인증, '6': 휴대폰인증
-    loginTypeLevel?: string;   // 간편인증사 ('1': 카카오, '2': 페이코, '5': 네이버, '6': 신한, '7': PASS, '8': 삼성, '9': KB, '12': toss)
-    telecom?: string;          // 통신사 ('1': SKT, '2': KT, '3': LGU+, '4': SKT알뜰, '5': KT알뜰, '6': LGU+알뜰)
+    loginType: string;         // '5': 간편인증
+    loginTypeLevel?: string;   // 간편인증사 ('1': 카카오, '2': 페이코, '3': 삼성패스, '4': KB모바일, '5': PASS(통신사), '6': 네이버, '7': 신한, '8': 토스, '9': 하나, '10': NH)
+    telecom?: string;          // 통신사 - CODEF 공식 코드 ('0': SKT, '1': KT, '2': LGU+)
     id?: string;               // 세션 식별 ID (다건 요청 시)
+    // 조회 조건 (HIRA 필수 파라미터)
+    searchStartDay?: string;   // 조회시작일 YYYYMMDD (기본: 5년 전)
+    searchEndDay?: string;     // 조회종료일 YYYYMMDD (기본: 오늘)
+    inquiryType?: string;      // '0': 전체, '1': 급여, '2': 비급여
     // 2-Way 추가인증 관련
     twoWayInfo?: {
         jobIndex: number;
@@ -572,12 +576,21 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
 }> {
     const token = await getAccessToken();
 
+    // ── 조회 기간 설정 (필수 파라미터) ──
+    const now = new Date();
+    const endDay = params.searchEndDay || now.toISOString().slice(0, 10).replace(/-/g, '');
+    const fiveYearsAgo = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate());
+    const startDay = params.searchStartDay || fiveYearsAgo.toISOString().slice(0, 10).replace(/-/g, '');
+
     const body: Record<string, unknown> = {
         organization: '0020',       // 건강보험심사평가원
         loginType: params.loginType,
         userName: params.userName,
         identity: params.identity,
         phoneNo: params.phoneNo,
+        searchStartDay: startDay,   // 필수: 조회 시작일
+        searchEndDay: endDay,       // 필수: 조회 종료일
+        inquiryType: params.inquiryType || '0',  // 필수: '0'=전체, '1'=급여, '2'=비급여
     };
 
     // 간편인증사 구분
@@ -585,7 +598,7 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
         body.loginTypeLevel = params.loginTypeLevel;
     }
 
-    // 통신사 (휴대폰 인증 시)
+    // 통신사 (PASS 인증 시 필수, loginTypeLevel='5')
     if (params.telecom) {
         body.telecom = params.telecom;
     }
@@ -603,6 +616,13 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
         if (params.secureNoRefresh) body.secureNoRefresh = params.secureNoRefresh;
     }
 
+    // 디버그: CODEF에 전송되는 실제 body 로깅 (민감정보 마스킹)
+    console.log('[CODEF] fetchMyMedicalInfo request body:', JSON.stringify({
+        ...body,
+        identity: body.identity ? `${String(body.identity).slice(0, 4)}*****` : 'N/A',
+        phoneNo: body.phoneNo ? `***${String(body.phoneNo).slice(-4)}` : 'N/A',
+    }, null, 2));
+
     const res = await fetch(`${CODEF_API_URL}/v1/kr/public/hw/hira-list/my-medical-information`, {
         method: 'POST',
         headers: {
@@ -613,6 +633,9 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
     });
 
     const data: HiraMedicalResponse = await parseCodefResponse(res);
+
+    // 디버그: CODEF 응답 코드 로깅
+    console.log('[CODEF] fetchMyMedicalInfo response:', data.result?.code, data.result?.message);
 
     // 2-Way 추가인증 필요
     if (data.result?.code === 'CF-03002') {
@@ -678,12 +701,21 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
 }> {
     const token = await getAccessToken();
 
+    // ── 조회 기간 설정 (필수 파라미터) ──
+    const now = new Date();
+    const endDay = params.searchEndDay || now.toISOString().slice(0, 10).replace(/-/g, '');
+    const fiveYearsAgo = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate());
+    const startDay = params.searchStartDay || fiveYearsAgo.toISOString().slice(0, 10).replace(/-/g, '');
+
     const body: Record<string, unknown> = {
         organization: '0020',       // 건강보험심사평가원
         loginType: params.loginType,
         userName: params.userName,
         identity: params.identity,
         phoneNo: params.phoneNo,
+        searchStartDay: startDay,   // 필수: 조회 시작일
+        searchEndDay: endDay,       // 필수: 조회 종료일
+        inquiryType: params.inquiryType || '0',  // 필수: '0'=전체
     };
 
     if (params.loginTypeLevel) body.loginTypeLevel = params.loginTypeLevel;
