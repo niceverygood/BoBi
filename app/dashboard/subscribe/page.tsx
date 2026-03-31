@@ -315,8 +315,50 @@ function SubscribeContent() {
         }
     };
 
-    // 웹 결제: 결제 수단에 따라 분기
+    // 무료 쿠폰 결제 (금액 0원일 때 — 결제 없이 구독 생성)
+    const handleFreeCouponSubscribe = async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            if (!appliedCoupon) {
+                setError('쿠폰 정보가 없습니다.');
+                setLoading(false);
+                return;
+            }
+
+            const res = await fetch('/api/coupon/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    couponCode: appliedCoupon.code,
+                    planSlug: appliedCoupon.upgradeToPlan || selectedPlan,
+                    billingCycle,
+                }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                setError(data.error || '쿠폰 구독 처리에 실패했습니다.');
+                setLoading(false);
+                return;
+            }
+
+            setSuccess(true);
+        } catch (err) {
+            setError((err as Error).message || '쿠폰 처리 중 오류가 발생했습니다.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 웹 결제: 금액 0원이면 무료 쿠폰 처리, 아니면 결제 수단별 분기
     const handleWebSubscribe = async () => {
+        // 쿠폰 적용으로 0원인 경우 결제 없이 바로 구독 생성
+        if (amount === 0 && appliedCoupon) {
+            return handleFreeCouponSubscribe();
+        }
         if (paymentMethod === 'kakaopay') {
             return handleKakaoPaySubscribe();
         }

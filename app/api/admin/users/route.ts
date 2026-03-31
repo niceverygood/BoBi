@@ -30,8 +30,19 @@ export async function GET() {
     }
 
     try {
-        // Get all subscriptions with plans
-        const { data: subscriptions } = await supabase
+        // Service role로 전체 구독 조회 (RLS 우회 필수 — anon key로는 다른 유저 구독 조회 불가)
+        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        if (!serviceKey || serviceKey === 'your_service_role_key') {
+            return NextResponse.json({ error: 'SUPABASE_SERVICE_ROLE_KEY가 설정되지 않았습니다.' }, { status: 500 });
+        }
+        const { createClient: createAdminClient } = await import('@supabase/supabase-js');
+        const adminSupabase = createAdminClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            serviceKey,
+        );
+
+        // Get all active subscriptions with plans (service role로 전체 조회)
+        const { data: subscriptions } = await adminSupabase
             .from('subscriptions')
             .select('user_id, plan:subscription_plans(slug, display_name)')
             .eq('status', 'active');
@@ -45,16 +56,10 @@ export async function GET() {
             }
         }
 
-        // Try service role key for full user list
-        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-        if (serviceKey && serviceKey !== 'your_service_role_key') {
-            const { createClient: createAdminClient } = await import('@supabase/supabase-js');
-            const adminSupabase = createAdminClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                serviceKey,
-            );
-            const { data: usersData } = await adminSupabase.auth.admin.listUsers({ perPage: 500 });
-            const users = (usersData?.users || []).map((u) => ({
+        // adminSupabase는 이미 위에서 생성됨 — 유저 목록 조회
+        const { data: usersData } = await adminSupabase.auth.admin.listUsers({ perPage: 500 });
+        if (usersData?.users && usersData.users.length > 0) {
+            const users = usersData.users.map((u) => ({
                 id: u.id,
                 email: u.email || '',
                 name: u.user_metadata?.name || '',
