@@ -172,6 +172,21 @@ function SubscribeContent() {
                 return;
             }
 
+            // 영수증/토큰 둘 다 없으면 에러
+            if (!result.receipt && !result.transactionId) {
+                console.error('[IAP] No receipt or transactionId returned from purchase');
+                setError('결제는 완료되었으나 영수증 정보를 받지 못했습니다. 앱을 재시작한 후 구매 복원을 시도해주세요.');
+                setLoading(false);
+                return;
+            }
+
+            console.log('[IAP] Sending receipt to server:', {
+                platform,
+                hasReceipt: !!result.receipt,
+                hasToken: !!result.transactionId,
+                productId: `kr.bobi.app.${selectedPlan}.${billingCycle}`,
+            });
+
             // 서버에 영수증 검증 요청
             const res = await fetch('/api/iap/verify', {
                 method: 'POST',
@@ -180,7 +195,7 @@ function SubscribeContent() {
                     platform,
                     receipt: result.receipt,
                     productId: `kr.bobi.app.${selectedPlan}.${billingCycle}`,
-                    purchaseToken: result.transactionId,
+                    purchaseToken: result.transactionId || result.receipt,
                 }),
             });
 
@@ -194,6 +209,7 @@ function SubscribeContent() {
 
             setSuccess(true);
         } catch (err) {
+            console.error('[IAP] Subscribe error:', err);
             setError((err as Error).message || '결제 처리 중 오류가 발생했습니다.');
         } finally {
             setLoading(false);

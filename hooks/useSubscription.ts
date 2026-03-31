@@ -55,13 +55,16 @@ export function useSubscription() {
                 return;
             }
 
-            // Fetch active subscription with plan
-            const { data: subData } = await supabase
+            // Fetch active subscription with plan (최신 1건만, 중복 active 방지)
+            const { data: subList } = await supabase
                 .from('subscriptions')
                 .select('*, plan:subscription_plans(*)')
                 .eq('user_id', user.id)
                 .eq('status', 'active')
-                .maybeSingle();
+                .order('updated_at', { ascending: false })
+                .limit(1);
+
+            const subData = subList?.[0] || null;
 
             if (subData) {
                 setSubscription(subData as unknown as Subscription);

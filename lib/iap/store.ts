@@ -42,15 +42,26 @@ interface PurchaseResult {
 let storeReady = false;
 let store: any = null;
 
+// CdvPurchase 플러그인이 로드될 때까지 대기 (Capacitor 원격 서버 모드에서 시간이 걸릴 수 있음)
+async function waitForCdvPurchase(maxWaitMs = 10000): Promise<any> {
+  const startTime = Date.now();
+  while (Date.now() - startTime < maxWaitMs) {
+    const cdvStore = (window as any).CdvPurchase?.store;
+    if (cdvStore) return cdvStore;
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+  return null;
+}
+
 export async function initializeStore(): Promise<boolean> {
   const platform = getPlatform();
   if (platform === 'web') return false;
 
   try {
-    // cordova-plugin-purchase의 CdvPurchase 글로벌 객체
-    store = (window as any).CdvPurchase?.store;
+    // Cordova 플러그인이 로드될 때까지 대기 (최대 10초)
+    store = await waitForCdvPurchase(10000);
     if (!store) {
-      console.warn('IAP store not available');
+      console.warn('IAP store not available after waiting');
       return false;
     }
 
@@ -74,11 +85,28 @@ export async function initializeStore(): Promise<boolean> {
       { id: IAP_CREDIT_PRODUCTS.credit_30, type: ProductType.CONSUMABLE, platform: targetPlatform },
     ]);
 
-    // 영수증 검증 서버 설정
-    store.validator = '/api/iap/verify';
+    // 승인된 트랜잭션 이벤트 핸들러 — 서버에 영수증 전송
+    store.when()
+      .approved((transaction: any) => {
+        console.log('[IAP] Transaction approved:', transaction.id);
+        // 트랜잭션을 verify하면 서버 validator로 전송됨
+        return transaction.verify();
+      })
+      .verified((receipt: any) => {
+        console.log('[IAP] Receipt verified:', receipt.id);
+        // 서버 검증 완료 → finish
+        return receipt.finish();
+      })
+      .finished((transaction: any) => {
+        console.log('[IAP] Transaction finished:', transaction.id);
+      });
+    
+    // 커스텀 validator 대신 이벤트 핸들러에서 수동 처리
+    // store.validator = '/api/iap/verify'; // 이벤트 기반으로 직접 처리
 
     await store.initialize();
     storeReady = true;
+    console.log('[IAP] Store initialized successfully');
     return true;
   } catch (err) {
     console.error('IAP store init failed:', err);
@@ -104,17 +132,82 @@ export async function purchase(plan: PlanSlug, cycle: BillingCycle): Promise<Pur
       return { success: false, error: '구매 가능한 상품이 없습니다.' };
     }
 
-    const result = await store.order(offer);
+    // Promise로 구매 결과를 대기
+    const purchasePromise = new Promise<PurchaseResult>((resolve) => {
+      let resolved = false;
 
-    if (result?.isError) {
-      return { success: false, error: result.message || '결제에 실패했습니다.' };
-    }
+      // 성공 이벤트 리스너
+      const onVerified = (receipt: any) => {
+        if (resolved) return;
+        const tx = receipt.sourceTransaction || receipt;
+        
+        // iOS: appStoreReceipt 또는 receipt
+        // Android: purchaseToken
+        const platform = getPlatform();
+        let receiptData: string | undefined;
+        let transactionId: string | undefined;
 
-    return {
-      success: true,
-      transactionId: result?.transactionId,
-      receipt: result?.receipt,
-    };
+        if (platform === 'ios') {
+          receiptData = tx.appStoreReceipt
+            || (tx.nativePurchase as any)?.appStoreReceipt
+            || tx.receipt;
+          transactionId = tx.transactionId || tx.id;
+        } else {
+          receiptData = tx.purchaseToken || tx.receipt;
+          transactionId = tx.transactionId || tx.purchaseToken || tx.id;
+        }
+
+        resolved = true;
+        receipt.finish();
+
+        resolve({
+          success: true,
+          transactionId,
+          receipt: receiptData,
+        });
+      };
+
+      // 에러 이벤트 리스너
+      const onError = (error: any) => {
+        if (resolved) return;
+        resolved = true;
+        resolve({
+          success: false,
+          error: error?.message || '결제에 실패했습니다.',
+        });
+      };
+
+      // 이벤트 구독
+      store.when().verified(onVerified);
+
+      // 30초 타임아웃
+      setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          resolve({
+            success: false,
+            error: '결제 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.',
+          });
+        }
+      }, 30000);
+
+      // 결제 시작
+      store.order(offer).then((result: any) => {
+        if (result?.isError) {
+          if (!resolved) {
+            resolved = true;
+            resolve({
+              success: false,
+              error: result.message || '결제에 실패했습니다.',
+            });
+          }
+        }
+      }).catch((err: any) => {
+        onError(err);
+      });
+    });
+
+    return await purchasePromise;
   } catch (err) {
     return {
       success: false,
@@ -136,7 +229,7 @@ export async function restorePurchases(): Promise<PurchaseResult> {
   }
 }
 
-// 크레딧 구매 (소모성 아이템)
+// 크레딧 구매 (소모성 아이템) — 이벤트 기반 처리
 export async function purchaseCredit(packId: CreditPackId): Promise<PurchaseResult> {
   if (!storeReady || !store) {
     return { success: false, error: '인앱결제를 초기화할 수 없습니다.' };
@@ -155,17 +248,54 @@ export async function purchaseCredit(packId: CreditPackId): Promise<PurchaseResu
       return { success: false, error: '구매 가능한 상품이 없습니다.' };
     }
 
-    const result = await store.order(offer);
+    // Promise로 구매 결과를 대기
+    const purchasePromise = new Promise<PurchaseResult>((resolve) => {
+      let resolved = false;
 
-    if (result?.isError) {
-      return { success: false, error: result.message || '크레딧 구매에 실패했습니다.' };
-    }
+      const onVerified = (receipt: any) => {
+        if (resolved) return;
+        const tx = receipt.sourceTransaction || receipt;
+        resolved = true;
+        receipt.finish();
+        resolve({
+          success: true,
+          transactionId: tx.transactionId || tx.id,
+          receipt: tx.receipt || tx.purchaseToken,
+        });
+      };
 
-    return {
-      success: true,
-      transactionId: result?.transactionId,
-      receipt: result?.receipt,
-    };
+      store.when().verified(onVerified);
+
+      setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          resolve({
+            success: false,
+            error: '결제 응답 시간이 초과되었습니다.',
+          });
+        }
+      }, 30000);
+
+      store.order(offer).then((result: any) => {
+        if (result?.isError && !resolved) {
+          resolved = true;
+          resolve({
+            success: false,
+            error: result.message || '크레딧 구매에 실패했습니다.',
+          });
+        }
+      }).catch((err: any) => {
+        if (!resolved) {
+          resolved = true;
+          resolve({
+            success: false,
+            error: (err as Error).message || '크레딧 구매 중 오류가 발생했습니다.',
+          });
+        }
+      });
+    });
+
+    return await purchasePromise;
   } catch (err) {
     return {
       success: false,

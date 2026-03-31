@@ -87,24 +87,11 @@ export async function POST(request: Request) {
             }, { status: 404 });
         }
 
-        // Get the target plan (service role로 조회)
-        const { data: plan, error: planError } = await adminSupabase
-            .from('subscription_plans')
-            .select('*')
-            .eq('slug', planSlug)
-            .single();
-
-        if (planError || !plan) {
-            return NextResponse.json({ error: `플랜을 찾을 수 없습니다: ${planSlug}` }, { status: 404 });
-        }
-
-        // Calculate period dates
+        // Calculate period dates — 관리자 수동 변경은 1년간 유효하게 설정
         const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const periodStart = `${year}-${month}-01`;
-        const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
-        const periodEnd = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+        const periodStart = now.toISOString();
+        const periodEnd = new Date(now);
+        periodEnd.setFullYear(periodEnd.getFullYear() + 1);
 
         // Cancel all existing active subscriptions (service role로 RLS 우회)
         const { error: cancelError } = await adminSupabase
@@ -117,6 +104,55 @@ export async function POST(request: Request) {
             console.error('Cancel subscription error:', cancelError);
         }
 
+        // Also cancel any past_due subscriptions (중복 방지)
+        await adminSupabase
+            .from('subscriptions')
+            .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+            .eq('user_id', targetUserId)
+            .eq('status', 'past_due');
+
+        // 무료 플랜이면 구독 레코드 생성하지 않음 (subscription_plans에 free가 없을 수 있음)
+        if (planSlug === 'free') {
+            // usage_tracking을 무료 플랜 기준으로 리셋
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const usagePeriodStart = `${year}-${month}-01`;
+            const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+            const usagePeriodEnd = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+
+            const { data: existingUsage } = await adminSupabase
+                .from('usage_tracking')
+                .select('id')
+                .eq('user_id', targetUserId)
+                .eq('period_start', usagePeriodStart)
+                .maybeSingle();
+
+            if (existingUsage) {
+                await adminSupabase
+                    .from('usage_tracking')
+                    .update({ analyses_limit: 5, updated_at: new Date().toISOString() })
+                    .eq('id', existingUsage.id);
+            }
+
+            return NextResponse.json({
+                success: true,
+                message: `${targetEmail}의 플랜이 무료로 변경되었습니다.`,
+                user: { id: targetUserId, email: targetEmail },
+                plan: { slug: 'free', name: '무료 체험' },
+            });
+        }
+
+        // Get the target plan (service role로 조회)
+        const { data: plan, error: planError } = await adminSupabase
+            .from('subscription_plans')
+            .select('*')
+            .eq('slug', planSlug)
+            .single();
+
+        if (planError || !plan) {
+            return NextResponse.json({ error: `플랜을 찾을 수 없습니다: ${planSlug}` }, { status: 404 });
+        }
+
         // Create new subscription (service role로 RLS 우회)
         const { error: insertError } = await adminSupabase
             .from('subscriptions')
@@ -126,7 +162,8 @@ export async function POST(request: Request) {
                 status: 'active',
                 billing_cycle: 'monthly',
                 current_period_start: periodStart,
-                current_period_end: periodEnd,
+                current_period_end: periodEnd.toISOString(),
+                payment_provider: 'admin_manual',
             });
 
         if (insertError) {
@@ -136,12 +173,17 @@ export async function POST(request: Request) {
 
         // Update usage_tracking limits (service role로 RLS 우회)
         const analysesLimit = plan.max_analyses === -1 ? 999999 : plan.max_analyses;
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const usagePeriodStart = `${year}-${month}-01`;
+        const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+        const usagePeriodEnd = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
 
         const { data: existingUsage } = await adminSupabase
             .from('usage_tracking')
             .select('id')
             .eq('user_id', targetUserId)
-            .eq('period_start', periodStart)
+            .eq('period_start', usagePeriodStart)
             .maybeSingle();
 
         if (existingUsage) {
@@ -157,8 +199,8 @@ export async function POST(request: Request) {
                 .from('usage_tracking')
                 .insert({
                     user_id: targetUserId,
-                    period_start: periodStart,
-                    period_end: periodEnd,
+                    period_start: usagePeriodStart,
+                    period_end: usagePeriodEnd,
                     analyses_used: 0,
                     analyses_limit: analysesLimit,
                 });
