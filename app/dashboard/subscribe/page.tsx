@@ -64,12 +64,8 @@ function SubscribeContent() {
         const detectedPlatform = getPlatform();
         setPlatform(detectedPlatform);
 
-        // 네이티브 앱이면 인앱결제 초기화 + 쿠폰 비활성화
+        // 네이티브 앱이면 인앱결제 초기화
         if (detectedPlatform !== 'web') {
-            // IAP에서는 쿠폰 사용 불가 → 기존 적용된 쿠폰 제거
-            setAppliedCoupon(null);
-            setCouponCode('');
-
             import('@/lib/iap/store').then(({ initializeStore }) => {
                 initializeStore().then(setIapReady);
             });
@@ -97,6 +93,45 @@ function SubscribeContent() {
             setError('결제가 취소되었습니다.');
         }
     }, [searchParams]);
+
+    // URL 쿠폰 파라미터 자동 적용 (네이티브 앱 → 웹 결제 시)
+    useEffect(() => {
+        if (couponParam && !couponAutoApplied && !appliedCoupon && selectedPlan) {
+            setCouponAutoApplied(true);
+            setCouponCode(couponParam.toUpperCase());
+            // 자동 쿠폰 검증
+            (async () => {
+                setCouponLoading(true);
+                try {
+                    const res = await fetch('/api/coupon/validate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            code: couponParam,
+                            planSlug: selectedPlan,
+                            billingCycle,
+                        }),
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        setAppliedCoupon({
+                            id: data.coupon.id,
+                            code: data.coupon.code,
+                            description: data.coupon.description,
+                            discountLabel: data.pricing.discountLabel,
+                            discountAmount: data.pricing.discountAmount,
+                            finalPrice: data.pricing.finalPrice,
+                            upgradeToPlan: data.coupon.upgradeToPlan || null,
+                            upgradePlanName: data.upgradePlan?.name || null,
+                        });
+                    }
+                } catch { /* ignore */ } finally {
+                    setCouponLoading(false);
+                }
+            })();
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [couponParam, selectedPlan]);
 
     const planInfo = PLAN_LIMITS[selectedPlan];
     const originalAmount = billingCycle === 'yearly' ? planInfo.priceYearly : planInfo.priceMonthly;
@@ -635,21 +670,14 @@ function SubscribeContent() {
 
                                 <Separator />
 
-                                {/* 쿠폰 코드 입력 — 네이티브 앱에서는 비활성화 */}
+                                {/* 쿠폰 코드 입력 */}
                                 <div className="space-y-2">
                                     <p className="text-sm font-medium flex items-center gap-1.5">
                                         <Tag className="w-3.5 h-3.5 text-primary" />
                                         할인 쿠폰
                                     </p>
 
-                                    {platform !== 'web' ? (
-                                        <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900">
-                                            <p className="text-xs text-amber-700 dark:text-amber-400">
-                                                ⚠️ {platform === 'ios' ? 'App Store' : 'Google Play'} 결제에는 쿠폰 할인이 적용되지 않습니다.
-                                                웹(bo-bi.vercel.app)에서 결제하시면 쿠폰을 사용할 수 있습니다.
-                                            </p>
-                                        </div>
-                                    ) : appliedCoupon ? (
+                                    {appliedCoupon ? (
                                         <div className="space-y-2">
                                             <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900">
                                                 <div className="flex items-center justify-between">
@@ -681,6 +709,22 @@ function SubscribeContent() {
                                                             </p>
                                                         </div>
                                                     </div>
+                                                </div>
+                                            )}
+                                            {/* 네이티브 앱에서 쿠폰 적용 시 웹 결제 안내 */}
+                                            {platform !== 'web' && (
+                                                <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900">
+                                                    <p className="text-xs text-blue-700 dark:text-blue-400 mb-2">
+                                                        💳 쿠폰 할인은 {platform === 'ios' ? 'App Store' : 'Google Play'} 결제에 적용할 수 없어 웹 결제로 진행됩니다.
+                                                    </p>
+                                                    <a
+                                                        href={`https://bo-bi.vercel.app/dashboard/subscribe?plan=${selectedPlan}&coupon=${appliedCoupon.code}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="block w-full py-2.5 text-center text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                                                    >
+                                                        🌐 웹에서 {amount.toLocaleString()}원으로 결제하기
+                                                    </a>
                                                 </div>
                                             )}
                                         </div>
@@ -800,6 +844,8 @@ function SubscribeContent() {
                                     </div>
                                 )}
 
+                                {/* 네이티브에서 쿠폰 적용 시 IAP 버튼 숨김 (웹 결제 링크 사용) */}
+                                {!(platform !== 'web' && appliedCoupon) && (
                                 <Button
                                     onClick={handleSubscribe}
                                     disabled={loading || subLoading || (platform !== 'web' && !iapReady)}
@@ -817,6 +863,7 @@ function SubscribeContent() {
                                         </>
                                     )}
                                 </Button>
+                                )}
 
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
                                     <Shield className="w-3.5 h-3.5" />
