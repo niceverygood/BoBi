@@ -5,6 +5,7 @@ import { callOpenAI } from '@/lib/ai/openai';
 import { STEP1_ANALYSIS_PROMPT } from '@/lib/ai/prompts';
 import { parseAIResponse, validateAnalysisResult } from '@/lib/ai/parser';
 import { validateAndCorrectDates, formatCorrections } from '@/lib/ai/date-validator';
+import { formatCodefRecordsAsText } from '@/lib/codef/formatter';
 import type { AnalysisResult } from '@/types/analysis';
 
 export const maxDuration = 120; // Claude needs more time for complex analyses
@@ -63,32 +64,43 @@ export async function POST(request: Request) {
             }
         }
 
-        const { customerId, uploadIds } = await request.json();
+        const { customerId, uploadIds, codefRecords } = await request.json();
+        const isCodef = !!codefRecords;
 
-        if (!uploadIds || !Array.isArray(uploadIds) || uploadIds.length === 0) {
-            return NextResponse.json({ error: '업로드된 파일이 없습니다.' }, { status: 400 });
-        }
+        let combinedText: string;
 
-        // Get uploaded texts
-        const { data: uploads, error: uploadError } = await supabase
-            .from('uploads')
-            .select('*')
-            .in('id', uploadIds)
-            .eq('user_id', user.id);
+        if (isCodef) {
+            // CODEF 심평원 데이터 → 텍스트 변환
+            const { treats, drugs, cars } = codefRecords;
+            combinedText = formatCodefRecordsAsText(treats || [], drugs || [], cars || []);
+            if (!combinedText.trim() || combinedText.includes('조회된 진료 기록이 없습니다')) {
+                return NextResponse.json({ error: '분석할 진료 기록이 없습니다.' }, { status: 400 });
+            }
+        } else {
+            // 기존 PDF 업로드 → 텍스트 추출
+            if (!uploadIds || !Array.isArray(uploadIds) || uploadIds.length === 0) {
+                return NextResponse.json({ error: '업로드된 파일이 없습니다.' }, { status: 400 });
+            }
 
-        if (uploadError || !uploads || uploads.length === 0) {
-            return NextResponse.json({ error: '업로드된 파일을 찾을 수 없습니다.' }, { status: 404 });
-        }
+            const { data: uploads, error: uploadError } = await supabase
+                .from('uploads')
+                .select('*')
+                .in('id', uploadIds)
+                .eq('user_id', user.id);
 
-        // Combine texts with truncation to stay under token limits
-        const combinedText = uploads
-            .map((u) => truncateText(u.raw_text || '', MAX_CHARS_PER_FILE))
-            .filter(Boolean)
-            .join('\n\n---\n\n')
-            .slice(0, MAX_TOTAL_CHARS);
+            if (uploadError || !uploads || uploads.length === 0) {
+                return NextResponse.json({ error: '업로드된 파일을 찾을 수 없습니다.' }, { status: 404 });
+            }
 
-        if (!combinedText.trim()) {
-            return NextResponse.json({ error: 'PDF에서 텍스트를 추출할 수 없었습니다.' }, { status: 400 });
+            combinedText = uploads
+                .map((u) => truncateText(u.raw_text || '', MAX_CHARS_PER_FILE))
+                .filter(Boolean)
+                .join('\n\n---\n\n')
+                .slice(0, MAX_TOTAL_CHARS);
+
+            if (!combinedText.trim()) {
+                return NextResponse.json({ error: 'PDF에서 텍스트를 추출할 수 없었습니다.' }, { status: 400 });
+            }
         }
 
         // Create analysis record
@@ -97,7 +109,7 @@ export async function POST(request: Request) {
             .insert({
                 user_id: user.id,
                 customer_id: customerId || null,
-                upload_ids: uploadIds,
+                upload_ids: isCodef ? [] : (uploadIds || []),
                 status: 'processing',
             })
             .select()
@@ -136,15 +148,20 @@ export async function POST(request: Request) {
         result = dateValidation.result;
 
         // Update analysis with results
+        const medicalHistory = {
+            ...(result as unknown as Record<string, unknown>),
+            source: isCodef ? 'codef' : 'pdf',
+        };
         const { error: updateError } = await supabase
             .from('analyses')
             .update({
                 status: 'completed',
-                medical_history: result as unknown as Record<string, unknown>,
+                medical_history: medicalHistory,
                 disclosure_summary: {
                     items: result.items,
                     riskFlags: result.riskFlags,
                     overallSummary: result.overallSummary,
+                    source: isCodef ? 'codef' : 'pdf',
                 },
                 updated_at: new Date().toISOString(),
             })

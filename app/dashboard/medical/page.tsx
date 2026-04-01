@@ -11,6 +11,7 @@ import {
     Smartphone, AlertCircle, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { HiraMedicalRecord, HiraBasicTreatRecord, HiraCarInsuranceRecord, HiraCarBasicTreatRecord, HiraPrescribeDrugRecord } from '@/lib/codef/client';
 
 // 간편인증사 목록 - CODEF 공식 loginTypeLevel 코드
@@ -42,6 +43,7 @@ type Step = 'form' | 'auth-waiting' | 'results';
 type QueryType = 'medical' | 'car' | 'both';
 
 function MedicalInfoContent() {
+    const router = useRouter();
     const [step, setStep] = useState<Step>('form');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -50,19 +52,22 @@ function MedicalInfoContent() {
     const [userName, setUserName] = useState('');
     const [identity, setIdentity] = useState('');
     const [phoneNo, setPhoneNo] = useState('');
-    const [authProvider, setAuthProvider] = useState('1'); // 간편인증 기본: 카카오
-    const [telecom, setTelecom] = useState('0');            // PASS 인증 시 통신사 기본: SKT
+    const [authProvider, setAuthProvider] = useState('1');
+    const [telecom, setTelecom] = useState('0');
     const [queryType, setQueryType] = useState<QueryType>('medical');
 
     // 2-Way 인증 관련
     const [twoWayData, setTwoWayData] = useState<Record<string, unknown> | null>(null);
     const [sessionId, setSessionId] = useState<string | null>(null);
 
-    // 결과 (CODEF 응답의 resBasicTreatList를 펼친 배열)
+    // 결과
     const [medicalTreatRecords, setMedicalTreatRecords] = useState<HiraBasicTreatRecord[]>([]);
     const [medicalDrugRecords, setMedicalDrugRecords] = useState<HiraPrescribeDrugRecord[]>([]);
     const [carTreatRecords, setCarTreatRecords] = useState<HiraCarBasicTreatRecord[]>([]);
     const [expandedRecords, setExpandedRecords] = useState<Set<number>>(new Set());
+
+    // 고지분석 관련
+    const [analyzing, setAnalyzing] = useState(false);
 
     // 전화번호 포맷팅
     const formatPhone = (value: string) => {
@@ -234,6 +239,41 @@ function MedicalInfoContent() {
         setSessionId(null);
         setError(null);
         setExpandedRecords(new Set());
+    };
+
+    // 고지분석 시작
+    const handleStartAnalysis = async () => {
+        if (analyzing) return;
+        if (medicalTreatRecords.length === 0 && carTreatRecords.length === 0) {
+            setError('분석할 진료 기록이 없습니다.');
+            return;
+        }
+        setAnalyzing(true);
+        setError(null);
+
+        try {
+            const res = await fetch('/api/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    codefRecords: {
+                        treats: medicalTreatRecords,
+                        drugs: medicalDrugRecords,
+                        cars: carTreatRecords,
+                    },
+                }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || '분석에 실패했습니다.');
+            }
+
+            router.push(`/dashboard/analyze?analysisId=${data.analysisId}`);
+        } catch (err) {
+            setError((err as Error).message);
+            setAnalyzing(false);
+        }
     };
 
     // ─── STEP 1: 입력 폼 ───────────────────────────
@@ -535,6 +575,37 @@ function MedicalInfoContent() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* 고지분석 시작 버튼 */}
+            {(totalMedical > 0 || totalCar > 0) && (
+                <Card className="border-0 shadow-md bg-gradient-to-r from-primary/5 to-primary/10">
+                    <CardContent className="p-5">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                            <div>
+                                <p className="font-semibold text-sm">조회된 진료정보로 고지분석을 진행할 수 있습니다</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">AI가 고지사항 해당 여부를 자동 분석합니다</p>
+                            </div>
+                            <Button
+                                onClick={handleStartAnalysis}
+                                disabled={analyzing}
+                                className="bg-gradient-primary hover:opacity-90 h-10 px-6 shrink-0"
+                            >
+                                {analyzing ? (
+                                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />분석 중...</>
+                                ) : (
+                                    <><FileText className="w-4 h-4 mr-2" />고지분석 시작</>
+                                )}
+                            </Button>
+                        </div>
+                        {error && analyzing === false && (
+                            <div className="mt-3 flex items-start gap-2 text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg">
+                                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                                <span>{error}</span>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
 
             {/* 진료 기록 목록 */}
             {medicalTreatRecords.length > 0 && (

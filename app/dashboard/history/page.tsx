@@ -118,6 +118,15 @@ export default function HistoryPage() {
         return steps;
     };
 
+    const getSourceBadge = (analysis: AnalysisRecord) => {
+        const source = (analysis.medical_history as Record<string, unknown> | null)?.source
+            || (analysis.disclosure_summary as Record<string, unknown> | null)?.source;
+        if (source === 'codef') {
+            return <Badge variant="outline" className="text-[10px] border-teal-500 text-teal-600">심평원</Badge>;
+        }
+        return <Badge variant="outline" className="text-[10px]">PDF</Badge>;
+    };
+
     return (
         <div className="max-w-5xl mx-auto space-y-6 animate-fade-in">
             <div className="flex items-center justify-between">
@@ -165,6 +174,7 @@ export default function HistoryPage() {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead className="text-xs">분석일시</TableHead>
+                                        <TableHead className="text-xs">소스</TableHead>
                                         <TableHead className="text-xs">상태</TableHead>
                                         <TableHead className="text-xs">진행단계</TableHead>
                                         <TableHead className="text-xs">요약</TableHead>
@@ -176,6 +186,9 @@ export default function HistoryPage() {
                                         <TableRow key={analysis.id} className="hover:bg-muted/30">
                                             <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                                                 {formatDate(analysis.created_at)}
+                                            </TableCell>
+                                            <TableCell>
+                                                {getSourceBadge(analysis)}
                                             </TableCell>
                                             <TableCell>
                                                 {getStatusBadge(analysis.status)}
