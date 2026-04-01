@@ -118,8 +118,20 @@ export async function POST(request: Request) {
         }
 
         // 자동차보험 조회
+        // 2-Way 인증이 이미 완료된 경우 (both에서 medical 성공 후) → 2-Way 파라미터 제거
+        // 같은 세션 ID(id)로 후속 요청 시 인증이 유지됨
         if (queryType === 'car' || queryType === 'both') {
-            const carResult = await fetchMyCarInsurance(params);
+            const carParams = { ...params };
+            if (queryType === 'both' && result.medical) {
+                delete carParams.is2Way;
+                delete carParams.twoWayInfo;
+                delete carParams.simpleAuth;
+                delete carParams.secureNo;
+                delete carParams.secureNoRefresh;
+                delete carParams.smsAuthNo;
+            }
+
+            const carResult = await fetchMyCarInsurance(carParams);
 
             if (carResult.requires2Way) {
                 console.log('[HIRA] 2-Way 인증 요청됨 (car)');
