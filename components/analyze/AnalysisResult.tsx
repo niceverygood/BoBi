@@ -6,10 +6,51 @@ import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertTriangle, CheckCircle2, XCircle, Info, Shield } from 'lucide-react';
-import type { AnalysisResult } from '@/types/analysis';
+import type { AnalysisResult, AnalysisItem } from '@/types/analysis';
 import { getCategoryLabel } from '@/lib/utils/format';
 import { cn } from '@/lib/utils';
 import { getBodyPartIcon } from '@/lib/kcd/client-utils';
+
+type DisplayGroup = { type: 'single'; items: AnalysisItem[]; label: string } | { type: 'yearly'; items: AnalysisItem[]; label: string };
+
+const YEARLY_PREFIXES = ['1year', '2year', '3year', '4year', '5year'] as const;
+const YEARLY_SUFFIXES = ['_hospitalization', '_surgery', '_visit'] as const;
+const YEARLY_LABELS: Record<string, string> = {
+    '1year': '최근 1년 이내 입원/수술/7회이상통원',
+    '2year': '최근 2년 이내 입원/수술/7회이상통원',
+    '3year': '최근 3년 이내 입원/수술/7회이상통원',
+    '4year': '최근 4년 이내 입원/수술/7회이상통원',
+    '5year': '최근 5년 이내 입원/수술/7회이상통원',
+};
+
+function groupItemsForDisplay(items: AnalysisItem[]): DisplayGroup[] {
+    const groups: DisplayGroup[] = [];
+    const used = new Set<number>();
+
+    for (let i = 0; i < items.length; i++) {
+        if (used.has(i)) continue;
+        const cat = items[i].category;
+
+        const prefix = YEARLY_PREFIXES.find(p =>
+            YEARLY_SUFFIXES.some(s => cat === `${p}${s}`)
+        );
+
+        if (prefix) {
+            const yearItems: AnalysisItem[] = [];
+            for (let j = 0; j < items.length; j++) {
+                if (YEARLY_SUFFIXES.some(s => items[j].category === `${prefix}${s}`)) {
+                    yearItems.push(items[j]);
+                    used.add(j);
+                }
+            }
+            groups.push({ type: 'yearly', items: yearItems, label: YEARLY_LABELS[prefix] || `${prefix} 이내` });
+        } else {
+            used.add(i);
+            groups.push({ type: 'single', items: [items[i]], label: getCategoryLabel(cat) });
+        }
+    }
+    return groups;
+}
 
 interface AnalysisResultProps {
     result: AnalysisResult;
@@ -119,8 +160,11 @@ export default function AnalysisResultView({ result }: AnalysisResultProps) {
                 </CardHeader>
                 <CardContent>
                     <Accordion className="space-y-2">
-                        {result.items.map((item, index) => (
-                            <AccordionItem key={index} value={`item-${index}`} className="border rounded-lg px-4">
+                        {groupItemsForDisplay(result.items).map((group, gIndex) => {
+                            if (group.type === 'single') {
+                                const item = group.items[0];
+                                return (
+                            <AccordionItem key={gIndex} value={`item-${gIndex}`} className="border rounded-lg px-4">
                                 <AccordionTrigger className="hover:no-underline py-4">
                                     <div className="flex items-center gap-3 text-left">
                                         {item.applicable ? (
@@ -226,7 +270,70 @@ export default function AnalysisResultView({ result }: AnalysisResultProps) {
                                     </div>
                                 </AccordionContent>
                             </AccordionItem>
-                        ))}
+                                );
+                            }
+
+                            // 년수별 그룹 (입원/수술/7회이상통원 통합)
+                            const anyApplicable = group.items.some(i => i.applicable);
+                            return (
+                            <AccordionItem key={gIndex} value={`item-${gIndex}`} className="border rounded-lg px-4">
+                                <AccordionTrigger className="hover:no-underline py-4">
+                                    <div className="flex items-center gap-3 text-left">
+                                        {anyApplicable ? (
+                                            <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
+                                                <XCircle className="w-5 h-5 text-red-500" />
+                                            </div>
+                                        ) : (
+                                            <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
+                                                <CheckCircle2 className="w-5 h-5 text-green-500" />
+                                            </div>
+                                        )}
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                                                <span className="font-medium text-sm">{group.label}</span>
+                                                {group.items.map((sub) => (
+                                                    <Badge key={sub.category} variant={sub.applicable ? 'destructive' : 'secondary'} className="text-[10px]">
+                                                        {sub.category.includes('hospitalization') ? '입원' : sub.category.includes('surgery') ? '수술' : '7회통원'}
+                                                        {sub.applicable ? ' 해당' : ' 없음'}
+                                                    </Badge>
+                                                ))}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">
+                                                {group.items.filter(i => i.applicable).map(i => i.summary).join(' / ') || '해당 기간 내 해당사항 없음'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="pb-4">
+                                    <div className="space-y-4">
+                                        {group.items.map((sub) => (
+                                            <div key={sub.category} className="space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant={sub.applicable ? 'destructive' : 'outline'} className="text-xs">
+                                                        {sub.category.includes('hospitalization') ? '입원' : sub.category.includes('surgery') ? '수술' : '7회이상통원'}
+                                                    </Badge>
+                                                    <span className="text-xs text-muted-foreground">{sub.summary}</span>
+                                                </div>
+                                                {sub.details.length > 0 && (
+                                                    <div className="ml-4 space-y-1">
+                                                        {sub.details.map((d, di) => (
+                                                            <div key={di} className="text-xs p-2 bg-muted/30 rounded-md flex flex-wrap gap-x-3 gap-y-0.5">
+                                                                <span className="font-mono">{d.date}</span>
+                                                                <span>{d.hospital}</span>
+                                                                {d.diagnosisName && <span className="text-muted-foreground">{d.diagnosisName}</span>}
+                                                                {d.duration && <span className="text-muted-foreground">{d.duration}</span>}
+                                                                {d.note && <span className="text-muted-foreground">{d.note}</span>}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                            );
+                        })}
                     </Accordion>
                 </CardContent>
             </Card>
