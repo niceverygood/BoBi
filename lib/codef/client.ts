@@ -8,18 +8,41 @@ const CODEF_API_URL = process.env.CODEF_API_URL || 'https://api.codef.io';
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
 // ─── CODEF 응답 파싱 (URL 디코딩 필요) ──────────────
-// CODEF API는 응답 body를 URL 인코딩하여 반환함
+// CODEF API는 응답 body를 form-urlencoded 방식으로 URL 인코딩하여 반환함
+// +는 공백을 의미하므로 decodeURIComponent 전에 치환 필요
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function parseCodefResponse<T = any>(res: Response): Promise<T> {
     const text = await res.text();
     try {
-        // 먼저 직접 JSON 파싱 시도
-        return JSON.parse(text) as T;
+        const parsed = JSON.parse(text) as T;
+        return decodeCodefStrings(parsed);
     } catch {
-        // URL 디코딩 후 JSON 파싱
-        const decoded = decodeURIComponent(text);
+        const decoded = decodeURIComponent(text.replace(/\+/g, ' '));
         return JSON.parse(decoded) as T;
     }
+}
+
+// CODEF JSON 내부의 URL-인코딩된 문자열 값을 재귀적으로 디코딩
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function decodeCodefStrings<T>(obj: T): T {
+    if (typeof obj === 'string') {
+        try {
+            return decodeURIComponent(obj.replace(/\+/g, ' ')) as unknown as T;
+        } catch {
+            return obj.replace(/\+/g, ' ') as unknown as T;
+        }
+    }
+    if (Array.isArray(obj)) {
+        return obj.map(decodeCodefStrings) as unknown as T;
+    }
+    if (obj !== null && typeof obj === 'object') {
+        const result: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+            result[key] = decodeCodefStrings(value);
+        }
+        return result as T;
+    }
+    return obj;
 }
 
 // ─── 토큰 발급 ──────────────────────────────────────
@@ -507,17 +530,16 @@ export function transformCodefToBobi(
 // /v1/kr/public/hw/hira-list/my-medical-information
 
 export interface HiraMedicalRequest {
-    userName: string;          // 이름
-    identity: string;          // 주민등록번호 13자리 (하이픈 제거, 예: 9103251234567)
-    phoneNo: string;           // 전화번호 (01012345678)
-    loginType: string;         // '5': 간편인증
-    loginTypeLevel?: string;   // 간편인증사 ('1': 카카오, '2': 페이코, '3': 삼성패스, '4': KB모바일, '5': PASS(통신사), '6': 네이버, '7': 신한, '8': 토스, '9': 하나, '10': NH)
-    telecom?: string;          // 통신사 - CODEF 공식 코드 ('0': SKT, '1': KT, '2': LGU+)
-    id?: string;               // 세션 식별 ID (다건 요청 시)
-    // 조회 조건 (HIRA 필수 파라미터)
-    searchStartDay?: string;   // 조회시작일 YYYYMMDD (기본: 5년 전)
-    searchEndDay?: string;     // 조회종료일 YYYYMMDD (기본: 오늘)
-    inquiryType?: string;      // '0': 전체, '1': 급여, '2': 비급여
+    userName: string;          // 사용자 이름 (필수)
+    identity: string;          // 주민등록번호 13자리 (필수)
+    phoneNo: string;           // 전화번호 - loginType="5" 필수
+    loginType: string;         // '2': 인증서/휴대폰, '5': 간편인증
+    loginTypeLevel?: string;   // loginType="5": '1'카카오 '3'삼성패스 '4'KB모바일 '5'PASS '6'네이버 '7'신한 '8'토스 '10'NH
+    telecom?: string;          // loginType="5" + loginTypeLevel="5" 필수. '0':SKT(알뜰폰 포함), '1':KT(알뜰폰 포함), '2':LGU+(알뜰폰 포함)
+    id?: string;               // 세션 식별 ID (다건 요청 시 필수, 선택)
+    startDate?: string;        // 조회시작일 yyyyMMdd (필수)
+    endDate?: string;          // 조회종료일 yyyyMMdd (필수)
+    type?: string;             // 민감상병 포함 여부 '0':미포함, '1':포함 (default: '0')
     // 2-Way 추가인증 관련
     twoWayInfo?: {
         jobIndex: number;
@@ -526,47 +548,71 @@ export interface HiraMedicalRequest {
         twoWayTimestamp: number;
     };
     is2Way?: boolean;
-    secureNo?: string;         // 보안 번호 (2-Way)
-    secureNoRefresh?: string;  // 보안 번호 갱신 여부
+    simpleAuth?: string;       // 간편인증 2-Way: '0'=cancel, '1'=ok
+    secureNo?: string;         // 보안문자 (2-Way)
+    secureNoRefresh?: string;  // 보안문자 새로고침 (2-Way)
+    smsAuthNo?: string;        // SMS 인증번호 (2-Way)
 }
 
+// 기본진료내역
+export interface HiraBasicTreatRecord {
+    resTreatStartDate?: string;    // 진료시작일
+    resHospitalName?: string;      // 병/의원&약국
+    resDepartment?: string;        // 진단과
+    resTreatType?: string;         // 타입 (외래/입원 등)
+    resDiseaseCode?: string;       // 주상병코드
+    resDiseaseName?: string;       // 주상병명
+    resVisitDays?: string;         // 내원일수
+    resTotalAmount?: string;       // 총 진료비
+    resPublicCharge?: string;      // 혜택받은 금액
+    resDeductibleAmt?: string;     // 내가 낸 의료비
+    resHospitalCode?: string;      // 병원코드
+}
+
+// 세부진료정보
+export interface HiraDetailTreatRecord {
+    resTreatStartDate?: string;    // 진료시작일
+    resHospitalName?: string;      // 병/의원&약국
+    resTreatType?: string;         // 진료형태
+    resCodeName?: string;          // 코드명
+    resOneDose?: string;           // 1회 투약량
+    resDailyDosesNumber?: string;  // 1일 투여횟수
+    resTotalDosingdays?: string;   // 총 투약일수
+}
+
+// 처방조제정보
+export interface HiraPrescribeDrugRecord {
+    resTreatStartDate?: string;    // 진료시작일
+    resHospitalName?: string;      // 병/의원&약국
+    resTreatType?: string;         // 진료형태
+    resDrugName?: string;          // 약품명
+    resIngredients?: string;       // 성분명
+    resOneDose?: string;           // 1회 투약량
+    resDailyDosesNumber?: string;  // 1일 투여횟수
+    resTotalDosingdays?: string;   // 총 투약일수
+}
+
+// 내진료정보열람 통합 레코드 (프론트엔드 호환용)
 export interface HiraMedicalRecord {
-    resReceiptDate?: string;       // 진료일
-    resHospitalName?: string;      // 요양기관명
-    resMedicalSubject?: string;    // 진료과목
-    resTreatmentContent?: string;  // 진료내용
-    resPrescriptionCount?: string; // 처방횟수
-    resTotalDays?: string;         // 총진료일수
-    resTotalAmount?: string;       // 총진료비
-    resPatientAmount?: string;     // 본인부담금
-    resInsuranceAmount?: string;   // 보험자부담금
-    resNonPaymentAmount?: string;  // 비급여
-    resMedicalTypeName?: string;   // 진료유형
-    resVisitDays?: string;         // 방문일수
-    resPrescriptionDays?: string;  // 투약일수
-    // 처방전 정보 (있는 경우)
-    resPrescriptionList?: {
-        resMedicineName?: string;  // 의약품명
-        resDosagePerTime?: string; // 1회투약량
-        resDailyDoses?: string;    // 1일투여횟수
-        resTotalDoseDays?: string; // 총투약일수
-        resUsageInfo?: string;     // 용법
-    }[];
+    commName?: string;
+    commStartDate?: string;
+    commEndDate?: string;
+    resBasicTreatList?: HiraBasicTreatRecord[];
+    resDetailTreatList?: HiraDetailTreatRecord[];
+    resPrescribeDrugList?: HiraPrescribeDrugRecord[];
 }
 
 export interface HiraMedicalResponse {
     result: { code: string; message: string };
-    data: {
-        resResultList?: HiraMedicalRecord[];
-        // 2-Way 관련 필드
+    data: HiraMedicalRecord | HiraMedicalRecord[] | {
         continue2Way?: boolean;
         method?: string;
         jobIndex?: number;
         threadIndex?: number;
         jti?: string;
         twoWayTimestamp?: number;
-        extraInfo?: string;
-    } | HiraMedicalRecord[];
+        extraInfo?: Record<string, string>;
+    };
 }
 
 export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
@@ -576,51 +622,39 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
 }> {
     const token = await getAccessToken();
 
-    // ── 조회 기간 설정 (필수 파라미터) ──
     const now = new Date();
-    const endDay = params.searchEndDay || now.toISOString().slice(0, 10).replace(/-/g, '');
+    const endDate = params.endDate || now.toISOString().slice(0, 10).replace(/-/g, '');
     const fiveYearsAgo = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate());
-    const startDay = params.searchStartDay || fiveYearsAgo.toISOString().slice(0, 10).replace(/-/g, '');
+    const startDate = params.startDate || fiveYearsAgo.toISOString().slice(0, 10).replace(/-/g, '');
 
     const body: Record<string, unknown> = {
-        organization: '0020',       // 건강보험심사평가원
+        organization: '0020',
         loginType: params.loginType,
+        loginTypeLevel: params.loginTypeLevel || '',
         userName: params.userName,
         identity: params.identity,
         phoneNo: params.phoneNo,
-        searchStartDay: startDay,   // 필수: 조회 시작일
-        searchEndDay: endDay,       // 필수: 조회 종료일
-        inquiryType: params.inquiryType || '0',  // 필수: '0'=전체, '1'=급여, '2'=비급여
+        telecom: params.telecom || '',
+        id: params.id || '',
+        startDate,
+        endDate,
+        type: params.type || '0',
     };
 
-    // 간편인증사 구분
-    if (params.loginTypeLevel) {
-        body.loginTypeLevel = params.loginTypeLevel;
-    }
-
-    // 통신사 (PASS 인증 시 필수, loginTypeLevel='5')
-    if (params.telecom) {
-        body.telecom = params.telecom;
-    }
-
-    // 세션 ID (다건 요청 시 동일한 ID 사용)
-    if (params.id) {
-        body.id = params.id;
-    }
-
-    // 2-Way 추가인증 데이터
+    // 2-Way 추가인증
     if (params.is2Way && params.twoWayInfo) {
         body.is2Way = true;
         body.twoWayInfo = params.twoWayInfo;
-        if (params.secureNo) body.secureNo = params.secureNo;
-        if (params.secureNoRefresh) body.secureNoRefresh = params.secureNoRefresh;
+        body.simpleAuth = params.simpleAuth || '1';
+        body.secureNo = params.secureNo || '';
+        body.secureNoRefresh = params.secureNoRefresh || '0';
+        if (params.smsAuthNo) body.smsAuthNo = params.smsAuthNo;
     }
 
-    // 디버그: CODEF에 전송되는 실제 body 로깅 (민감정보 마스킹)
-    console.log('[CODEF] fetchMyMedicalInfo request body:', JSON.stringify({
+    console.log('[CODEF] fetchMyMedicalInfo request:', JSON.stringify({
         ...body,
-        identity: body.identity ? `${String(body.identity).slice(0, 4)}*****` : 'N/A',
-        phoneNo: body.phoneNo ? `***${String(body.phoneNo).slice(-4)}` : 'N/A',
+        identity: `${String(body.identity).slice(0, 4)}*****`,
+        phoneNo: `***${String(body.phoneNo).slice(-4)}`,
     }, null, 2));
 
     const res = await fetch(`${CODEF_API_URL}/v1/kr/public/hw/hira-list/my-medical-information`, {
@@ -633,17 +667,13 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
     });
 
     const data: HiraMedicalResponse = await parseCodefResponse(res);
-
-    // 디버그: CODEF 응답 코드 로깅
     console.log('[CODEF] fetchMyMedicalInfo response:', data.result?.code, data.result?.message);
 
-    // 2-Way 추가인증 필요
     if (data.result?.code === 'CF-03002') {
-        const d = data.data as Record<string, unknown>;
         return {
             records: [],
             requires2Way: true,
-            twoWayData: d,
+            twoWayData: data.data as Record<string, unknown>,
         };
     }
 
@@ -651,13 +681,12 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
         throw new Error(`내진료정보 조회 실패: ${data.result?.code} ${data.result?.message}`);
     }
 
-    // 응답 구조에 따라 파싱
     const responseData = data.data;
     let records: HiraMedicalRecord[] = [];
     if (Array.isArray(responseData)) {
         records = responseData;
-    } else if (responseData && 'resResultList' in responseData && responseData.resResultList) {
-        records = responseData.resResultList;
+    } else if (responseData && 'resBasicTreatList' in responseData) {
+        records = [responseData as HiraMedicalRecord];
     }
 
     return { records };
@@ -667,31 +696,38 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
 // 건강보험심사평가원 내 진료정보 열람(자동차보험)
 // /v1/kr/public/hw/hira-list/my-car-insurance
 
+// 자동차보험 기본진료내역
+export interface HiraCarBasicTreatRecord {
+    resTreatStartDate?: string;    // 진료시작일
+    resHospitalName?: string;      // 병/의원&약국
+    resDepartment?: string;        // 진단과
+    resTreatType?: string;         // 타입
+    resDiseaseCode?: string;       // 주상병코드
+    resDiseaseName?: string;       // 주상병명
+    resTreatDate?: string;         // 진료일수
+    resTotalAmount?: string;       // 청구진료비 총금액
+    resMedicalFee?: string;        // 자동차보험 총진료비
+}
+
 export interface HiraCarInsuranceRecord {
-    resAccidentDate?: string;       // 사고일
-    resReceiptDate?: string;        // 진료일
-    resHospitalName?: string;       // 요양기관명
-    resMedicalSubject?: string;     // 진료과목
-    resTreatmentContent?: string;   // 진료내역
-    resTotalDays?: string;          // 총진료일수
-    resTotalAmount?: string;        // 총진료비
-    resPatientAmount?: string;      // 본인부담금
-    resInsuranceCompany?: string;   // 보험회사
-    resPolicyNumber?: string;       // 증권번호
-    resClaimStatus?: string;        // 청구상태
+    commName?: string;
+    commStartDate?: string;
+    commEndDate?: string;
+    resBasicTreatList?: HiraCarBasicTreatRecord[];
+    resDetailTreatList?: HiraDetailTreatRecord[];
 }
 
 export interface HiraCarInsuranceResponse {
     result: { code: string; message: string };
-    data: {
-        resResultList?: HiraCarInsuranceRecord[];
+    data: HiraCarInsuranceRecord | HiraCarInsuranceRecord[] | {
         continue2Way?: boolean;
         method?: string;
         jobIndex?: number;
         threadIndex?: number;
         jti?: string;
         twoWayTimestamp?: number;
-    } | HiraCarInsuranceRecord[];
+        extraInfo?: Record<string, string>;
+    };
 }
 
 export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
@@ -701,34 +737,39 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
 }> {
     const token = await getAccessToken();
 
-    // ── 조회 기간 설정 (필수 파라미터) ──
     const now = new Date();
-    const endDay = params.searchEndDay || now.toISOString().slice(0, 10).replace(/-/g, '');
+    const endDate = params.endDate || now.toISOString().slice(0, 10).replace(/-/g, '');
     const fiveYearsAgo = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate());
-    const startDay = params.searchStartDay || fiveYearsAgo.toISOString().slice(0, 10).replace(/-/g, '');
+    const startDate = params.startDate || fiveYearsAgo.toISOString().slice(0, 10).replace(/-/g, '');
 
     const body: Record<string, unknown> = {
-        organization: '0020',       // 건강보험심사평가원
+        organization: '0020',
         loginType: params.loginType,
+        loginTypeLevel: params.loginTypeLevel || '',
         userName: params.userName,
         identity: params.identity,
         phoneNo: params.phoneNo,
-        searchStartDay: startDay,   // 필수: 조회 시작일
-        searchEndDay: endDay,       // 필수: 조회 종료일
-        inquiryType: params.inquiryType || '0',  // 필수: '0'=전체
+        telecom: params.telecom || '',
+        id: params.id || '',
+        startDate,
+        endDate,
+        type: params.type || '0',
     };
 
-    if (params.loginTypeLevel) body.loginTypeLevel = params.loginTypeLevel;
-    if (params.telecom) body.telecom = params.telecom;
-    if (params.id) body.id = params.id;
-
-    // 2-Way 추가인증
     if (params.is2Way && params.twoWayInfo) {
         body.is2Way = true;
         body.twoWayInfo = params.twoWayInfo;
-        if (params.secureNo) body.secureNo = params.secureNo;
-        if (params.secureNoRefresh) body.secureNoRefresh = params.secureNoRefresh;
+        body.simpleAuth = params.simpleAuth || '1';
+        body.secureNo = params.secureNo || '';
+        body.secureNoRefresh = params.secureNoRefresh || '0';
+        if (params.smsAuthNo) body.smsAuthNo = params.smsAuthNo;
     }
+
+    console.log('[CODEF] fetchMyCarInsurance request:', JSON.stringify({
+        ...body,
+        identity: `${String(body.identity).slice(0, 4)}*****`,
+        phoneNo: `***${String(body.phoneNo).slice(-4)}`,
+    }, null, 2));
 
     const res = await fetch(`${CODEF_API_URL}/v1/kr/public/hw/hira-list/my-car-insurance`, {
         method: 'POST',
@@ -740,13 +781,13 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
     });
 
     const data: HiraCarInsuranceResponse = await parseCodefResponse(res);
+    console.log('[CODEF] fetchMyCarInsurance response:', data.result?.code, data.result?.message);
 
     if (data.result?.code === 'CF-03002') {
-        const d = data.data as Record<string, unknown>;
         return {
             records: [],
             requires2Way: true,
-            twoWayData: d,
+            twoWayData: data.data as Record<string, unknown>,
         };
     }
 
@@ -758,8 +799,8 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
     let records: HiraCarInsuranceRecord[] = [];
     if (Array.isArray(responseData)) {
         records = responseData;
-    } else if (responseData && 'resResultList' in responseData && responseData.resResultList) {
-        records = responseData.resResultList;
+    } else if (responseData && 'resBasicTreatList' in responseData) {
+        records = [responseData as HiraCarInsuranceRecord];
     }
 
     return { records };

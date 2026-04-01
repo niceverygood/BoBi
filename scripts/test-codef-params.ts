@@ -121,11 +121,11 @@ assert(!('telecom' in tossBody), '토스: telecom 없음 (불필요)');
 // Test 4: HIRA 필수 파라미터 검증 (client.ts의 fetchMyMedicalInfo)
 console.log('\n📋 Test 4: HIRA 필수 파라미터 구성 검증');
 
-function simulateCodefBody(params: { searchStartDay?: string; searchEndDay?: string; inquiryType?: string }) {
+function simulateCodefBody(params: { startDate?: string; endDate?: string; type?: string }) {
     const now = new Date();
-    const endDay = params.searchEndDay || now.toISOString().slice(0, 10).replace(/-/g, '');
+    const endDate = params.endDate || now.toISOString().slice(0, 10).replace(/-/g, '');
     const fiveYearsAgo = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate());
-    const startDay = params.searchStartDay || fiveYearsAgo.toISOString().slice(0, 10).replace(/-/g, '');
+    const startDate = params.startDate || fiveYearsAgo.toISOString().slice(0, 10).replace(/-/g, '');
 
     return {
         organization: '0020',
@@ -133,22 +133,22 @@ function simulateCodefBody(params: { searchStartDay?: string; searchEndDay?: str
         userName: '테스트',
         identity: '9103251234567',
         phoneNo: '01012345678',
-        searchStartDay: startDay,
-        searchEndDay: endDay,
-        inquiryType: params.inquiryType || '0',
+        startDate,
+        endDate,
+        type: params.type || '0',
     };
 }
 
 const defaultBody = simulateCodefBody({});
 assert(defaultBody.organization === '0020', '기관코드: "0020" (건강보험심사평가원)');
-assert(!!defaultBody.searchStartDay, `searchStartDay 존재: "${defaultBody.searchStartDay}"`);
-assert(!!defaultBody.searchEndDay, `searchEndDay 존재: "${defaultBody.searchEndDay}"`);
-assert(defaultBody.inquiryType === '0', 'inquiryType 기본값: "0" (전체)');
-assert(defaultBody.searchStartDay.length === 8, 'searchStartDay 형식: YYYYMMDD (8자리)');
-assert(defaultBody.searchEndDay.length === 8, 'searchEndDay 형식: YYYYMMDD (8자리)');
+assert(!!defaultBody.startDate, `startDate 존재: "${defaultBody.startDate}"`);
+assert(!!defaultBody.endDate, `endDate 존재: "${defaultBody.endDate}"`);
+assert(defaultBody.type === '0', 'type 기본값: "0" (민감상병 미포함)');
+assert(defaultBody.startDate.length === 8, 'startDate 형식: yyyyMMdd (8자리)');
+assert(defaultBody.endDate.length === 8, 'endDate 형식: yyyyMMdd (8자리)');
 
-const startYear = parseInt(defaultBody.searchStartDay.slice(0, 4));
-const endYear = parseInt(defaultBody.searchEndDay.slice(0, 4));
+const startYear = parseInt(defaultBody.startDate.slice(0, 4));
+const endYear = parseInt(defaultBody.endDate.slice(0, 4));
 assert(endYear - startYear === 5, `조회기간: ${startYear}~${endYear} (5년)`)
 
 // Test 5: identity 검증 (13자리)

@@ -24,19 +24,19 @@ export async function POST(request: Request) {
             userName,
             identity,               // 주민등록번호 13자리
             phoneNo,                // 01012345678
-            loginType = '5',        // '5': 간편인증 (HIRA는 항상 간편인증)
-            loginTypeLevel,         // 간편인증사 코드 (CODEF 공식: '1'=카카오, '5'=PASS, '6'=네이버 등)
-            telecom,                // 통신사 (PASS 인증 시 필수, '0'=SKT, '1'=KT, '2'=LGU+)
+            loginType = '5',        // '5': 간편인증
+            loginTypeLevel,         // 간편인증사 코드
+            telecom,                // 통신사 (PASS 필수)
             queryType = 'medical',  // 'medical' | 'car' | 'both'
-            // 조회 조건
-            searchStartDay,         // 조회시작일 YYYYMMDD (기본: 5년전)
-            searchEndDay,           // 조회종료일 YYYYMMDD (기본: 오늘)
-            inquiryType,            // '0'=전체, '1'=급여, '2'=비급여
+            startDate,              // 조회시작일 yyyyMMdd
+            endDate,                // 조회종료일 yyyyMMdd
             // 2-Way 관련
             is2Way,
             twoWayInfo,
+            simpleAuth,
             secureNo,
             secureNoRefresh,
+            smsAuthNo,
         } = body;
 
         if (!userName || !identity || !phoneNo) {
@@ -45,7 +45,6 @@ export async function POST(request: Request) {
             }, { status: 400 });
         }
 
-        // 주민등록번호 13자리 검증
         const cleanIdentity = identity.replace(/\D/g, '');
         if (cleanIdentity.length !== 13) {
             return NextResponse.json({
@@ -53,7 +52,6 @@ export async function POST(request: Request) {
             }, { status: 400 });
         }
 
-        // 세션 ID 생성 (동일 사용자의 다건 요청을 하나의 인증으로 처리)
         const sessionId = body.sessionId || `bobi-${user.id}-${Date.now()}`;
 
         const params: HiraMedicalRequest = {
@@ -64,18 +62,18 @@ export async function POST(request: Request) {
             loginTypeLevel,
             telecom,
             id: sessionId,
-            // HIRA 필수 조회조건
-            searchStartDay,
-            searchEndDay,
-            inquiryType: inquiryType || '0', // 기본: 전체
+            startDate,
+            endDate,
+            type: '0',
             // 2-Way
             is2Way,
             twoWayInfo,
+            simpleAuth,
             secureNo,
             secureNoRefresh,
+            smsAuthNo,
         };
 
-        // 디버그 로깅 (민감정보 마스킹)
         console.log('[HIRA] Request params:', {
             userName: userName ? `${userName[0]}**` : 'N/A',
             identityLength: cleanIdentity.length,
@@ -84,9 +82,8 @@ export async function POST(request: Request) {
             loginTypeLevel,
             telecom: telecom || 'N/A',
             queryType,
-            searchStartDay: params.searchStartDay || '(auto: 5yr ago)',
-            searchEndDay: params.searchEndDay || '(auto: today)',
-            inquiryType: params.inquiryType,
+            startDate: params.startDate || '(auto: 5yr ago)',
+            endDate: params.endDate || '(auto: today)',
             is2Way: !!is2Way,
             sessionId,
         });
@@ -151,27 +148,28 @@ export async function POST(request: Request) {
         console.error('[HIRA] Error:', errorMessage);
         console.error('[HIRA] Full error:', error);
 
+        // 에러 코드 추출 (다양한 하이픈 문자 대응: -, –, ‐, −)
+        const codeMatch = errorMessage.match(/CF[\-\u2010\u2011\u2013\u2212](\d+)/);
+        const errorCode = codeMatch ? `CF-${codeMatch[1]}` : undefined;
+
         // 에러 메시지 사용자 친화적으로 가공
-        let userMessage = errorMessage;
-        if (errorMessage.includes('CF-13002')) {
-            userMessage = '요청 파라미터 오류입니다. 주민등록번호 13자리를 정확히 입력했는지 확인해주세요.';
-        } else if (errorMessage.includes('CF-12871')) {
-            userMessage = '선택하신 인증 앱이 설치되지 않았거나 인증서가 발급되지 않았습니다. 앱 설치 및 인증서 발급 후 다시 시도하시거나, 다른 인증 방식(카카오톡, 토스 등)을 이용해주세요.';
-        } else if (errorMessage.includes('CF-12872')) {
-            userMessage = '인증서가 만료되었습니다. 인증서를 재발급 후 다시 시도해주세요.';
-        } else if (errorMessage.includes('CF-11021')) {
-            userMessage = '인증 시간이 초과되었습니다. 다시 시도해주세요.';
-        } else if (errorMessage.includes('CF-03002')) {
-            userMessage = '추가 인증이 필요합니다. 앱에서 인증을 완료해주세요.';
-        } else if (errorMessage.includes('CF-12801') || errorMessage.includes('CF-12802')) {
-            userMessage = '본인인증에 실패했습니다. 입력 정보를 확인하시고 다시 시도해주세요.';
-        } else if (errorMessage.includes('CF-00023') || errorMessage.includes('CF-09999')) {
-            userMessage = '서버 통신 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
-        }
+        const ERROR_MESSAGES: Record<string, string> = {
+            'CF-13002': '요청 파라미터 오류입니다. 주민등록번호 13자리를 정확히 입력했는지 확인해주세요.',
+            'CF-12871': '선택하신 인증 앱이 설치되지 않았거나 인증서가 발급되지 않았습니다. 앱 설치 및 인증서 발급 후 다시 시도하시거나, 다른 인증 방식(카카오톡, 토스 등)을 이용해주세요.',
+            'CF-12872': '인증서가 만료되었습니다. 인증서를 재발급 후 다시 시도해주세요.',
+            'CF-11021': '인증 시간이 초과되었습니다. 다시 시도해주세요.',
+            'CF-03002': '추가 인증이 필요합니다. 앱에서 인증을 완료해주세요.',
+            'CF-12801': '본인인증에 실패했습니다. 입력 정보를 확인하시고 다시 시도해주세요.',
+            'CF-12802': '본인인증에 실패했습니다. 입력 정보를 확인하시고 다시 시도해주세요.',
+            'CF-00023': '서버 통신 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+            'CF-09999': '서버 통신 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+        };
+
+        const userMessage = (errorCode && ERROR_MESSAGES[errorCode]) || errorMessage;
 
         return NextResponse.json({
             error: `진료정보 조회 중 오류가 발생했습니다: ${userMessage}`,
-            errorCode: errorMessage.match(/CF-\d+/)?.[0] || undefined,
+            errorCode,
         }, { status: 500 });
     }
 }

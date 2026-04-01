@@ -11,7 +11,7 @@ import {
     Smartphone, AlertCircle, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import Link from 'next/link';
-import type { HiraMedicalRecord, HiraCarInsuranceRecord } from '@/lib/codef/client';
+import type { HiraMedicalRecord, HiraBasicTreatRecord, HiraCarInsuranceRecord, HiraCarBasicTreatRecord, HiraPrescribeDrugRecord } from '@/lib/codef/client';
 
 // 간편인증사 목록 - CODEF 공식 loginTypeLevel 코드
 const AUTH_PROVIDERS = [
@@ -24,10 +24,11 @@ const AUTH_PROVIDERS = [
 ];
 
 // 통신사 목록 (PASS 인증 시 필수) - CODEF 공식 코드
+// 간편인증(loginType=5) PASS: 0=SKT(알뜰폰 포함), 1=KT(알뜰폰 포함), 2=LGU+(알뜰폰 포함)
 const TELECOM_PROVIDERS = [
-    { id: '0', name: 'SKT', icon: '🔴' },
-    { id: '1', name: 'KT', icon: '🟠' },
-    { id: '2', name: 'LGU+', icon: '🟣' },
+    { id: '0', name: 'SKT', icon: '🔴', desc: '알뜰폰 포함' },
+    { id: '1', name: 'KT', icon: '🟠', desc: '알뜰폰 포함' },
+    { id: '2', name: 'LGU+', icon: '🟣', desc: '알뜰폰 포함' },
 ];
 
 // 조회 타입
@@ -57,9 +58,10 @@ function MedicalInfoContent() {
     const [twoWayData, setTwoWayData] = useState<Record<string, unknown> | null>(null);
     const [sessionId, setSessionId] = useState<string | null>(null);
 
-    // 결과
-    const [medicalRecords, setMedicalRecords] = useState<HiraMedicalRecord[]>([]);
-    const [carRecords, setCarRecords] = useState<HiraCarInsuranceRecord[]>([]);
+    // 결과 (CODEF 응답의 resBasicTreatList를 펼친 배열)
+    const [medicalTreatRecords, setMedicalTreatRecords] = useState<HiraBasicTreatRecord[]>([]);
+    const [medicalDrugRecords, setMedicalDrugRecords] = useState<HiraPrescribeDrugRecord[]>([]);
+    const [carTreatRecords, setCarTreatRecords] = useState<HiraCarBasicTreatRecord[]>([]);
     const [expandedRecords, setExpandedRecords] = useState<Set<number>>(new Set());
 
     // 전화번호 포맷팅
@@ -102,9 +104,9 @@ function MedicalInfoContent() {
         userName: userName.trim(),
         identity: identity.replace(/\D/g, ''),
         phoneNo: phoneNo.replace(/-/g, ''),
-        loginType: '5',              // CODEF HIRA는 항상 간편인증
+        loginType: '5',
         loginTypeLevel: authProvider,
-        ...(needsTelecom ? { telecom } : {}),
+        telecom: needsTelecom ? telecom : '',
         queryType,
         ...extraFields,
     });
@@ -130,7 +132,7 @@ function MedicalInfoContent() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(buildRequestBody(
-                    twoWayData ? { is2Way: true, twoWayInfo: twoWayData, sessionId } : {}
+                    twoWayData ? { is2Way: true, twoWayInfo: twoWayData, simpleAuth: '1', sessionId } : {}
                 )),
             });
 
@@ -149,12 +151,15 @@ function MedicalInfoContent() {
                 return;
             }
 
-            // 결과 처리
+            // 결과 처리: CODEF 응답의 리스트를 펼침
             if (data.medical) {
-                setMedicalRecords(data.medical.records || []);
+                const records: HiraMedicalRecord[] = data.medical.records || [];
+                setMedicalTreatRecords(records.flatMap(r => r.resBasicTreatList || []));
+                setMedicalDrugRecords(records.flatMap(r => r.resPrescribeDrugList || []));
             }
             if (data.carInsurance) {
-                setCarRecords(data.carInsurance.records || []);
+                const records: HiraCarInsuranceRecord[] = data.carInsurance.records || [];
+                setCarTreatRecords(records.flatMap(r => r.resBasicTreatList || []));
             }
 
             setStep('results');
@@ -167,7 +172,7 @@ function MedicalInfoContent() {
 
     // 2-Way 인증 완료 후 재조회
     const handleAuthComplete = async () => {
-        if (loading) return; // 중복 제출 방지
+        if (loading) return;
         setLoading(true);
         setError(null);
 
@@ -178,6 +183,7 @@ function MedicalInfoContent() {
                 body: JSON.stringify(buildRequestBody({
                     is2Way: true,
                     twoWayInfo: twoWayData,
+                    simpleAuth: '1',
                     sessionId,
                 })),
             });
@@ -195,8 +201,15 @@ function MedicalInfoContent() {
                 return;
             }
 
-            if (data.medical) setMedicalRecords(data.medical.records || []);
-            if (data.carInsurance) setCarRecords(data.carInsurance.records || []);
+            if (data.medical) {
+                const records: HiraMedicalRecord[] = data.medical.records || [];
+                setMedicalTreatRecords(records.flatMap(r => r.resBasicTreatList || []));
+                setMedicalDrugRecords(records.flatMap(r => r.resPrescribeDrugList || []));
+            }
+            if (data.carInsurance) {
+                const records: HiraCarInsuranceRecord[] = data.carInsurance.records || [];
+                setCarTreatRecords(records.flatMap(r => r.resBasicTreatList || []));
+            }
 
             setStep('results');
         } catch (err) {
@@ -214,8 +227,9 @@ function MedicalInfoContent() {
 
     const reset = () => {
         setStep('form');
-        setMedicalRecords([]);
-        setCarRecords([]);
+        setMedicalTreatRecords([]);
+        setMedicalDrugRecords([]);
+        setCarTreatRecords([]);
         setTwoWayData(null);
         setSessionId(null);
         setError(null);
@@ -354,14 +368,17 @@ function MedicalInfoContent() {
                                         <button
                                             key={tp.id}
                                             onClick={() => setTelecom(tp.id)}
-                                            className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+                                            className={`flex flex-col items-center gap-1 px-3 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
                                                 telecom === tp.id
                                                     ? 'bg-primary/5 border-primary'
                                                     : 'border-muted hover:border-muted-foreground/30'
                                             }`}
                                         >
-                                            <span>{tp.icon}</span>
-                                            <span>{tp.name}</span>
+                                            <div className="flex items-center gap-1.5">
+                                                <span>{tp.icon}</span>
+                                                <span>{tp.name}</span>
+                                            </div>
+                                            <span className="text-[10px] text-muted-foreground">{tp.desc}</span>
                                         </button>
                                     ))}
                                 </div>
@@ -468,9 +485,9 @@ function MedicalInfoContent() {
     }
 
     // ─── STEP 3: 결과 보기 ──────────────────────────
-    const totalMedical = medicalRecords.length;
-    const totalCar = carRecords.length;
-    const totalAmount = medicalRecords.reduce((sum, r) => sum + (parseInt(r.resTotalAmount?.replace(/\D/g, '') || '0', 10) || 0), 0);
+    const totalMedical = medicalTreatRecords.length;
+    const totalCar = carTreatRecords.length;
+    const totalAmount = medicalTreatRecords.reduce((sum, r) => sum + (parseInt(r.resTotalAmount?.replace(/\D/g, '') || '0', 10) || 0), 0);
 
     return (
         <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
@@ -520,14 +537,14 @@ function MedicalInfoContent() {
             </div>
 
             {/* 진료 기록 목록 */}
-            {medicalRecords.length > 0 && (
+            {medicalTreatRecords.length > 0 && (
                 <div className="space-y-3">
                     <h2 className="text-lg font-semibold flex items-center gap-2">
                         <Stethoscope className="w-5 h-5 text-blue-600" />
                         진료 기록
-                        <Badge variant="secondary" className="text-xs">{medicalRecords.length}건</Badge>
+                        <Badge variant="secondary" className="text-xs">{medicalTreatRecords.length}건</Badge>
                     </h2>
-                    {medicalRecords.map((record, idx) => (
+                    {medicalTreatRecords.map((record, idx) => (
                         <Card key={idx} className="border-0 shadow-sm overflow-hidden">
                             <button
                                 onClick={() => toggleRecord(idx)}
@@ -542,11 +559,17 @@ function MedicalInfoContent() {
                                             <p className="font-semibold text-sm truncate">{record.resHospitalName || '의료기관'}</p>
                                             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                                                 <Calendar className="w-3 h-3" />
-                                                <span>{formatDate(record.resReceiptDate)}</span>
-                                                {record.resMedicalSubject && (
+                                                <span>{formatDate(record.resTreatStartDate)}</span>
+                                                {record.resDepartment && (
                                                     <>
                                                         <span>·</span>
-                                                        <span>{record.resMedicalSubject}</span>
+                                                        <span>{record.resDepartment}</span>
+                                                    </>
+                                                )}
+                                                {record.resTreatType && (
+                                                    <>
+                                                        <span>·</span>
+                                                        <span>{record.resTreatType}</span>
                                                     </>
                                                 )}
                                             </div>
@@ -566,46 +589,45 @@ function MedicalInfoContent() {
                                 <div className="px-4 pb-4 pt-0 border-t">
                                     <div className="grid grid-cols-2 gap-3 py-3 text-xs">
                                         <div>
-                                            <span className="text-muted-foreground">총 진료일수</span>
-                                            <p className="font-medium mt-0.5">{record.resTotalDays || '-'}일</p>
+                                            <span className="text-muted-foreground">내원일수</span>
+                                            <p className="font-medium mt-0.5">{record.resVisitDays || '-'}일</p>
                                         </div>
                                         <div>
-                                            <span className="text-muted-foreground">본인부담금</span>
-                                            <p className="font-medium mt-0.5">{formatAmount(record.resPatientAmount)}</p>
+                                            <span className="text-muted-foreground">내가 낸 의료비</span>
+                                            <p className="font-medium mt-0.5">{formatAmount(record.resDeductibleAmt)}</p>
                                         </div>
                                         <div>
-                                            <span className="text-muted-foreground">보험자부담금</span>
-                                            <p className="font-medium mt-0.5">{formatAmount(record.resInsuranceAmount)}</p>
+                                            <span className="text-muted-foreground">혜택받은 금액</span>
+                                            <p className="font-medium mt-0.5">{formatAmount(record.resPublicCharge)}</p>
                                         </div>
-                                        <div>
-                                            <span className="text-muted-foreground">비급여</span>
-                                            <p className="font-medium mt-0.5">{formatAmount(record.resNonPaymentAmount)}</p>
-                                        </div>
+                                        {record.resDiseaseName && (
+                                            <div>
+                                                <span className="text-muted-foreground">주상병명</span>
+                                                <p className="font-medium mt-0.5">{record.resDiseaseName}</p>
+                                            </div>
+                                        )}
                                     </div>
 
-                                    {record.resTreatmentContent && (
-                                        <div className="text-xs mt-2 p-2 bg-muted/30 rounded-md">
-                                            <div className="flex items-center gap-1 mb-1 text-muted-foreground">
-                                                <FileText className="w-3 h-3" />
-                                                <span>진료내용</span>
-                                            </div>
-                                            <p className="text-foreground">{record.resTreatmentContent}</p>
-                                        </div>
-                                    )}
-
-                                    {record.resPrescriptionList && record.resPrescriptionList.length > 0 && (
+                                    {/* 해당 진료일의 처방 정보 */}
+                                    {medicalDrugRecords.filter(rx =>
+                                        rx.resTreatStartDate === record.resTreatStartDate &&
+                                        rx.resHospitalName === record.resHospitalName
+                                    ).length > 0 && (
                                         <div className="mt-3 space-y-2">
                                             <p className="text-xs text-muted-foreground flex items-center gap-1">
                                                 <Pill className="w-3 h-3" />
                                                 처방 의약품
                                             </p>
-                                            {record.resPrescriptionList.map((rx, rxIdx) => (
+                                            {medicalDrugRecords.filter(rx =>
+                                                rx.resTreatStartDate === record.resTreatStartDate &&
+                                                rx.resHospitalName === record.resHospitalName
+                                            ).map((rx, rxIdx) => (
                                                 <div key={rxIdx} className="text-xs p-2 bg-muted/20 rounded-md">
-                                                    <p className="font-medium">{rx.resMedicineName || '-'}</p>
+                                                    <p className="font-medium">{rx.resDrugName || rx.resIngredients || '-'}</p>
                                                     <p className="text-muted-foreground mt-0.5">
-                                                        {rx.resDosagePerTime && `1회 ${rx.resDosagePerTime}`}
-                                                        {rx.resDailyDoses && ` · 1일 ${rx.resDailyDoses}회`}
-                                                        {rx.resTotalDoseDays && ` · ${rx.resTotalDoseDays}일분`}
+                                                        {rx.resOneDose && `1회 ${rx.resOneDose}`}
+                                                        {rx.resDailyDosesNumber && ` · 1일 ${rx.resDailyDosesNumber}회`}
+                                                        {rx.resTotalDosingdays && ` · ${rx.resTotalDosingdays}일분`}
                                                     </p>
                                                 </div>
                                             ))}
@@ -619,15 +641,15 @@ function MedicalInfoContent() {
             )}
 
             {/* 자동차보험 기록 */}
-            {carRecords.length > 0 && (
+            {carTreatRecords.length > 0 && (
                 <div className="space-y-3">
                     <Separator />
                     <h2 className="text-lg font-semibold flex items-center gap-2">
                         <Car className="w-5 h-5 text-amber-600" />
                         자동차보험 진료 기록
-                        <Badge variant="secondary" className="text-xs">{carRecords.length}건</Badge>
+                        <Badge variant="secondary" className="text-xs">{carTreatRecords.length}건</Badge>
                     </h2>
-                    {carRecords.map((record, idx) => (
+                    {carTreatRecords.map((record, idx) => (
                         <Card key={`car-${idx}`} className="border-0 shadow-sm">
                             <CardContent className="p-4">
                                 <div className="flex items-start gap-3">
@@ -638,34 +660,30 @@ function MedicalInfoContent() {
                                         <p className="font-semibold text-sm">{record.resHospitalName || '의료기관'}</p>
                                         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                                             <Calendar className="w-3 h-3" />
-                                            <span>{formatDate(record.resReceiptDate)}</span>
-                                            {record.resMedicalSubject && (
-                                                <><span>·</span><span>{record.resMedicalSubject}</span></>
+                                            <span>{formatDate(record.resTreatStartDate)}</span>
+                                            {record.resDepartment && (
+                                                <><span>·</span><span>{record.resDepartment}</span></>
                                             )}
                                         </div>
                                         <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
-                                            {record.resAccidentDate && (
-                                                <div>
-                                                    <span className="text-muted-foreground">사고일</span>
-                                                    <p className="font-medium">{formatDate(record.resAccidentDate)}</p>
-                                                </div>
-                                            )}
                                             <div>
-                                                <span className="text-muted-foreground">총 진료비</span>
+                                                <span className="text-muted-foreground">진료일수</span>
+                                                <p className="font-medium">{record.resTreatDate || '-'}일</p>
+                                            </div>
+                                            <div>
+                                                <span className="text-muted-foreground">청구진료비</span>
                                                 <p className="font-medium">{formatAmount(record.resTotalAmount)}</p>
                                             </div>
-                                            {record.resInsuranceCompany && (
+                                            {record.resMedicalFee && (
                                                 <div>
-                                                    <span className="text-muted-foreground">보험회사</span>
-                                                    <p className="font-medium">{record.resInsuranceCompany}</p>
+                                                    <span className="text-muted-foreground">자동차보험 진료비</span>
+                                                    <p className="font-medium">{formatAmount(record.resMedicalFee)}</p>
                                                 </div>
                                             )}
-                                            {record.resClaimStatus && (
+                                            {record.resDiseaseName && (
                                                 <div>
-                                                    <span className="text-muted-foreground">청구상태</span>
-                                                    <Badge variant="outline" className="text-[10px] mt-0.5">
-                                                        {record.resClaimStatus}
-                                                    </Badge>
+                                                    <span className="text-muted-foreground">주상병명</span>
+                                                    <p className="font-medium">{record.resDiseaseName}</p>
                                                 </div>
                                             )}
                                         </div>
