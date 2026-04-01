@@ -1,4 +1,4 @@
-import type { HiraBasicTreatRecord, HiraPrescribeDrugRecord, HiraCarBasicTreatRecord } from './client';
+import type { HiraBasicTreatRecord, HiraPrescribeDrugRecord, HiraCarBasicTreatRecord, NhisTreatmentRecord } from './client';
 
 function formatDate(dateStr?: string): string {
     if (!dateStr) return '-';
@@ -93,6 +93,52 @@ export function formatCodefRecordsAsText(
 
     if (treatRecords.length === 0 && drugRecords.length === 0 && (!carRecords || carRecords.length === 0)) {
         lines.push('조회된 진료 기록이 없습니다.');
+    }
+
+    return lines.join('\n');
+}
+
+// 건강보험공단 진료/투약정보 → 텍스트
+export function formatNhisRecordsAsText(records: NhisTreatmentRecord[]): string {
+    const lines: string[] = [];
+
+    lines.push('=== 건강보험공단 진료 및 투약정보 (NHIS) ===');
+    lines.push('');
+
+    if (records.length === 0) {
+        lines.push('조회된 진료/투약 기록이 없습니다.');
+        return lines.join('\n');
+    }
+
+    const sorted = [...records].sort((a, b) =>
+        (b.resTreatStartDate || '').localeCompare(a.resTreatStartDate || '')
+    );
+
+    lines.push('[진료내역]');
+    for (const r of sorted) {
+        const parts = [
+            formatDate(r.resTreatStartDate),
+            r.resHospitalName || '-',
+            r.resTreatType || '',
+            r.resType || '',
+        ];
+        if (r.resVisitDays) parts.push(`${r.resVisitDays}일`);
+        if (r.resPrescribeCnt) parts.push(`처방${r.resPrescribeCnt}회`);
+        if (r.resMedicationCnt) parts.push(`투약${r.resMedicationCnt}회`);
+        lines.push(parts.filter(Boolean).join(' | '));
+
+        if (r.resMediDetailList && r.resMediDetailList.length > 0) {
+            for (const d of r.resMediDetailList) {
+                const drugParts = [
+                    `  → ${formatDate(d.resTreatDate)}`,
+                    d.resPrescribeDrugName || '-',
+                    d.resPrescribeDrugEffect || '',
+                ];
+                if (d.resPrescribeDays) drugParts.push(`${d.resPrescribeDays}일분`);
+                if (d.resTreatTypeDet) drugParts.push(d.resTreatTypeDet);
+                lines.push(drugParts.filter(Boolean).join(' | '));
+            }
+        }
     }
 
     return lines.join('\n');

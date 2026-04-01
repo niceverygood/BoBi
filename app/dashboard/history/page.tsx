@@ -124,6 +124,9 @@ export default function HistoryPage() {
         if (source === 'codef') {
             return <Badge variant="outline" className="text-[10px] border-teal-500 text-teal-600">심평원</Badge>;
         }
+        if (source === 'nhis') {
+            return <Badge variant="outline" className="text-[10px] border-emerald-500 text-emerald-600">건보공단</Badge>;
+        }
         return <Badge variant="outline" className="text-[10px]">PDF</Badge>;
     };
 

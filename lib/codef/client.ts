@@ -847,3 +847,125 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
     return { records };
 }
 
+// ─── 건강보험공단 진료 및 투약정보 조회 API ──────────────
+// /v1/kr/public/pp/nhis-treatment/information
+
+export interface NhisTreatmentRecord {
+    resType?: string;
+    resHospitalName?: string;
+    resTreatStartDate?: string;    // yyyyMMdd
+    resTreatType?: string;
+    resVisitDays?: string;
+    resPrescribeCnt?: string;
+    resMedicationCnt?: string;
+    resMediDetailList?: NhisMediDetail[];
+}
+
+export interface NhisMediDetail {
+    resTreatDate?: string;
+    resPrescribeDrugName?: string;
+    resPrescribeDrugEffect?: string;
+    resPrescribeDays?: string;
+    resTreatTypeDet?: string;
+    resDrugCode?: string;
+}
+
+export interface NhisTreatmentRequest {
+    userName: string;
+    identity: string;          // loginType='5': 생년월일(YYYYMMDD)
+    phoneNo: string;
+    loginType: string;
+    loginTypeLevel?: string;
+    telecom?: string;
+    id?: string;
+    startDate?: string;
+    endDate?: string;
+    type?: string;
+    twoWayInfo?: { jobIndex: number; threadIndex: number; jti: string; twoWayTimestamp: number };
+    is2Way?: boolean;
+    simpleAuth?: string;
+    secureNo?: string;
+    secureNoRefresh?: string;
+}
+
+export async function fetchNhisTreatment(params: NhisTreatmentRequest): Promise<{
+    records: NhisTreatmentRecord[];
+    requires2Way?: boolean;
+    twoWayData?: Record<string, unknown>;
+}> {
+    const token = await getAccessToken();
+
+    const now = new Date();
+    const endDate = params.endDate || now.toISOString().slice(0, 10).replace(/-/g, '');
+    const oneYearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+    const startDate = params.startDate || oneYearAgo.toISOString().slice(0, 10).replace(/-/g, '');
+
+    const body: Record<string, unknown> = {
+        organization: '0002',
+        loginType: params.loginType,
+        userName: params.userName,
+        identity: params.identity,
+        phoneNo: params.phoneNo,
+        telecom: params.telecom || '',
+        id: params.id || '',
+        startDate,
+        endDate,
+        type: params.type || '0',
+        drugImageYN: '0',
+        medicationDirectionYN: '0',
+        detailYN: '0',
+    };
+
+    if (params.loginType === '5') {
+        body.loginTypeLevel = params.loginTypeLevel || '';
+    }
+
+    if (params.is2Way && params.twoWayInfo) {
+        body.is2Way = true;
+        body.twoWayInfo = {
+            jobIndex: Number(params.twoWayInfo.jobIndex),
+            threadIndex: Number(params.twoWayInfo.threadIndex),
+            jti: String(params.twoWayInfo.jti),
+            twoWayTimestamp: Number(params.twoWayInfo.twoWayTimestamp),
+        };
+        body.simpleAuth = params.simpleAuth || '1';
+        body.secureNo = params.secureNo || '';
+        body.secureNoRefresh = params.secureNoRefresh || '0';
+    }
+
+    console.log('[CODEF] fetchNhisTreatment request:', JSON.stringify({
+        ...body,
+        identity: `${String(body.identity).slice(0, 4)}*****`,
+        phoneNo: `***${String(body.phoneNo).slice(-4)}`,
+    }, null, 2));
+
+    const res = await fetch(`${CODEF_API_URL}/v1/kr/public/pp/nhis-treatment/information`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+    });
+
+    const data = await parseCodefResponse<{ result: { code: string; message: string }; data: unknown }>(res);
+    console.log('[CODEF] fetchNhisTreatment response:', data.result?.code, data.result?.message);
+
+    if (data.result?.code === 'CF-03002') {
+        return { records: [], requires2Way: true, twoWayData: data.data as Record<string, unknown> };
+    }
+
+    if (data.result?.code !== 'CF-00000') {
+        throw new Error(`진료/투약정보 조회 실패: ${data.result?.code} ${data.result?.message}`);
+    }
+
+    const responseData = data.data;
+    let records: NhisTreatmentRecord[] = [];
+    if (Array.isArray(responseData)) {
+        records = responseData;
+    } else if (responseData && typeof responseData === 'object') {
+        records = [responseData as NhisTreatmentRecord];
+    }
+
+    return { records };
+}

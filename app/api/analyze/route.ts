@@ -5,7 +5,7 @@ import { callOpenAI } from '@/lib/ai/openai';
 import { STEP1_ANALYSIS_PROMPT } from '@/lib/ai/prompts';
 import { parseAIResponse, validateAnalysisResult } from '@/lib/ai/parser';
 import { validateAndCorrectDates, formatCorrections } from '@/lib/ai/date-validator';
-import { formatCodefRecordsAsText } from '@/lib/codef/formatter';
+import { formatCodefRecordsAsText, formatNhisRecordsAsText } from '@/lib/codef/formatter';
 import type { AnalysisResult } from '@/types/analysis';
 
 export const maxDuration = 120; // Claude needs more time for complex analyses
@@ -64,13 +64,20 @@ export async function POST(request: Request) {
             }
         }
 
-        const { customerId, uploadIds, codefRecords } = await request.json();
-        const isCodef = !!codefRecords;
+        const { customerId, uploadIds, codefRecords, nhisRecords } = await request.json();
+        const isCodef = !!codefRecords || !!nhisRecords;
 
         let combinedText: string;
+        let sourceType: 'codef' | 'nhis' | 'pdf' = 'pdf';
 
-        if (isCodef) {
-            // CODEF 심평원 데이터 → 텍스트 변환
+        if (nhisRecords) {
+            sourceType = 'nhis';
+            combinedText = formatNhisRecordsAsText(nhisRecords);
+            if (!combinedText.trim() || combinedText.includes('조회된 진료/투약 기록이 없습니다')) {
+                return NextResponse.json({ error: '분석할 진료/투약 기록이 없습니다.' }, { status: 400 });
+            }
+        } else if (codefRecords) {
+            sourceType = 'codef';
             const { treats, drugs, cars } = codefRecords;
             combinedText = formatCodefRecordsAsText(treats || [], drugs || [], cars || []);
             if (!combinedText.trim() || combinedText.includes('조회된 진료 기록이 없습니다')) {
@@ -150,7 +157,7 @@ export async function POST(request: Request) {
         // Update analysis with results
         const medicalHistory = {
             ...(result as unknown as Record<string, unknown>),
-            source: isCodef ? 'codef' : 'pdf',
+            source: sourceType,
         };
         const { error: updateError } = await supabase
             .from('analyses')
@@ -161,7 +168,7 @@ export async function POST(request: Request) {
                     items: result.items,
                     riskFlags: result.riskFlags,
                     overallSummary: result.overallSummary,
-                    source: isCodef ? 'codef' : 'pdf',
+                    source: sourceType,
                 },
                 updated_at: new Date().toISOString(),
             })
