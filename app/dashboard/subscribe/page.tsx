@@ -314,7 +314,7 @@ function SubscribeContent() {
                 issueId: `billing-${Date.now()}`,
                 issueName: `보비 ${planInfo.name} 플랜 (${billingCycle === 'yearly' ? '연간' : '월간'})`,
                 customer: {
-                    customerId: `bobi-user-${Date.now()}`,
+                    customerId: `bobi-${crypto.randomUUID()}`,
                 },
             });
 
@@ -718,7 +718,7 @@ function SubscribeContent() {
                                                         💳 쿠폰 할인은 {platform === 'ios' ? 'App Store' : 'Google Play'} 결제에 적용할 수 없어 웹 결제로 진행됩니다.
                                                     </p>
                                                     <a
-                                                        href={`https://bo-bi.vercel.app/dashboard/subscribe?plan=${selectedPlan}&coupon=${appliedCoupon.code}`}
+                                                        href={`${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.bobi.co.kr'}/dashboard/subscribe?plan=${selectedPlan}&billing=${billingCycle}&coupon=${appliedCoupon.code}`}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="block w-full py-2.5 text-center text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"

@@ -20,8 +20,8 @@ export async function POST(request: Request) {
     try {
         const serviceClient = await createServiceClient();
 
-        // 1. 쿠폰 유효성 검증
-        const { data: coupon, error: couponError } = await supabase
+        // 1. 쿠폰 유효성 검증 (serviceClient 사용 — RLS 우회)
+        const { data: coupon, error: couponError } = await serviceClient
             .from('promo_codes')
             .select('*')
             .eq('code', couponCode.toUpperCase().trim())
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
         }
 
         // 중복 사용 확인
-        const { data: existingRedemption } = await supabase
+        const { data: existingRedemption } = await serviceClient
             .from('promo_code_redemptions')
             .select('id')
             .eq('promo_code_id', coupon.id)
@@ -52,6 +52,14 @@ export async function POST(request: Request) {
 
         if (existingRedemption) {
             return NextResponse.json({ error: '이미 사용한 쿠폰 코드입니다.' }, { status: 400 });
+        }
+
+        // 플랜 호환성 확인
+        if (coupon.plan_slug && coupon.plan_slug !== 'all') {
+            const couponPlans = coupon.plan_slug.split(',').map((s: string) => s.trim());
+            if (!couponPlans.includes(planSlug) && !couponPlans.includes('all')) {
+                return NextResponse.json({ error: '이 쿠폰은 선택한 플랜에서 사용할 수 없습니다.' }, { status: 400 });
+            }
         }
 
         // 2. 무료 쿠폰인지 확인 (price_override === 0 또는 100% 할인)

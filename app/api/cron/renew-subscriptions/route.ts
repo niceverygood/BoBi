@@ -30,6 +30,8 @@ export async function GET(request: Request) {
             .neq('payment_provider', 'coupon_free')
             .neq('payment_provider', 'promo_code')
             .neq('payment_provider', 'discount_code')
+            .neq('payment_provider', 'apple_iap')
+            .neq('payment_provider', 'google_play')
             .lt('current_period_end', now.toISOString());
 
         if (fetchError) {

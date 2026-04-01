@@ -168,6 +168,29 @@ export async function GET(request: NextRequest) {
             // non-critical
         }
 
+        // 쿠폰 사용 기록
+        if (session.coupon_code) {
+            try {
+                const { data: coupon } = await serviceClient
+                    .from('promo_codes')
+                    .select('id, used_count')
+                    .eq('code', session.coupon_code.toUpperCase().trim())
+                    .eq('active', true)
+                    .single();
+                if (coupon) {
+                    await serviceClient
+                        .from('promo_code_redemptions')
+                        .insert({ promo_code_id: coupon.id, user_id: partnerUserId });
+                    await serviceClient
+                        .from('promo_codes')
+                        .update({ used_count: (coupon.used_count || 0) + 1 })
+                        .eq('id', coupon.id);
+                }
+            } catch {
+                // non-critical
+            }
+        }
+
         // 세션 정리
         await serviceClient
             .from('kakaopay_sessions')
