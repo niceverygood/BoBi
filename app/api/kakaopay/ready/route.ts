@@ -16,6 +16,10 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: '필수 파라미터가 누락되었습니다.' }, { status: 400 });
     }
 
+    if (billingCycle === 'yearly') {
+        return NextResponse.json({ error: '연간 결제는 카카오페이를 지원하지 않습니다.' }, { status: 400 });
+    }
+
     const serviceClient = await createServiceClient();
 
     // Fetch plan
@@ -31,7 +35,7 @@ export async function POST(request: Request) {
 
     let amount = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
 
-    // 쿠폰 할인 적용
+    // 쿠폰 할인 적용 (검증 포함)
     if (couponCode) {
         const { data: coupon } = await serviceClient
             .from('promo_codes')
@@ -41,6 +45,22 @@ export async function POST(request: Request) {
             .single();
 
         if (coupon) {
+            if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) {
+                return NextResponse.json({ error: '만료된 쿠폰입니다.' }, { status: 400 });
+            }
+            if (coupon.max_uses !== -1 && coupon.used_count >= coupon.max_uses) {
+                return NextResponse.json({ error: '사용 횟수가 초과된 쿠폰입니다.' }, { status: 400 });
+            }
+            const { data: existingRedemption } = await serviceClient
+                .from('promo_code_redemptions')
+                .select('id')
+                .eq('promo_code_id', coupon.id)
+                .eq('user_id', user.id)
+                .maybeSingle();
+            if (existingRedemption) {
+                return NextResponse.json({ error: '이미 사용한 쿠폰입니다.' }, { status: 400 });
+            }
+
             if (coupon.discount_type === 'percent') {
                 const percent = Math.min(coupon.discount_value, 100);
                 amount = Math.max(0, amount - Math.round(amount * percent / 100));

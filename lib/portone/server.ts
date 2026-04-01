@@ -24,8 +24,14 @@ interface BillingKeyPaymentResponse {
     status?: string;
 }
 
-// 포트원 V2 액세스 토큰 발급
+let cachedToken: { token: string; expiresAt: number } | null = null;
+
+// 포트원 V2 액세스 토큰 발급 (캐싱)
 async function getAccessToken(): Promise<string> {
+    if (cachedToken && cachedToken.expiresAt > Date.now()) {
+        return cachedToken.token;
+    }
+
     const apiSecret = process.env.PORTONE_API_SECRET;
     if (!apiSecret) throw new Error('PORTONE_API_SECRET 환경변수가 설정되지 않았습니다.');
 
@@ -41,6 +47,10 @@ async function getAccessToken(): Promise<string> {
     }
 
     const data: PortOneTokenResponse = await response.json();
+    cachedToken = {
+        token: data.access_token,
+        expiresAt: Date.now() + (data.expires_in ? data.expires_in * 1000 - 60000 : 1800000),
+    };
     return data.access_token;
 }
 

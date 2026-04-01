@@ -35,7 +35,8 @@ export async function POST(request: Request) {
 
     let amount = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
 
-    // 쿠폰 할인 적용
+    // 쿠폰 할인 적용 (검증 포함)
+    let validatedCouponId: string | null = null;
     if (couponCode) {
         const { data: coupon } = await serviceClient
             .from('promo_codes')
@@ -45,6 +46,23 @@ export async function POST(request: Request) {
             .single();
 
         if (coupon) {
+            if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) {
+                return NextResponse.json({ error: '만료된 쿠폰입니다.' }, { status: 400 });
+            }
+            if (coupon.max_uses !== -1 && coupon.used_count >= coupon.max_uses) {
+                return NextResponse.json({ error: '사용 횟수가 초과된 쿠폰입니다.' }, { status: 400 });
+            }
+            const { data: existingRedemption } = await serviceClient
+                .from('promo_code_redemptions')
+                .select('id')
+                .eq('promo_code_id', coupon.id)
+                .eq('user_id', user.id)
+                .maybeSingle();
+            if (existingRedemption) {
+                return NextResponse.json({ error: '이미 사용한 쿠폰입니다.' }, { status: 400 });
+            }
+
+            validatedCouponId = coupon.id;
             if (coupon.discount_type === 'percent') {
                 const percent = Math.min(coupon.discount_value, 100);
                 amount = Math.max(0, amount - Math.round(amount * percent / 100));
@@ -135,7 +153,12 @@ export async function POST(request: Request) {
         .single();
 
     if (subError) {
-        return NextResponse.json({ error: subError.message }, { status: 500 });
+        console.error(`[billing/issue] 구독 생성 실패 (결제 paymentId=${paymentId}, amount=${amount}):`, subError);
+        return NextResponse.json({
+            error: '구독 생성 중 오류가 발생했습니다. 결제는 완료되었으니 고객센터에 문의해주세요.',
+            paymentId,
+            amount,
+        }, { status: 500 });
     }
 
     // Update usage tracking
@@ -200,6 +223,28 @@ export async function POST(request: Request) {
             });
     } catch {
         // payment_history table may not exist yet — non-critical
+    }
+
+    // 쿠폰 사용 기록
+    if (validatedCouponId) {
+        try {
+            await serviceClient
+                .from('promo_code_redemptions')
+                .insert({ promo_code_id: validatedCouponId, user_id: user.id });
+            const { data: couponData } = await serviceClient
+                .from('promo_codes')
+                .select('used_count')
+                .eq('id', validatedCouponId)
+                .single();
+            if (couponData) {
+                await serviceClient
+                    .from('promo_codes')
+                    .update({ used_count: (couponData.used_count || 0) + 1 })
+                    .eq('id', validatedCouponId);
+            }
+        } catch {
+            // non-critical
+        }
     }
 
     return NextResponse.json({

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { CREDIT_PACKS } from '@/lib/utils/constants';
+import { getPaymentStatus } from '@/lib/portone/server';
 
 export async function POST(request: Request) {
     try {
@@ -18,29 +19,36 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: '유효하지 않은 크레딧 팩입니다.' }, { status: 400 });
         }
 
-        // 결제 검증
-        const paymentKey = paymentId || transactionId || `manual-${Date.now()}`;
-
-        // 중복 구매 방지: 동일 paymentKey 체크
-        if (paymentKey && !paymentKey.startsWith('manual-')) {
-            const { data: existing } = await supabase
-                .from('credit_transactions')
-                .select('id')
-                .eq('payment_key', paymentKey)
-                .maybeSingle();
-
-            if (existing) {
-                return NextResponse.json({ error: '이미 처리된 결제입니다.' }, { status: 409 });
-            }
+        const paymentKey = paymentId || transactionId;
+        if (!paymentKey) {
+            return NextResponse.json({ error: '결제 정보가 누락되었습니다.' }, { status: 400 });
         }
 
-        // TODO: 플랫폼별 영수증 검증
-        // - web: 포트원 API로 paymentId 검증
-        // - ios: Apple 영수증 검증
-        // - android: Google Play 영수증 검증
+        const serviceClient = await createServiceClient();
+
+        // 중복 구매 방지
+        const { data: existing } = await serviceClient
+            .from('credit_transactions')
+            .select('id')
+            .eq('payment_key', paymentKey)
+            .maybeSingle();
+
+        if (existing) {
+            return NextResponse.json({ error: '이미 처리된 결제입니다.' }, { status: 409 });
+        }
+
+        // 서버 사이드 결제 검증
+        if (platform === 'web' || !platform) {
+            const paymentStatus = await getPaymentStatus(paymentKey);
+            if (paymentStatus.status !== 'PAID') {
+                console.error(`Payment verification failed: ${paymentKey} status=${paymentStatus.status}`);
+                return NextResponse.json({ error: '결제가 확인되지 않습니다. 결제를 완료해주세요.' }, { status: 402 });
+            }
+        }
+        // iOS/Android IAP는 /api/iap/verify 경유
 
         // 1. 크레딧 트랜잭션 기록
-        const { error: txError } = await supabase
+        const { error: txError } = await serviceClient
             .from('credit_transactions')
             .insert({
                 user_id: user.id,
@@ -56,19 +64,19 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: '크레딧 구매 기록 실패' }, { status: 500 });
         }
 
-        // 2. 크레딧 잔액 업데이트 (upsert)
-        const { data: existingBalance } = await supabase
+        // 2. 크레딧 잔액 원자적 업데이트 (upsert + increment)
+        const { data: existingBalance } = await serviceClient
             .from('credit_balances')
             .select('credits_remaining, credits_purchased')
             .eq('user_id', user.id)
             .maybeSingle();
 
         if (existingBalance) {
-            const { error: updateError } = await supabase
+            const { error: updateError } = await serviceClient
                 .from('credit_balances')
                 .update({
-                    credits_remaining: existingBalance.credits_remaining + pack.credits,
-                    credits_purchased: existingBalance.credits_purchased + pack.credits,
+                    credits_remaining: (existingBalance.credits_remaining || 0) + pack.credits,
+                    credits_purchased: (existingBalance.credits_purchased || 0) + pack.credits,
                     updated_at: new Date().toISOString(),
                 })
                 .eq('user_id', user.id);
@@ -77,7 +85,7 @@ export async function POST(request: Request) {
                 return NextResponse.json({ error: '크레딧 잔액 업데이트 실패' }, { status: 500 });
             }
         } else {
-            const { error: insertError } = await supabase
+            const { error: insertError } = await serviceClient
                 .from('credit_balances')
                 .insert({
                     user_id: user.id,

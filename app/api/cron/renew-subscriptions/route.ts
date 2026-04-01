@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     const authHeader = request.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
 
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -194,10 +194,10 @@ export async function GET(request: Request) {
             }
         }
 
-        // 3. past_due 상태 구독 재시도 (3일 이상 past_due면 cancelled)
+        // 3. past_due 상태 구독 재시도
         const { data: pastDueSubs } = await supabase
             .from('subscriptions')
-            .select('*')
+            .select(`*, plan:subscription_plans(*)`)
             .eq('status', 'past_due');
 
         if (pastDueSubs) {
@@ -206,7 +206,6 @@ export async function GET(request: Request) {
                 const daysSinceExpiry = (now.getTime() - periodEnd.getTime()) / (1000 * 60 * 60 * 24);
 
                 if (daysSinceExpiry > 3) {
-                    // 3일 넘게 결제 실패 → 구독 취소
                     await supabase
                         .from('subscriptions')
                         .update({
@@ -215,8 +214,85 @@ export async function GET(request: Request) {
                             updated_at: now.toISOString(),
                         })
                         .eq('id', sub.id);
-
                     results.errors.push(`구독 ${sub.id}: 3일 결제 실패 → 자동 취소`);
+                    continue;
+                }
+
+                // 3일 이내: 결제 재시도
+                try {
+                    const plan = sub.plan as { price_monthly: number; price_yearly: number; slug: string; display_name: string; max_analyses: number } | null;
+                    if (!plan) continue;
+
+                    const { data: billingKeyData } = await supabase
+                        .from('billing_keys')
+                        .select('billing_key, provider')
+                        .eq('user_id', sub.user_id)
+                        .maybeSingle();
+
+                    const bk = billingKeyData?.billing_key || sub.payment_key;
+                    if (!bk) continue;
+
+                    const retryAmount = sub.billing_cycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
+                    if (!retryAmount || retryAmount <= 0) continue;
+
+                    const provider = billingKeyData?.provider || sub.payment_provider || 'portone';
+                    const retryPaymentId = `retry-${sub.id}-${Date.now()}`;
+                    const cycleLabel = sub.billing_cycle === 'yearly' ? '연간' : '월간';
+                    let retrySuccess = false;
+                    let retryNewSid: string | undefined;
+
+                    if (provider === 'kakaopay') {
+                        try {
+                            const kakaoResult = await kakaoPaySubscription({
+                                sid: bk,
+                                partnerOrderId: retryPaymentId,
+                                partnerUserId: sub.user_id,
+                                itemName: `보비 ${plan.display_name} (${cycleLabel} 재시도)`,
+                                totalAmount: retryAmount,
+                            });
+                            retrySuccess = true;
+                            retryNewSid = kakaoResult.sid;
+                        } catch { /* retry failed */ }
+                    } else {
+                        const retryResult = await payWithBillingKey({
+                            billingKey: bk,
+                            paymentId: retryPaymentId,
+                            orderName: `보비 ${plan.display_name} (${cycleLabel} 재시도)`,
+                            amount: retryAmount,
+                        });
+                        retrySuccess = retryResult.success;
+                    }
+
+                    if (retrySuccess) {
+                        const newPeriodStart = new Date(sub.current_period_end);
+                        const newPeriodEnd = new Date(newPeriodStart);
+                        if (sub.billing_cycle === 'yearly') {
+                            newPeriodEnd.setFullYear(newPeriodEnd.getFullYear() + 1);
+                        } else {
+                            newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1);
+                        }
+                        const updateData: Record<string, string> = {
+                            current_period_start: newPeriodStart.toISOString(),
+                            current_period_end: newPeriodEnd.toISOString(),
+                            status: 'active',
+                            updated_at: now.toISOString(),
+                        };
+                        if (retryNewSid) updateData.payment_key = retryNewSid;
+
+                        await supabase.from('subscriptions').update(updateData).eq('id', sub.id);
+                        if (retryNewSid) {
+                            try {
+                                await supabase.from('billing_keys').upsert({
+                                    user_id: sub.user_id, billing_key: retryNewSid,
+                                    provider: 'kakaopay', created_at: now.toISOString(),
+                                }, { onConflict: 'user_id' });
+                            } catch { /* non-critical */ }
+                        }
+                        await resetUsageForNewPeriod(supabase, sub.user_id, plan.max_analyses);
+                        results.renewed++;
+                    }
+                } catch {
+                    // retry failed, will try again next cron
                 }
             }
         }
