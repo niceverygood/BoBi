@@ -628,21 +628,29 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
     const fiveYearsAgo = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate());
     const startDate = params.startDate || fiveYearsAgo.toISOString().slice(0, 10).replace(/-/g, '');
 
+    const isSmsLogin = params.loginType === '2' && params.loginTypeLevel === '1';
+
     const body: Record<string, unknown> = {
         organization: '0020',
         loginType: params.loginType,
-        loginTypeLevel: params.loginTypeLevel || '',
+        loginTypeLevel: params.loginTypeLevel || (params.loginType === '2' ? '1' : ''),
         userName: params.userName,
         identity: params.identity,
         phoneNo: params.phoneNo,
-        telecom: params.telecom || '',
-        id: params.id || '',
         startDate,
         endDate,
         type: params.type || '1',
+        id: params.id || '',
     };
 
-    if (params.authMethod !== undefined) body.authMethod = params.authMethod;
+    if (isSmsLogin) {
+        body.authMethod = params.authMethod || '0';
+        body.telecom = params.telecom || '';
+        body.timeout = '';
+        body.secureNoYN = '0';
+    } else {
+        body.telecom = params.telecom || '';
+    }
 
     // 2-Way 추가인증
     if (params.is2Way && params.twoWayInfo) {
@@ -653,10 +661,15 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
             jti: String(params.twoWayInfo.jti),
             twoWayTimestamp: Number(params.twoWayInfo.twoWayTimestamp),
         };
-        body.simpleAuth = params.simpleAuth || '1';
-        body.secureNo = params.secureNo || '';
-        body.secureNoRefresh = params.secureNoRefresh || '0';
-        if (params.smsAuthNo) body.smsAuthNo = params.smsAuthNo;
+        if (isSmsLogin) {
+            body.secureNo = params.secureNo || '';
+            body.secureNoRefresh = params.secureNoRefresh || '0';
+            if (params.smsAuthNo) body.smsAuthNo = params.smsAuthNo;
+        } else {
+            body.simpleAuth = params.simpleAuth || '1';
+            body.secureNo = params.secureNo || '';
+            body.secureNoRefresh = params.secureNoRefresh || '0';
+        }
     }
 
     console.log('[CODEF] fetchMyMedicalInfo request:', JSON.stringify({
@@ -750,21 +763,29 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
     const fiveYearsAgo = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate());
     const startDate = params.startDate || fiveYearsAgo.toISOString().slice(0, 10).replace(/-/g, '');
 
+    const isSmsLogin = params.loginType === '2' && params.loginTypeLevel === '1';
+
     const body: Record<string, unknown> = {
         organization: '0020',
         loginType: params.loginType,
-        loginTypeLevel: params.loginTypeLevel || '',
+        loginTypeLevel: params.loginTypeLevel || (params.loginType === '2' ? '1' : ''),
         userName: params.userName,
         identity: params.identity,
         phoneNo: params.phoneNo,
-        telecom: params.telecom || '',
-        id: params.id || '',
         startDate,
         endDate,
         type: params.type || '1',
+        id: params.id || '',
     };
 
-    if (params.authMethod !== undefined) body.authMethod = params.authMethod;
+    if (isSmsLogin) {
+        body.authMethod = params.authMethod || '0';
+        body.telecom = params.telecom || '';
+        body.timeout = '';
+        body.secureNoYN = '0';
+    } else {
+        body.telecom = params.telecom || '';
+    }
 
     if (params.is2Way && params.twoWayInfo) {
         body.is2Way = true;
@@ -774,10 +795,15 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
             jti: String(params.twoWayInfo.jti),
             twoWayTimestamp: Number(params.twoWayInfo.twoWayTimestamp),
         };
-        body.simpleAuth = params.simpleAuth || '1';
-        body.secureNo = params.secureNo || '';
-        body.secureNoRefresh = params.secureNoRefresh || '0';
-        if (params.smsAuthNo) body.smsAuthNo = params.smsAuthNo;
+        if (isSmsLogin) {
+            body.secureNo = params.secureNo || '';
+            body.secureNoRefresh = params.secureNoRefresh || '0';
+            if (params.smsAuthNo) body.smsAuthNo = params.smsAuthNo;
+        } else {
+            body.simpleAuth = params.simpleAuth || '1';
+            body.secureNo = params.secureNo || '';
+            body.secureNoRefresh = params.secureNoRefresh || '0';
+        }
     }
 
     console.log('[CODEF] fetchMyCarInsurance request:', JSON.stringify({
