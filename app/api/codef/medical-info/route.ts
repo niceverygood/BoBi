@@ -52,7 +52,16 @@ export async function POST(request: Request) {
             }, { status: 400 });
         }
 
-        const sessionId = body.sessionId || `bobi-${user.id}-${Date.now()}`;
+        // "both" 진행 단계: 프론트에서 전달 ('medical' → 'car' 순차 진행)
+        const bothStep = body.bothStep as string | undefined;
+        // 이전 단계에서 이미 받은 medical 데이터 (both의 car 단계에서 전달)
+        const previousMedical = body.previousMedical as { records: unknown[]; count: number } | undefined;
+
+        const baseSessionId = body.sessionId || `bobi-${user.id}-${Date.now()}`;
+
+        // medical과 car는 별도 CODEF 세션이 필요 (같은 세션 재사용 시 CF-00025 에러)
+        const effectiveQueryType = bothStep || queryType;
+        const sessionId = effectiveQueryType === 'car' ? `${baseSessionId}-car` : baseSessionId;
 
         const params: HiraMedicalRequest = {
             userName,
@@ -65,7 +74,6 @@ export async function POST(request: Request) {
             startDate,
             endDate,
             type: '0',
-            // 2-Way
             is2Way,
             twoWayInfo,
             simpleAuth,
@@ -74,30 +82,23 @@ export async function POST(request: Request) {
             smsAuthNo,
         };
 
-        console.log('[HIRA] Request params:', {
+        console.log('[HIRA] Request:', {
             userName: userName ? `${userName[0]}**` : 'N/A',
-            identityLength: cleanIdentity.length,
-            phoneNo: phoneNo ? `***${phoneNo.slice(-4)}` : 'N/A',
-            loginType,
-            loginTypeLevel,
-            telecom: telecom || 'N/A',
             queryType,
-            startDate: params.startDate || '(auto: 5yr ago)',
-            endDate: params.endDate || '(auto: today)',
-            is2Way: !!is2Way,
+            bothStep: bothStep || 'N/A',
+            effectiveQueryType,
             sessionId,
+            is2Way: !!is2Way,
         });
 
         const result: {
             sessionId: string;
             medical?: { records: unknown[]; count: number };
             carInsurance?: { records: unknown[]; count: number };
-            requires2Way?: boolean;
-            twoWayData?: Record<string, unknown>;
-        } = { sessionId };
+        } = { sessionId: baseSessionId };
 
         // 내진료정보 조회
-        if (queryType === 'medical' || queryType === 'both') {
+        if (effectiveQueryType === 'medical' || effectiveQueryType === 'both') {
             const medicalResult = await fetchMyMedicalInfo(params);
 
             if (medicalResult.requires2Way) {
@@ -105,8 +106,9 @@ export async function POST(request: Request) {
                 return NextResponse.json({
                     requires2Way: true,
                     twoWayData: medicalResult.twoWayData,
-                    sessionId,
+                    sessionId: baseSessionId,
                     queryType,
+                    bothStep: 'medical',
                 });
             }
 
@@ -115,32 +117,31 @@ export async function POST(request: Request) {
                 count: medicalResult.records.length,
             };
             console.log(`[HIRA] 내진료정보 조회 완료: ${medicalResult.records.length}건`);
+
+            // "both"인 경우: medical 완료 후 car 인증을 위해 프론트에 반환
+            if (queryType === 'both' && !bothStep) {
+                return NextResponse.json({
+                    needsCarAuth: true,
+                    medical: result.medical,
+                    sessionId: baseSessionId,
+                    queryType,
+                });
+            }
         }
 
         // 자동차보험 조회
-        // 2-Way 인증이 이미 완료된 경우 (both에서 medical 성공 후) → 2-Way 파라미터 제거
-        // 같은 세션 ID(id)로 후속 요청 시 인증이 유지됨
-        if (queryType === 'car' || queryType === 'both') {
-            const carParams = { ...params };
-            if (queryType === 'both' && result.medical) {
-                delete carParams.is2Way;
-                delete carParams.twoWayInfo;
-                delete carParams.simpleAuth;
-                delete carParams.secureNo;
-                delete carParams.secureNoRefresh;
-                delete carParams.smsAuthNo;
-            }
-
-            const carResult = await fetchMyCarInsurance(carParams);
+        if (effectiveQueryType === 'car') {
+            const carResult = await fetchMyCarInsurance(params);
 
             if (carResult.requires2Way) {
                 console.log('[HIRA] 2-Way 인증 요청됨 (car)');
                 return NextResponse.json({
                     requires2Way: true,
                     twoWayData: carResult.twoWayData,
-                    sessionId,
+                    sessionId: baseSessionId,
                     queryType,
-                    ...(result.medical ? { medical: result.medical } : {}),
+                    bothStep: 'car',
+                    ...(previousMedical ? { medical: previousMedical } : {}),
                 });
             }
 
@@ -149,6 +150,11 @@ export async function POST(request: Request) {
                 count: carResult.records.length,
             };
             console.log(`[HIRA] 자동차보험 조회 완료: ${carResult.records.length}건`);
+        }
+
+        // both의 car 단계에서는 이전 medical 결과를 합침
+        if (previousMedical && !result.medical) {
+            result.medical = previousMedical;
         }
 
         return NextResponse.json({

@@ -59,6 +59,8 @@ function MedicalInfoContent() {
     // 2-Way 인증 관련
     const [twoWayData, setTwoWayData] = useState<Record<string, unknown> | null>(null);
     const [sessionId, setSessionId] = useState<string | null>(null);
+    const [bothStep, setBothStep] = useState<string | null>(null);
+    const [pendingMedical, setPendingMedical] = useState<{ records: unknown[]; count: number } | null>(null);
 
     // 결과
     const [medicalTreatRecords, setMedicalTreatRecords] = useState<HiraBasicTreatRecord[]>([]);
@@ -137,7 +139,7 @@ function MedicalInfoContent() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(buildRequestBody(
-                    twoWayData ? { is2Way: true, twoWayInfo: twoWayData, simpleAuth: '1', sessionId } : {}
+                    twoWayData ? { is2Way: true, twoWayInfo: twoWayData, simpleAuth: '1', sessionId, bothStep } : {}
                 )),
             });
 
@@ -147,29 +149,90 @@ function MedicalInfoContent() {
                 throw new Error(data.error || '조회에 실패했습니다.');
             }
 
-            // 2-Way 추가인증 필요
             if (data.requires2Way) {
                 setTwoWayData(data.twoWayData);
                 setSessionId(data.sessionId);
+                if (data.bothStep) setBothStep(data.bothStep);
+                if (data.medical) setPendingMedical(data.medical);
                 setStep('auth-waiting');
                 setLoading(false);
                 return;
             }
 
-            // 결과 처리: CODEF 응답의 리스트를 펼침
-            if (data.medical) {
-                const records: HiraMedicalRecord[] = data.medical.records || [];
-                setMedicalTreatRecords(records.flatMap(r => r.resBasicTreatList || []));
-                setMedicalDrugRecords(records.flatMap(r => r.resPrescribeDrugList || []));
-            }
-            if (data.carInsurance) {
-                const records: HiraCarInsuranceRecord[] = data.carInsurance.records || [];
-                setCarTreatRecords(records.flatMap(r => r.resBasicTreatList || []));
+            // both: medical 완료, car 인증 필요
+            if (data.needsCarAuth) {
+                if (data.medical) setPendingMedical(data.medical);
+                setSessionId(data.sessionId);
+                setBothStep('car');
+                setTwoWayData(null);
+                // 자동으로 car 조회 시작 (새 세션으로 2-Way 트리거)
+                setLoading(false);
+                await startCarQuery(data.sessionId, data.medical);
+                return;
             }
 
+            applyResults(data);
             setStep('results');
         } catch (err) {
             setError((err as Error).message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 결과 데이터 적용 헬퍼
+    const applyResults = (data: Record<string, unknown>) => {
+        const med = data.medical as { records: HiraMedicalRecord[] } | undefined;
+        const car = data.carInsurance as { records: HiraCarInsuranceRecord[] } | undefined;
+        if (med) {
+            const records = med.records || [];
+            setMedicalTreatRecords(records.flatMap(r => r.resBasicTreatList || []));
+            setMedicalDrugRecords(records.flatMap(r => r.resPrescribeDrugList || []));
+        }
+        if (car) {
+            const records = car.records || [];
+            setCarTreatRecords(records.flatMap(r => r.resBasicTreatList || []));
+        }
+    };
+
+    // both: medical 완료 후 car 자동 시작
+    const startCarQuery = async (baseSessionId: string, medicalData: { records: unknown[]; count: number } | null) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await fetch('/api/codef/medical-info', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(buildRequestBody({
+                    bothStep: 'car',
+                    sessionId: baseSessionId,
+                    previousMedical: medicalData,
+                })),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || '자동차보험 조회 실패');
+
+            if (data.requires2Way) {
+                setTwoWayData(data.twoWayData);
+                setSessionId(data.sessionId);
+                setBothStep('car');
+                if (data.medical) setPendingMedical(data.medical);
+                setStep('auth-waiting');
+                setLoading(false);
+                return;
+            }
+
+            applyResults(data);
+            setStep('results');
+        } catch (err) {
+            // car 실패해도 medical 결과는 보여줌
+            if (medicalData) {
+                const records = medicalData.records as HiraMedicalRecord[];
+                setMedicalTreatRecords((records || []).flatMap(r => r.resBasicTreatList || []));
+                setMedicalDrugRecords((records || []).flatMap(r => r.resPrescribeDrugList || []));
+            }
+            setError(`자동차보험 조회 실패: ${(err as Error).message}. 내진료정보만 표시합니다.`);
+            setStep('results');
         } finally {
             setLoading(false);
         }
@@ -190,6 +253,8 @@ function MedicalInfoContent() {
                     twoWayInfo: twoWayData,
                     simpleAuth: '1',
                     sessionId,
+                    bothStep,
+                    previousMedical: pendingMedical,
                 })),
             });
 
@@ -200,22 +265,27 @@ function MedicalInfoContent() {
             }
 
             if (data.requires2Way) {
+                setTwoWayData(data.twoWayData);
+                if (data.bothStep) setBothStep(data.bothStep);
+                if (data.medical) setPendingMedical(data.medical);
                 const providerName = AUTH_PROVIDERS.find(a => a.id === authProvider)?.name || '인증 앱';
                 setError(`${providerName}에서 인증을 완료해주세요.`);
                 setLoading(false);
                 return;
             }
 
-            if (data.medical) {
-                const records: HiraMedicalRecord[] = data.medical.records || [];
-                setMedicalTreatRecords(records.flatMap(r => r.resBasicTreatList || []));
-                setMedicalDrugRecords(records.flatMap(r => r.resPrescribeDrugList || []));
-            }
-            if (data.carInsurance) {
-                const records: HiraCarInsuranceRecord[] = data.carInsurance.records || [];
-                setCarTreatRecords(records.flatMap(r => r.resBasicTreatList || []));
+            // both: medical 2-Way 완료 → car 자동 시작
+            if (data.needsCarAuth) {
+                if (data.medical) setPendingMedical(data.medical);
+                setSessionId(data.sessionId);
+                setBothStep('car');
+                setTwoWayData(null);
+                setLoading(false);
+                await startCarQuery(data.sessionId, data.medical);
+                return;
             }
 
+            applyResults(data);
             setStep('results');
         } catch (err) {
             setError((err as Error).message);
@@ -237,6 +307,8 @@ function MedicalInfoContent() {
         setCarTreatRecords([]);
         setTwoWayData(null);
         setSessionId(null);
+        setBothStep(null);
+        setPendingMedical(null);
         setError(null);
         setExpandedRecords(new Set());
     };
