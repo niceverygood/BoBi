@@ -638,7 +638,7 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
         id: params.id || '',
         startDate,
         endDate,
-        type: params.type || '0',
+        type: params.type || '1',
     };
 
     // 2-Way 추가인증
@@ -758,7 +758,7 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
         id: params.id || '',
         startDate,
         endDate,
-        type: params.type || '0',
+        type: params.type || '1',
     };
 
     if (params.is2Way && params.twoWayInfo) {

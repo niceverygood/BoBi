@@ -73,7 +73,7 @@ export async function POST(request: Request) {
             id: sessionId,
             startDate,
             endDate,
-            type: '0',
+            type: '1',
             is2Way,
             twoWayInfo,
             simpleAuth,
