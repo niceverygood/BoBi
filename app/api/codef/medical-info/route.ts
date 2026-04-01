@@ -122,39 +122,25 @@ export async function POST(request: Request) {
             };
             console.log(`[HIRA] 내진료정보 조회 완료: ${medicalResult.records.length}건`);
 
-            // NHIS 건보공단 진료/투약정보도 자동 조회 (medical 선택 시)
-            // NHIS는 별도 기관이라 별도 인증 없이 시도. 실패해도 HIRA 결과는 반환.
-            if (effectiveQueryType === 'medical') {
-                try {
-                    const identityDigits = cleanIdentity;
-                    const yymmdd = identityDigits.slice(0, 6);
-                    const g = identityDigits[6];
-                    const century = ['3','4','7','8'].includes(g) ? '20' : '19';
-                    const birthDateYYYYMMDD = `${century}${yymmdd}`;
-
-                    const nhisResult = await fetchNhisTreatment({
-                        userName,
-                        identity: birthDateYYYYMMDD,
-                        phoneNo: phoneNo.replace(/-/g, ''),
-                        loginType,
-                        loginTypeLevel,
-                        telecom,
-                        id: `${baseSessionId}-nhis`,
-                    });
-
-                    if (nhisResult.requires2Way) {
-                        console.log('[NHIS] 2-Way 필요 — NHIS 결과 생략 (HIRA 결과만 반환)');
-                    } else {
-                        result.nhis = {
-                            records: nhisResult.records,
-                            count: nhisResult.records.length,
-                        };
-                        console.log(`[NHIS] 진료/투약정보 조회 완료: ${nhisResult.records.length}건`);
-                    }
-                } catch (nhisErr) {
-                    console.log('[NHIS] 조회 실패 (HIRA 결과는 유지):', (nhisErr as Error).message);
-                }
-            }
+            // NHIS 건보공단 진료/투약정보 자동 조회 (CODEF NHIS 상품 권한 필요)
+            // TODO: CODEF에서 NHIS API 권한 승인 후 주석 해제
+            // if (effectiveQueryType === 'medical') {
+            //     try {
+            //         const yymmdd = cleanIdentity.slice(0, 6);
+            //         const g = cleanIdentity[6];
+            //         const century = ['3','4','7','8'].includes(g) ? '20' : '19';
+            //         const nhisResult = await fetchNhisTreatment({
+            //             userName, identity: `${century}${yymmdd}`,
+            //             phoneNo: phoneNo.replace(/-/g, ''), loginType, loginTypeLevel, telecom,
+            //             id: `${baseSessionId}-nhis`,
+            //         });
+            //         if (!nhisResult.requires2Way) {
+            //             result.nhis = { records: nhisResult.records, count: nhisResult.records.length };
+            //         }
+            //     } catch (nhisErr) {
+            //         console.log('[NHIS] 조회 실패 (HIRA 결과는 유지):', (nhisErr as Error).message);
+            //     }
+            // }
 
             // "both"인 경우: medical 완료 후 car 인증을 위해 프론트에 반환
             if (queryType === 'both' && !bothStep) {
