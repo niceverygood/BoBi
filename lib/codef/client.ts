@@ -628,15 +628,15 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
     const fiveYearsAgo = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate());
     const startDate = params.startDate || fiveYearsAgo.toISOString().slice(0, 10).replace(/-/g, '');
 
-    const isSmsLogin = params.loginType === '2' && params.loginTypeLevel === '1';
+    const isSmsLogin = params.loginType === '2';
 
     const body: Record<string, unknown> = {
         organization: '0020',
         loginType: params.loginType,
-        loginTypeLevel: params.loginTypeLevel || (params.loginType === '2' ? '1' : ''),
-        userName: params.userName,
+        loginTypeLevel: isSmsLogin ? '1' : (params.loginTypeLevel || ''),
         identity: params.identity,
         phoneNo: params.phoneNo,
+        userName: params.userName,
         startDate,
         endDate,
         type: params.type || '1',
@@ -646,7 +646,7 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
     if (isSmsLogin) {
         body.authMethod = params.authMethod || '0';
         body.telecom = params.telecom || '';
-        body.timeout = '';
+        body.timeout = '170';
         body.secureNoYN = '0';
     } else {
         body.telecom = params.telecom || '';
@@ -763,15 +763,15 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
     const fiveYearsAgo = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate());
     const startDate = params.startDate || fiveYearsAgo.toISOString().slice(0, 10).replace(/-/g, '');
 
-    const isSmsLogin = params.loginType === '2' && params.loginTypeLevel === '1';
+    const isSmsLogin = params.loginType === '2';
 
     const body: Record<string, unknown> = {
         organization: '0020',
         loginType: params.loginType,
-        loginTypeLevel: params.loginTypeLevel || (params.loginType === '2' ? '1' : ''),
-        userName: params.userName,
+        loginTypeLevel: isSmsLogin ? '1' : (params.loginTypeLevel || ''),
         identity: params.identity,
         phoneNo: params.phoneNo,
+        userName: params.userName,
         startDate,
         endDate,
         type: params.type || '1',
@@ -781,7 +781,7 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
     if (isSmsLogin) {
         body.authMethod = params.authMethod || '0';
         body.telecom = params.telecom || '';
-        body.timeout = '';
+        body.timeout = '170';
         body.secureNoYN = '0';
     } else {
         body.telecom = params.telecom || '';
