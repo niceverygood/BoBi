@@ -532,14 +532,15 @@ export function transformCodefToBobi(
 export interface HiraMedicalRequest {
     userName: string;          // 사용자 이름 (필수)
     identity: string;          // 주민등록번호 13자리 (필수)
-    phoneNo: string;           // 전화번호 - loginType="5" 필수
+    phoneNo: string;           // 전화번호
     loginType: string;         // '2': 인증서/휴대폰, '5': 간편인증
-    loginTypeLevel?: string;   // loginType="5": '1'카카오 '3'삼성패스 '4'KB모바일 '5'PASS '6'네이버 '7'신한 '8'토스 '10'NH
-    telecom?: string;          // loginType="5" + loginTypeLevel="5" 필수. '0':SKT(알뜰폰 포함), '1':KT(알뜰폰 포함), '2':LGU+(알뜰폰 포함)
-    id?: string;               // 세션 식별 ID (다건 요청 시 필수, 선택)
-    startDate?: string;        // 조회시작일 yyyyMMdd (필수)
-    endDate?: string;          // 조회종료일 yyyyMMdd (필수)
-    type?: string;             // 민감상병 포함 여부 '0':미포함, '1':포함 (default: '0')
+    loginTypeLevel?: string;   // loginType="2": '0'인증서 '1'휴대폰 / loginType="5": '1'카카오 '3'삼성패스 '4'KB모바일 '5'PASS '6'네이버 '7'신한 '8'토스 '10'NH
+    authMethod?: string;       // loginType="2"+loginTypeLevel="1": '0'SMS '1'PASS (default '0')
+    telecom?: string;          // PASS 필수. '0':SKT '1':KT '2':LGU+
+    id?: string;               // 세션 식별 ID
+    startDate?: string;        // 조회시작일 yyyyMMdd
+    endDate?: string;          // 조회종료일 yyyyMMdd
+    type?: string;             // 민감상병 포함 '0':미포함, '1':포함
     // 2-Way 추가인증 관련
     twoWayInfo?: {
         jobIndex: number;
@@ -640,6 +641,8 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
         endDate,
         type: params.type || '1',
     };
+
+    if (params.authMethod !== undefined) body.authMethod = params.authMethod;
 
     // 2-Way 추가인증
     if (params.is2Way && params.twoWayInfo) {
@@ -760,6 +763,8 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
         endDate,
         type: params.type || '1',
     };
+
+    if (params.authMethod !== undefined) body.authMethod = params.authMethod;
 
     if (params.is2Way && params.twoWayInfo) {
         body.is2Way = true;

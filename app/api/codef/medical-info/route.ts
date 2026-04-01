@@ -24,9 +24,10 @@ export async function POST(request: Request) {
             userName,
             identity,               // 주민등록번호 13자리
             phoneNo,                // 01012345678
-            loginType = '5',        // '5': 간편인증
-            loginTypeLevel,         // 간편인증사 코드
-            telecom,                // 통신사 (PASS 필수)
+            loginType = '5',        // '2': 인증서/휴대폰, '5': 간편인증
+            loginTypeLevel,         // 인증 구분 코드
+            authMethod,             // loginType='2'+loginTypeLevel='1': '0'SMS '1'PASS
+            telecom,                // 통신사
             queryType = 'medical',  // 'medical' | 'car' | 'both'
             startDate,              // 조회시작일 yyyyMMdd
             endDate,                // 조회종료일 yyyyMMdd
@@ -69,6 +70,7 @@ export async function POST(request: Request) {
             phoneNo: phoneNo.replace(/-/g, ''),
             loginType,
             loginTypeLevel,
+            authMethod,
             telecom,
             id: sessionId,
             startDate,
