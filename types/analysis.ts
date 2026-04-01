@@ -12,15 +12,19 @@ export interface MedicalDetail {
     note?: string;
 }
 
-export interface AnalysisItem {
-    category:
+export type AnalysisCategory =
     | '3months_visit'
     | '3months_medication'
-    | '1year_hospitalization'
-    | '2year_hospitalization'
-    | '5year_hospitalization'
+    | '1year_hospitalization' | '1year_surgery' | '1year_visit'
+    | '2year_hospitalization' | '2year_surgery' | '2year_visit'
+    | '3year_hospitalization' | '3year_surgery' | '3year_visit'
+    | '4year_hospitalization' | '4year_surgery' | '4year_visit'
+    | '5year_hospitalization' | '5year_surgery' | '5year_visit'
     | '5year_major_disease'
     | 'ongoing_medication';
+
+export interface AnalysisItem {
+    category: AnalysisCategory;
     question: string;
     applicable: boolean;
     details: MedicalDetail[];

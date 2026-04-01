@@ -92,25 +92,36 @@ function validateItem(item: AnalysisItem, today: Date): {
 
     switch (category) {
         case '3months_visit':
-            periodMonths = 3;
-            break;
         case '3months_medication':
             periodMonths = 3;
             break;
         case '1year_hospitalization':
+        case '1year_surgery':
+        case '1year_visit':
             periodMonths = 12;
             break;
         case '2year_hospitalization':
+        case '2year_surgery':
+        case '2year_visit':
             periodMonths = 24;
             break;
-        case '5year_hospitalization':
-            periodMonths = 60;
+        case '3year_hospitalization':
+        case '3year_surgery':
+        case '3year_visit':
+            periodMonths = 36;
             break;
+        case '4year_hospitalization':
+        case '4year_surgery':
+        case '4year_visit':
+            periodMonths = 48;
+            break;
+        case '5year_hospitalization':
+        case '5year_surgery':
+        case '5year_visit':
         case '5year_major_disease':
             periodMonths = 60;
             break;
         case 'ongoing_medication':
-            // 상시 복용 약물은 기간 검증이 아니라 패턴 검증이므로 그대로 유지
             return { correctedItem: item, correction: null };
         default:
             return { correctedItem: item, correction: null };
