@@ -644,7 +644,12 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
     // 2-Way 추가인증
     if (params.is2Way && params.twoWayInfo) {
         body.is2Way = true;
-        body.twoWayInfo = params.twoWayInfo;
+        body.twoWayInfo = {
+            jobIndex: Number(params.twoWayInfo.jobIndex),
+            threadIndex: Number(params.twoWayInfo.threadIndex),
+            jti: String(params.twoWayInfo.jti),
+            twoWayTimestamp: Number(params.twoWayInfo.twoWayTimestamp),
+        };
         body.simpleAuth = params.simpleAuth || '1';
         body.secureNo = params.secureNo || '';
         body.secureNoRefresh = params.secureNoRefresh || '0';
@@ -758,7 +763,12 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
 
     if (params.is2Way && params.twoWayInfo) {
         body.is2Way = true;
-        body.twoWayInfo = params.twoWayInfo;
+        body.twoWayInfo = {
+            jobIndex: Number(params.twoWayInfo.jobIndex),
+            threadIndex: Number(params.twoWayInfo.threadIndex),
+            jti: String(params.twoWayInfo.jti),
+            twoWayTimestamp: Number(params.twoWayInfo.twoWayTimestamp),
+        };
         body.simpleAuth = params.simpleAuth || '1';
         body.secureNo = params.secureNo || '';
         body.secureNoRefresh = params.secureNoRefresh || '0';
