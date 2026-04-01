@@ -36,7 +36,7 @@ function SubscribeContent() {
 
     const [selectedPlan, setSelectedPlan] = useState<PlanSlug>(planParam || 'basic');
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
-    const [paymentMethod, setPaymentMethod] = useState<'kakaopay' | 'card'>('kakaopay');
+    const [paymentMethod, setPaymentMethod] = useState<'kakaopay' | 'card'>('card');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
@@ -792,39 +792,21 @@ function SubscribeContent() {
                                     </div>
                                 )}
 
-                                {/* 결제 수단 - 웹에서만 선택 가능 */}
+                                {/* 결제 수단 */}
                                 {platform === 'web' && (
                                     <div className="space-y-2">
                                         <p className="text-sm font-medium">결제 수단</p>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <button
-                                                onClick={() => setPaymentMethod('kakaopay')}
-                                                disabled={billingCycle === 'yearly'}
-                                                className={cn(
-                                                    'p-3 rounded-lg border-2 text-center text-sm transition-all',
-                                                    paymentMethod === 'kakaopay'
-                                                        ? 'border-primary bg-primary/5 font-semibold'
-                                                        : 'border-muted hover:border-primary/30',
-                                                    billingCycle === 'yearly' && 'opacity-40 cursor-not-allowed'
-                                                )}
-                                            >
-                                                카카오페이
-                                            </button>
+                                        <div className="grid grid-cols-1 gap-2">
                                             <button
                                                 onClick={() => setPaymentMethod('card')}
                                                 className={cn(
                                                     'p-3 rounded-lg border-2 text-center text-sm transition-all',
-                                                    paymentMethod === 'card'
-                                                        ? 'border-primary bg-primary/5 font-semibold'
-                                                        : 'border-muted hover:border-primary/30'
+                                                    'border-primary bg-primary/5 font-semibold'
                                                 )}
                                             >
-                                                신용카드
+                                                신용카드 (KG이니시스)
                                             </button>
                                         </div>
-                                        {billingCycle === 'yearly' && (
-                                            <p className="text-[11px] text-amber-600">연간 결제는 신용카드만 가능합니다.</p>
-                                        )}
                                     </div>
                                 )}
 
