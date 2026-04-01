@@ -40,14 +40,13 @@ const TELECOM_PROVIDERS = [
 
 // 조회 타입
 const QUERY_TYPES = [
-    { id: 'medical', name: '내 진료정보', icon: Stethoscope, description: '심평원 최대 5년 진료 이력' },
+    { id: 'medical', name: '내 진료정보', icon: Stethoscope, description: '심평원 진료 + 건보공단 투약 통합' },
     { id: 'car', name: '자동차보험 진료', icon: Car, description: '자동차보험 관련 진료 내역' },
-    { id: 'both', name: '심평원 전체', icon: Search, description: '진료정보 + 자동차보험 동시' },
-    { id: 'nhis', name: '진료/투약정보', icon: HeartPulse, description: '건보공단 진료 및 투약내역' },
+    { id: 'both', name: '전체 조회', icon: Search, description: '진료정보 + 자동차보험 동시' },
 ];
 
 type Step = 'form' | 'auth-waiting' | 'results';
-type QueryType = 'medical' | 'car' | 'both' | 'nhis';
+type QueryType = 'medical' | 'car' | 'both';
 
 function MedicalInfoContent() {
     const router = useRouter();
@@ -115,23 +114,13 @@ function MedicalInfoContent() {
     // PASS 인증 여부 확인
     const selectedProvider = AUTH_PROVIDERS.find(a => a.id === authProvider);
     const needsTelecom = (selectedProvider as { needsTelecom?: boolean })?.needsTelecom === true;
-    const isNhis = queryType === 'nhis';
-
-    // 건보공단: 주민번호에서 생년월일(YYYYMMDD) 추출
-    const extractBirthDate = (id: string) => {
-        const digits = id.replace(/\D/g, '');
-        if (digits.length !== 13) return digits;
-        const yymmdd = digits.slice(0, 6);
-        const g = digits[6];
-        const century = ['3','4','7','8'].includes(g) ? '20' : '19';
-        return `${century}${yymmdd}`;
-    };
+    const isNhis = false; // NHIS는 medical에 통합됨
 
     // API 요청 body 생성
     const isSmsAuth = authMethod === 'sms';
     const buildRequestBody = (extraFields?: Record<string, unknown>) => ({
         userName: userName.trim(),
-        identity: isNhis ? extractBirthDate(identity) : identity.replace(/\D/g, ''),
+        identity: identity.replace(/\D/g, ''),
         phoneNo: phoneNo.replace(/-/g, ''),
         loginType: isSmsAuth ? '2' : '5',
         loginTypeLevel: isSmsAuth ? '1' : authProvider,
@@ -158,7 +147,7 @@ function MedicalInfoContent() {
         setError(null);
 
         try {
-            const apiUrl = isNhis ? '/api/codef/nhis-treatment' : '/api/codef/medical-info';
+            const apiUrl = '/api/codef/medical-info';
             const extraParams = twoWayData
                 ? { is2Way: true, twoWayInfo: twoWayData, simpleAuth: '1', ...(isSmsAuth && smsCode ? { smsAuthNo: smsCode } : {}), sessionId, bothStep }
                 : {};
@@ -196,13 +185,6 @@ function MedicalInfoContent() {
                 return;
             }
 
-            // 건보공단 결과 처리
-            if (isNhis && data.records) {
-                setNhisRecords(data.records);
-                setStep('results');
-                return;
-            }
-
             applyResults(data);
             setStep('results');
         } catch (err) {
@@ -216,6 +198,7 @@ function MedicalInfoContent() {
     const applyResults = (data: Record<string, unknown>) => {
         const med = data.medical as { records: HiraMedicalRecord[] } | undefined;
         const car = data.carInsurance as { records: HiraCarInsuranceRecord[] } | undefined;
+        const nhis = data.nhis as { records: NhisTreatmentRecord[] } | undefined;
         if (med) {
             const records = med.records || [];
             setMedicalTreatRecords(records.flatMap(r => r.resBasicTreatList || []));
@@ -224,6 +207,9 @@ function MedicalInfoContent() {
         if (car) {
             const records = car.records || [];
             setCarTreatRecords(records.flatMap(r => r.resBasicTreatList || []));
+        }
+        if (nhis) {
+            setNhisRecords(nhis.records || []);
         }
     };
 
