@@ -103,27 +103,68 @@ export async function POST(request: Request) {
 
         // 내진료정보 조회
         if (effectiveQueryType === 'medical' || effectiveQueryType === 'both') {
-            const medicalResult = await fetchMyMedicalInfo(params);
+            // 다건 요청: 2-Way 인증 완료 시 내진료정보 + 내가먹는약을 동시 발사
+            // CODEF 다건 요청 규칙: 요청A 송신 후 0.5~1초 이내 요청B 송신 → 세션 공유
+            const is2WayCompletion = params.is2Way && params.twoWayInfo;
 
-            if (medicalResult.requires2Way) {
-                console.log('[HIRA] 2-Way 인증 요청됨 (medical)');
-                return NextResponse.json({
-                    requires2Way: true,
-                    twoWayData: medicalResult.twoWayData,
-                    sessionId: baseSessionId,
-                    queryType,
-                    bothStep: 'medical',
+            if (is2WayCompletion && effectiveQueryType === 'medical') {
+                // 2-Way 완료 시: 내진료정보(A) 발사 → 0.5초 후 내가먹는약(B) 발사 → 둘 다 수집
+                const medicalPromise = fetchMyMedicalInfo(params);
+
+                const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+                await delay(500);
+
+                const medicineParams = {
+                    ...params,
+                    is2Way: undefined as unknown as boolean | undefined,
+                    twoWayInfo: undefined as unknown as typeof params.twoWayInfo,
+                    simpleAuth: undefined as unknown as string | undefined,
+                    secureNo: undefined as unknown as string | undefined,
+                    secureNoRefresh: undefined as unknown as string | undefined,
+                    smsAuthNo: undefined as unknown as string | undefined,
+                };
+                const medicinePromise = fetchMyMedicine(medicineParams).catch(err => {
+                    console.log('[HIRA] 내가먹는약 다건요청 실패:', (err as Error).message);
+                    return null;
                 });
+
+                const [medicalResult, medicineResult] = await Promise.all([medicalPromise, medicinePromise]);
+
+                if (medicalResult.requires2Way) {
+                    return NextResponse.json({
+                        requires2Way: true,
+                        twoWayData: medicalResult.twoWayData,
+                        sessionId: baseSessionId,
+                        queryType,
+                        bothStep: 'medical',
+                    });
+                }
+
+                result.medical = { records: medicalResult.records, count: medicalResult.records.length };
+                console.log(`[HIRA] 내진료정보 조회 완료: ${medicalResult.records.length}건`);
+
+                if (medicineResult && !medicineResult.requires2Way) {
+                    result.myMedicine = { records: medicineResult.records, count: medicineResult.records.length };
+                    console.log(`[HIRA] 내가먹는약 다건요청 성공: ${medicineResult.records.length}건`);
+                }
+            } else {
+                // 첫 요청 (2-Way 트리거) 또는 both 모드
+                const medicalResult = await fetchMyMedicalInfo(params);
+
+                if (medicalResult.requires2Way) {
+                    console.log('[HIRA] 2-Way 인증 요청됨 (medical)');
+                    return NextResponse.json({
+                        requires2Way: true,
+                        twoWayData: medicalResult.twoWayData,
+                        sessionId: baseSessionId,
+                        queryType,
+                        bothStep: 'medical',
+                    });
+                }
+
+                result.medical = { records: medicalResult.records, count: medicalResult.records.length };
+                console.log(`[HIRA] 내진료정보 조회 완료: ${medicalResult.records.length}건`);
             }
-
-            result.medical = {
-                records: medicalResult.records,
-                count: medicalResult.records.length,
-            };
-            console.log(`[HIRA] 내진료정보 조회 완료: ${medicalResult.records.length}건`);
-
-            // 내가먹는약 한눈에: 별도 엔드포인트라 세션 공유 불가 → 자동 호출 비활성화
-            // 내가먹는약은 별도 인증이 필요하므로, 결과 화면에서 사용자가 선택적으로 조회
 
             // "both"인 경우: medical 완료 후 car 인증을 위해 프론트에 반환
             if (queryType === 'both' && !bothStep) {
