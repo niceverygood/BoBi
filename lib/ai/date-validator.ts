@@ -70,9 +70,43 @@ export function validateAndCorrectDates(result: AnalysisResult, todayStr: string
         }
     }
 
+    // 상위 기간 전파: Nyear에 해당이면 (N+1)~5year도 해당이어야 함
+    const suffixes = ['_hospitalization', '_surgery', '_visit'] as const;
+    const years = [1, 2, 3, 4, 5];
+
+    for (const suffix of suffixes) {
+        for (let y = 1; y < 5; y++) {
+            const shortCat = `${y}year${suffix}`;
+            const shortItem = correctedItems.find(i => i.category === shortCat);
+            if (!shortItem?.applicable) continue;
+
+            for (let ly = y + 1; ly <= 5; ly++) {
+                const longCat = `${ly}year${suffix}`;
+                const longItem = correctedItems.find(i => i.category === longCat);
+                if (longItem && !longItem.applicable) {
+                    longItem.applicable = true;
+                    longItem.details = [...longItem.details, ...shortItem.details.filter(
+                        d => !longItem.details.some(ld => ld.date === d.date && ld.hospital === d.hospital)
+                    )];
+                    if (!longItem.summary || longItem.summary.includes('해당없음') || longItem.summary.includes('없습니다')) {
+                        longItem.summary = shortItem.summary;
+                    }
+                    corrections.push({
+                        category: longCat,
+                        originalApplicable: false,
+                        correctedApplicable: true,
+                        reason: `${shortCat}가 해당이므로 ${longCat}도 해당이어야 함 (상위 기간 전파)`,
+                        removedDetails: [],
+                        keptDetails: longItem.details.map(d => d.date),
+                    });
+                }
+            }
+        }
+    }
+
     const correctedResult: AnalysisResult = {
         ...result,
-        analysisDate: todayStr, // 반드시 오늘 날짜로 설정
+        analysisDate: todayStr,
         items: correctedItems,
     };
 
