@@ -847,77 +847,58 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
     return { records };
 }
 
-// ─── 건강보험공단 진료 및 투약정보 조회 API ──────────────
-// /v1/kr/public/pp/nhis-treatment/information
+// ─── 심평원 내가먹는약 한눈에 API ──────────────
+// /v1/kr/public/hw/hira-list/my-medicine
+// 같은 HIRA(0020)이므로 동일한 인증 방식 + identity(주민번호 13자리)
 
-export interface NhisTreatmentRecord {
-    resType?: string;
-    resHospitalName?: string;
-    resTreatStartDate?: string;    // yyyyMMdd
-    resTreatType?: string;
-    resVisitDays?: string;
-    resPrescribeCnt?: string;
-    resMedicationCnt?: string;
-    resMediDetailList?: NhisMediDetail[];
+export interface MyMedicineRecord {
+    commBrandName?: string;        // 조제기관(약국)
+    resManufactureDate?: string;   // 조제일자 YYYYMMDD
+    resPrescribeOrg?: string;      // 처방기관(병원)
+    resTelNo?: string;             // 조제기관 전화번호
+    resTelNo1?: string;            // 처방기관 전화번호
+    resName?: string;              // 아동이름 (본인이면 빈값)
+    resDrugList?: MyMedicineDrug[];
 }
 
-export interface NhisMediDetail {
-    resTreatDate?: string;
-    resPrescribeDrugName?: string;
-    resPrescribeDrugEffect?: string;
-    resPrescribeDays?: string;
-    resTreatTypeDet?: string;
-    resDrugCode?: string;
+export interface MyMedicineDrug {
+    resDrugName?: string;          // 약품명
+    resDrugCode?: string;          // 약품코드
+    resIngredients?: string;       // 성분명
+    resContent?: string;           // 함량
+    resOneDose?: string;           // 1회 투약량
+    resDailyDosesNumber?: string;  // 1일 투여횟수
+    resTotalDosingdays?: string;   // 총 투약일수
+    resPrescribeDrugEffect?: string; // 약효
+    resNumber?: string;            // 호수(번호)
 }
 
-export interface NhisTreatmentRequest {
-    userName: string;
-    identity: string;          // loginType='5': 생년월일(YYYYMMDD)
-    phoneNo: string;
-    loginType: string;
-    loginTypeLevel?: string;
-    telecom?: string;
-    id?: string;
-    startDate?: string;
-    endDate?: string;
-    type?: string;
-    twoWayInfo?: { jobIndex: number; threadIndex: number; jti: string; twoWayTimestamp: number };
-    is2Way?: boolean;
-    simpleAuth?: string;
-    secureNo?: string;
-    secureNoRefresh?: string;
-}
-
-export async function fetchNhisTreatment(params: NhisTreatmentRequest): Promise<{
-    records: NhisTreatmentRecord[];
+export async function fetchMyMedicine(params: HiraMedicalRequest): Promise<{
+    records: MyMedicineRecord[];
     requires2Way?: boolean;
     twoWayData?: Record<string, unknown>;
 }> {
     const token = await getAccessToken();
 
-    const now = new Date();
-    const endDate = params.endDate || now.toISOString().slice(0, 10).replace(/-/g, '');
-    const oneYearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
-    const startDate = params.startDate || oneYearAgo.toISOString().slice(0, 10).replace(/-/g, '');
-
     const body: Record<string, unknown> = {
-        organization: '0002',
+        organization: '0020',
         loginType: params.loginType,
-        userName: params.userName,
+        loginTypeLevel: params.loginTypeLevel || '',
         identity: params.identity,
+        userName: params.userName,
         phoneNo: params.phoneNo,
         telecom: params.telecom || '',
         id: params.id || '',
-        startDate,
-        endDate,
-        type: params.type || '0',
-        drugImageYN: '0',
-        medicationDirectionYN: '0',
+        startDate: '',
         detailYN: '0',
+        reqChildYN: '0',
     };
 
-    if (params.loginType === '5') {
-        body.loginTypeLevel = params.loginTypeLevel || '';
+    if (params.loginType === '2') {
+        body.loginTypeLevel = '1';
+        body.authMethod = params.authMethod || '0';
+        body.timeout = '170';
+        body.secureNoYN = '0';
     }
 
     if (params.is2Way && params.twoWayInfo) {
@@ -931,15 +912,16 @@ export async function fetchNhisTreatment(params: NhisTreatmentRequest): Promise<
         body.simpleAuth = params.simpleAuth || '1';
         body.secureNo = params.secureNo || '';
         body.secureNoRefresh = params.secureNoRefresh || '0';
+        if (params.smsAuthNo) body.smsAuthNo = params.smsAuthNo;
     }
 
-    console.log('[CODEF] fetchNhisTreatment request:', JSON.stringify({
+    console.log('[CODEF] fetchMyMedicine request:', JSON.stringify({
         ...body,
         identity: `${String(body.identity).slice(0, 4)}*****`,
         phoneNo: `***${String(body.phoneNo).slice(-4)}`,
     }, null, 2));
 
-    const res = await fetch(`${CODEF_API_URL}/v1/kr/public/pp/nhis-treatment/information`, {
+    const res = await fetch(`${CODEF_API_URL}/v1/kr/public/hw/hira-list/my-medicine`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -949,22 +931,22 @@ export async function fetchNhisTreatment(params: NhisTreatmentRequest): Promise<
     });
 
     const data = await parseCodefResponse<{ result: { code: string; message: string }; data: unknown }>(res);
-    console.log('[CODEF] fetchNhisTreatment response:', data.result?.code, data.result?.message);
+    console.log('[CODEF] fetchMyMedicine response:', data.result?.code, data.result?.message);
 
     if (data.result?.code === 'CF-03002') {
         return { records: [], requires2Way: true, twoWayData: data.data as Record<string, unknown> };
     }
 
     if (data.result?.code !== 'CF-00000') {
-        throw new Error(`진료/투약정보 조회 실패: ${data.result?.code} ${data.result?.message}`);
+        throw new Error(`내가먹는약 조회 실패: ${data.result?.code} ${data.result?.message}`);
     }
 
     const responseData = data.data;
-    let records: NhisTreatmentRecord[] = [];
+    let records: MyMedicineRecord[] = [];
     if (Array.isArray(responseData)) {
         records = responseData;
     } else if (responseData && typeof responseData === 'object') {
-        records = [responseData as NhisTreatmentRecord];
+        records = [responseData as MyMedicineRecord];
     }
 
     return { records };

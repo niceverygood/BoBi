@@ -5,7 +5,7 @@ import { callOpenAI } from '@/lib/ai/openai';
 import { STEP1_ANALYSIS_PROMPT } from '@/lib/ai/prompts';
 import { parseAIResponse, validateAnalysisResult } from '@/lib/ai/parser';
 import { validateAndCorrectDates, formatCorrections } from '@/lib/ai/date-validator';
-import { formatCodefRecordsAsText, formatNhisRecordsAsText } from '@/lib/codef/formatter';
+import { formatCodefRecordsAsText, formatMyMedicineAsText } from '@/lib/codef/formatter';
 import type { AnalysisResult } from '@/types/analysis';
 
 export const maxDuration = 120; // Claude needs more time for complex analyses
@@ -64,24 +64,27 @@ export async function POST(request: Request) {
             }
         }
 
-        const { customerId, uploadIds, codefRecords, nhisRecords } = await request.json();
-        const isCodef = !!codefRecords || !!nhisRecords;
+        const { customerId, uploadIds, codefRecords, myMedicineRecords } = await request.json();
+        const isCodef = !!codefRecords || !!myMedicineRecords;
 
         let combinedText: string;
-        let sourceType: 'codef' | 'nhis' | 'pdf' = 'pdf';
+        let sourceType: 'codef' | 'medicine' | 'pdf' = 'pdf';
+        const textParts: string[] = [];
 
-        if (nhisRecords) {
-            sourceType = 'nhis';
-            combinedText = formatNhisRecordsAsText(nhisRecords);
-            if (!combinedText.trim() || combinedText.includes('조회된 진료/투약 기록이 없습니다')) {
-                return NextResponse.json({ error: '분석할 진료/투약 기록이 없습니다.' }, { status: 400 });
-            }
-        } else if (codefRecords) {
+        if (codefRecords) {
             sourceType = 'codef';
             const { treats, drugs, cars } = codefRecords;
-            combinedText = formatCodefRecordsAsText(treats || [], drugs || [], cars || []);
-            if (!combinedText.trim() || combinedText.includes('조회된 진료 기록이 없습니다')) {
-                return NextResponse.json({ error: '분석할 진료 기록이 없습니다.' }, { status: 400 });
+            textParts.push(formatCodefRecordsAsText(treats || [], drugs || [], cars || []));
+        }
+        if (myMedicineRecords) {
+            sourceType = codefRecords ? 'codef' : 'medicine';
+            textParts.push(formatMyMedicineAsText(myMedicineRecords));
+        }
+
+        if (textParts.length > 0) {
+            combinedText = textParts.join('\n\n');
+            if (!combinedText.trim() || (combinedText.includes('조회된 진료 기록이 없습니다') && combinedText.includes('조회된 투약 기록이 없습니다'))) {
+                return NextResponse.json({ error: '분석할 데이터가 없습니다.' }, { status: 400 });
             }
         } else {
             // 기존 PDF 업로드 → 텍스트 추출

@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { HiraMedicalRecord, HiraBasicTreatRecord, HiraCarInsuranceRecord, HiraCarBasicTreatRecord, HiraPrescribeDrugRecord, NhisTreatmentRecord } from '@/lib/codef/client';
+import type { HiraMedicalRecord, HiraBasicTreatRecord, HiraCarInsuranceRecord, HiraCarBasicTreatRecord, HiraPrescribeDrugRecord, MyMedicineRecord } from '@/lib/codef/client';
 
 // 인증 방식
 const AUTH_METHODS = [
@@ -74,7 +74,7 @@ function MedicalInfoContent() {
     const [medicalTreatRecords, setMedicalTreatRecords] = useState<HiraBasicTreatRecord[]>([]);
     const [medicalDrugRecords, setMedicalDrugRecords] = useState<HiraPrescribeDrugRecord[]>([]);
     const [carTreatRecords, setCarTreatRecords] = useState<HiraCarBasicTreatRecord[]>([]);
-    const [nhisRecords, setNhisRecords] = useState<NhisTreatmentRecord[]>([]);
+    const [myMedicineRecords, setMyMedicineRecords] = useState<MyMedicineRecord[]>([]);
     const [expandedRecords, setExpandedRecords] = useState<Set<number>>(new Set());
 
     // 고지분석 관련
@@ -198,7 +198,6 @@ function MedicalInfoContent() {
     const applyResults = (data: Record<string, unknown>) => {
         const med = data.medical as { records: HiraMedicalRecord[] } | undefined;
         const car = data.carInsurance as { records: HiraCarInsuranceRecord[] } | undefined;
-        const nhis = data.nhis as { records: NhisTreatmentRecord[] } | undefined;
         if (med) {
             const records = med.records || [];
             setMedicalTreatRecords(records.flatMap(r => r.resBasicTreatList || []));
@@ -208,8 +207,9 @@ function MedicalInfoContent() {
             const records = car.records || [];
             setCarTreatRecords(records.flatMap(r => r.resBasicTreatList || []));
         }
-        if (nhis) {
-            setNhisRecords(nhis.records || []);
+        const medicine = data.myMedicine as { records: MyMedicineRecord[] } | undefined;
+        if (medicine) {
+            setMyMedicineRecords(medicine.records || []);
         }
     };
 
@@ -324,7 +324,7 @@ function MedicalInfoContent() {
         setMedicalTreatRecords([]);
         setMedicalDrugRecords([]);
         setCarTreatRecords([]);
-        setNhisRecords([]);
+        setMyMedicineRecords([]);
         setTwoWayData(null);
         setSessionId(null);
         setBothStep(null);
@@ -336,7 +336,7 @@ function MedicalInfoContent() {
     // 고지분석 시작
     const handleStartAnalysis = async () => {
         if (analyzing) return;
-        if (medicalTreatRecords.length === 0 && carTreatRecords.length === 0 && nhisRecords.length === 0) {
+        if (medicalTreatRecords.length === 0 && carTreatRecords.length === 0 && myMedicineRecords.length === 0) {
             setError('분석할 진료 기록이 없습니다.');
             return;
         }
@@ -345,8 +345,8 @@ function MedicalInfoContent() {
 
         try {
             const analyzeBody: Record<string, unknown> = {};
-            if (nhisRecords.length > 0) {
-                analyzeBody.nhisRecords = nhisRecords;
+            if (myMedicineRecords.length > 0) {
+                analyzeBody.myMedicineRecords = myMedicineRecords;
             }
             if (medicalTreatRecords.length > 0 || carTreatRecords.length > 0) {
                 analyzeBody.codefRecords = {
@@ -725,7 +725,7 @@ function MedicalInfoContent() {
             </div>
 
             {/* 고지분석 시작 버튼 */}
-            {(totalMedical > 0 || totalCar > 0 || nhisRecords.length > 0) && (
+            {(totalMedical > 0 || totalCar > 0 || myMedicineRecords.length > 0) && (
                 <Card className="border-0 shadow-md bg-gradient-to-r from-primary/5 to-primary/10">
                     <CardContent className="p-5">
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -914,16 +914,16 @@ function MedicalInfoContent() {
                 </div>
             )}
 
-            {/* 건보공단 진료/투약정보 */}
-            {nhisRecords.length > 0 && (
+            {/* 내가먹는약 한눈에 */}
+            {myMedicineRecords.length > 0 && (
                 <div className="space-y-3">
                     <h2 className="text-lg font-semibold flex items-center gap-2">
-                        <HeartPulse className="w-5 h-5 text-emerald-600" />
-                        건보공단 진료/투약정보
-                        <Badge variant="secondary" className="text-xs">{nhisRecords.length}건</Badge>
+                        <Pill className="w-5 h-5 text-emerald-600" />
+                        내가먹는약
+                        <Badge variant="secondary" className="text-xs">{myMedicineRecords.length}건</Badge>
                     </h2>
-                    {nhisRecords.map((record, idx) => (
-                        <Card key={`nhis-${idx}`} className="border-0 shadow-sm overflow-hidden">
+                    {myMedicineRecords.map((record, idx) => (
+                        <Card key={`med-${idx}`} className="border-0 shadow-sm overflow-hidden">
                             <button
                                 onClick={() => toggleRecord(idx + 10000)}
                                 className="w-full text-left p-4 hover:bg-muted/30 transition-colors"
@@ -931,38 +931,38 @@ function MedicalInfoContent() {
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-start gap-3 min-w-0 flex-1">
                                         <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0 mt-0.5">
-                                            <Building2 className="w-4 h-4 text-emerald-600" />
+                                            <Pill className="w-4 h-4 text-emerald-600" />
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="font-semibold text-sm truncate">{record.resHospitalName || '의료기관'}</p>
+                                            <p className="font-semibold text-sm truncate">{record.resPrescribeOrg || record.commBrandName || '의료기관'}</p>
                                             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                                                 <Calendar className="w-3 h-3" />
-                                                <span>{formatDate(record.resTreatStartDate)}</span>
-                                                {record.resTreatType && <><span>·</span><span>{record.resTreatType}</span></>}
-                                                {record.resType && <><span>·</span><span>{record.resType}</span></>}
+                                                <span>{formatDate(record.resManufactureDate)}</span>
+                                                {record.commBrandName && <><span>·</span><span>조제: {record.commBrandName}</span></>}
                                             </div>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0 ml-3">
-                                        <span className="text-xs text-muted-foreground">{record.resVisitDays || '-'}일</span>
+                                        <span className="text-xs text-muted-foreground">{record.resDrugList?.length || 0}종</span>
                                         {expandedRecords.has(idx + 10000)
                                             ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
                                             : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                                     </div>
                                 </div>
                             </button>
-                            {expandedRecords.has(idx + 10000) && record.resMediDetailList && record.resMediDetailList.length > 0 && (
+                            {expandedRecords.has(idx + 10000) && record.resDrugList && record.resDrugList.length > 0 && (
                                 <div className="px-4 pb-4 pt-0 border-t space-y-2 mt-2">
-                                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                        <Pill className="w-3 h-3" /> 투약 상세
-                                    </p>
-                                    {record.resMediDetailList.map((d, dIdx) => (
+                                    {record.resDrugList.map((d, dIdx) => (
                                         <div key={dIdx} className="text-xs p-2 bg-muted/20 rounded-md">
-                                            <p className="font-medium">{d.resPrescribeDrugName || '-'}</p>
+                                            <p className="font-medium">{d.resDrugName || '-'}</p>
                                             <p className="text-muted-foreground mt-0.5">
-                                                {d.resPrescribeDrugEffect && `${d.resPrescribeDrugEffect}`}
-                                                {d.resPrescribeDays && ` · ${d.resPrescribeDays}일분`}
-                                                {d.resTreatDate && ` · ${formatDate(d.resTreatDate)}`}
+                                                {d.resIngredients && `${d.resIngredients}`}
+                                                {d.resPrescribeDrugEffect && ` · ${d.resPrescribeDrugEffect}`}
+                                            </p>
+                                            <p className="text-muted-foreground">
+                                                {d.resOneDose && `1회 ${d.resOneDose}`}
+                                                {d.resDailyDosesNumber && ` · 1일 ${d.resDailyDosesNumber}회`}
+                                                {d.resTotalDosingdays && ` · ${d.resTotalDosingdays}일분`}
                                             </p>
                                         </div>
                                     ))}
@@ -974,7 +974,7 @@ function MedicalInfoContent() {
             )}
 
             {/* 결과 없음 */}
-            {totalMedical === 0 && totalCar === 0 && nhisRecords.length === 0 && (
+            {totalMedical === 0 && totalCar === 0 && myMedicineRecords.length === 0 && (
                 <Card className="border-0 shadow-sm">
                     <CardContent className="py-12 text-center">
                         <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />

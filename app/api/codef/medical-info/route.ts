@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import {
     fetchMyMedicalInfo,
     fetchMyCarInsurance,
-    fetchNhisTreatment,
+    fetchMyMedicine,
     type HiraMedicalRequest,
 } from '@/lib/codef/client';
 
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
             sessionId: string;
             medical?: { records: unknown[]; count: number };
             carInsurance?: { records: unknown[]; count: number };
-            nhis?: { records: unknown[]; count: number };
+            myMedicine?: { records: unknown[]; count: number };
         } = { sessionId: baseSessionId };
 
         // 내진료정보 조회
@@ -122,25 +122,31 @@ export async function POST(request: Request) {
             };
             console.log(`[HIRA] 내진료정보 조회 완료: ${medicalResult.records.length}건`);
 
-            // NHIS 건보공단 진료/투약정보 자동 조회 (CODEF NHIS 상품 권한 필요)
-            // TODO: CODEF에서 NHIS API 권한 승인 후 주석 해제
-            // if (effectiveQueryType === 'medical') {
-            //     try {
-            //         const yymmdd = cleanIdentity.slice(0, 6);
-            //         const g = cleanIdentity[6];
-            //         const century = ['3','4','7','8'].includes(g) ? '20' : '19';
-            //         const nhisResult = await fetchNhisTreatment({
-            //             userName, identity: `${century}${yymmdd}`,
-            //             phoneNo: phoneNo.replace(/-/g, ''), loginType, loginTypeLevel, telecom,
-            //             id: `${baseSessionId}-nhis`,
-            //         });
-            //         if (!nhisResult.requires2Way) {
-            //             result.nhis = { records: nhisResult.records, count: nhisResult.records.length };
-            //         }
-            //     } catch (nhisErr) {
-            //         console.log('[NHIS] 조회 실패 (HIRA 결과는 유지):', (nhisErr as Error).message);
-            //     }
-            // }
+            // 내가먹는약 한눈에 자동 조회 (같은 HIRA 0020, 별도 세션)
+            if (effectiveQueryType === 'medical') {
+                try {
+                    const medicineResult = await fetchMyMedicine({
+                        userName,
+                        identity: cleanIdentity,
+                        phoneNo: phoneNo.replace(/-/g, ''),
+                        loginType,
+                        loginTypeLevel,
+                        telecom,
+                        id: `${baseSessionId}-med`,
+                    });
+                    if (!medicineResult.requires2Way) {
+                        result.myMedicine = {
+                            records: medicineResult.records,
+                            count: medicineResult.records.length,
+                        };
+                        console.log(`[HIRA] 내가먹는약 조회 완료: ${medicineResult.records.length}건`);
+                    } else {
+                        console.log('[HIRA] 내가먹는약 2-Way 필요 — 생략');
+                    }
+                } catch (medErr) {
+                    console.log('[HIRA] 내가먹는약 조회 실패 (진료정보 결과는 유지):', (medErr as Error).message);
+                }
+            }
 
             // "both"인 경우: medical 완료 후 car 인증을 위해 프론트에 반환
             if (queryType === 'both' && !bothStep) {
