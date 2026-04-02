@@ -79,7 +79,8 @@ export async function POST(request: Request) {
     }
 
     // 첫 결제 실행 (빌링키로 실제 결제)
-    const paymentId = `sub-${planSlug}-${billingCycle}-${Date.now()}`;
+    const emailPrefix = (user.email || '').split('@')[0].slice(0, 20);
+    const paymentId = `sub-${emailPrefix}-${planSlug}-${Date.now()}`;
     const cycleLabel = billingCycle === 'yearly' ? '연간' : '월간';
 
     const payResult = await payWithBillingKey({

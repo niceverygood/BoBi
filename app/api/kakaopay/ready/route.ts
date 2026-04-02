@@ -77,7 +77,8 @@ export async function POST(request: Request) {
     }
 
     const cycleLabel = billingCycle === 'yearly' ? '연간' : '월간';
-    const partnerOrderId = `bobi-${planSlug}-${billingCycle}-${Date.now()}`;
+    const emailPrefix = (user.email || '').split('@')[0].slice(0, 20);
+    const partnerOrderId = `bobi-${emailPrefix}-${planSlug}-${Date.now()}`;
 
     try {
         const readyResponse = await kakaoPayReady({

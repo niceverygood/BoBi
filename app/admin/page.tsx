@@ -258,6 +258,9 @@ export default function AdminPage() {
                     </div>
                     )}
 
+                    {/* 결제내역 - 총괄관리자만 */}
+                    {isAdmin && <PaymentHistory />}
+
                     {/* User Management - 관리자 + 중간관리자 */}
                     {hasAdminAccess && (
                     <Card className="border-0 shadow-md mb-8">
@@ -1275,6 +1278,82 @@ function PromoSubCleanup() {
                             </div>
                         ))}
                     </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
+// ─── 결제내역 컴포넌트 ──────────────────────
+function PaymentHistory() {
+    const [payments, setPayments] = useState<Record<string, unknown>[]>([]);
+    const [subs, setSubs] = useState<Record<string, unknown>[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [tab, setTab] = useState<'payments' | 'subscriptions'>('payments');
+
+    useEffect(() => {
+        (async () => {
+            try {
+                const res = await fetch('/api/admin/payments');
+                const data = await res.json();
+                setPayments(data.payments || []);
+                setSubs(data.subscriptions || []);
+            } catch { /* */ }
+            setLoading(false);
+        })();
+    }, []);
+
+    const fmtDate = (d: string) => new Date(d).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+    return (
+        <Card className="border-0 shadow-md mb-8">
+            <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                    <CreditCard className="w-5 h-5" />
+                    결제 관리
+                </CardTitle>
+                <div className="flex gap-2 mt-2">
+                    <Button size="sm" variant={tab === 'payments' ? 'default' : 'outline'} onClick={() => setTab('payments')}>결제내역 ({payments.length})</Button>
+                    <Button size="sm" variant={tab === 'subscriptions' ? 'default' : 'outline'} onClick={() => setTab('subscriptions')}>활성 구독 ({subs.length})</Button>
+                </div>
+            </CardHeader>
+            <CardContent>
+                {loading ? <p className="text-sm text-muted-foreground text-center py-8">로딩 중...</p>
+                : tab === 'payments' ? (
+                    payments.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">결제 내역이 없습니다.</p> : (
+                    <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b">
+                        <th className="text-left p-2">일시</th><th className="text-left p-2">이메일</th><th className="text-left p-2">이름</th>
+                        <th className="text-left p-2">플랜</th><th className="text-left p-2">주기</th><th className="text-right p-2">금액</th>
+                        <th className="text-left p-2">상태</th><th className="text-left p-2">결제ID</th>
+                    </tr></thead><tbody>{payments.map((p, i) => (
+                        <tr key={i} className="border-b hover:bg-muted/30">
+                            <td className="p-2 whitespace-nowrap">{fmtDate(String(p.created_at))}</td>
+                            <td className="p-2">{String(p.user_email || '-')}</td>
+                            <td className="p-2">{String(p.user_name || '-')}</td>
+                            <td className="p-2"><Badge variant="outline" className="text-[10px]">{String(p.plan_slug || '-')}</Badge></td>
+                            <td className="p-2">{p.billing_cycle === 'yearly' ? '연간' : '월간'}</td>
+                            <td className="p-2 text-right font-mono">{(Number(p.amount) || 0).toLocaleString()}원</td>
+                            <td className="p-2"><Badge className={p.status === 'paid' ? 'bg-green-500 text-white text-[10px]' : 'text-[10px]'}>{String(p.status)}</Badge></td>
+                            <td className="p-2 text-muted-foreground truncate max-w-[120px]">{String(p.payment_id || '')}</td>
+                        </tr>
+                    ))}</tbody></table></div>)
+                ) : (
+                    subs.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">활성 구독이 없습니다.</p> : (
+                    <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b">
+                        <th className="text-left p-2">이메일</th><th className="text-left p-2">이름</th><th className="text-left p-2">플랜</th>
+                        <th className="text-left p-2">주기</th><th className="text-left p-2">결제수단</th><th className="text-left p-2">만료일</th>
+                    </tr></thead><tbody>{subs.map((s, i) => {
+                        const plan = s.plan as { display_name?: string } | null;
+                        return (
+                        <tr key={i} className="border-b hover:bg-muted/30">
+                            <td className="p-2">{String(s.user_email || '-')}</td>
+                            <td className="p-2">{String(s.user_name || '-')}</td>
+                            <td className="p-2"><Badge variant="outline" className="text-[10px]">{plan?.display_name || '-'}</Badge></td>
+                            <td className="p-2">{s.billing_cycle === 'yearly' ? '연간' : '월간'}</td>
+                            <td className="p-2">{String(s.payment_provider || '-')}</td>
+                            <td className="p-2 whitespace-nowrap">{fmtDate(String(s.current_period_end))}</td>
+                        </tr>);
+                    })}</tbody></table></div>)
                 )}
             </CardContent>
         </Card>
