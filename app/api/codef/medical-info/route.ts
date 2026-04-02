@@ -122,31 +122,8 @@ export async function POST(request: Request) {
             };
             console.log(`[HIRA] 내진료정보 조회 완료: ${medicalResult.records.length}건`);
 
-            // 내가먹는약 한눈에 자동 조회 (같은 HIRA 0020, 같은 세션 ID로 인증 공유)
-            if (effectiveQueryType === 'medical') {
-                try {
-                    const medicineResult = await fetchMyMedicine({
-                        userName,
-                        identity: cleanIdentity,
-                        phoneNo: phoneNo.replace(/-/g, ''),
-                        loginType,
-                        loginTypeLevel,
-                        telecom,
-                        id: sessionId,
-                    });
-                    if (!medicineResult.requires2Way) {
-                        result.myMedicine = {
-                            records: medicineResult.records,
-                            count: medicineResult.records.length,
-                        };
-                        console.log(`[HIRA] 내가먹는약 조회 완료: ${medicineResult.records.length}건`);
-                    } else {
-                        console.log('[HIRA] 내가먹는약 2-Way 필요 — 생략');
-                    }
-                } catch (medErr) {
-                    console.log('[HIRA] 내가먹는약 조회 실패 (진료정보 결과는 유지):', (medErr as Error).message);
-                }
-            }
+            // 내가먹는약 한눈에: 별도 엔드포인트라 세션 공유 불가 → 자동 호출 비활성화
+            // 내가먹는약은 별도 인증이 필요하므로, 결과 화면에서 사용자가 선택적으로 조회
 
             // "both"인 경우: medical 완료 후 car 인증을 위해 프론트에 반환
             if (queryType === 'both' && !bothStep) {
