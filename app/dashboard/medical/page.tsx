@@ -14,10 +14,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { HiraMedicalRecord, HiraBasicTreatRecord, HiraCarInsuranceRecord, HiraCarBasicTreatRecord, HiraPrescribeDrugRecord, MyMedicineRecord } from '@/lib/codef/client';
 
-// 인증 방식
+// 인증 방식 (HIRA는 간편인증만 지원, SMS는 CF-12401 에러)
 const AUTH_METHODS = [
     { id: 'simple', name: '간편인증', description: '앱에서 인증' },
-    { id: 'sms', name: '휴대폰인증(SMS)', description: 'SMS 인증번호 입력' },
 ];
 
 // 간편인증사 목록 - CODEF 공식 loginTypeLevel 코드
@@ -468,34 +467,17 @@ function MedicalInfoContent() {
                     </CardContent>
                 </Card>
 
-                {/* 인증 방식 선택 */}
+                {/* 간편인증 선택 */}
                 <Card className="border-0 shadow-sm">
                     <CardHeader className="pb-3">
                         <CardTitle className="text-base flex items-center gap-2">
                             <Smartphone className="w-4 h-4" />
-                            인증 방식
+                            간편인증 선택
                         </CardTitle>
+                        <CardDescription>인증 요청이 선택한 앱으로 전송됩니다</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="grid grid-cols-2 gap-2">
-                            {AUTH_METHODS.map((m) => (
-                                <button
-                                    key={m.id}
-                                    onClick={() => setAuthMethod(m.id as 'simple' | 'sms')}
-                                    className={`p-3 rounded-lg border-2 text-center transition-all ${
-                                        authMethod === m.id
-                                            ? 'border-primary bg-primary/5'
-                                            : 'border-muted hover:border-primary/30'
-                                    }`}
-                                >
-                                    <p className="font-semibold text-sm">{m.name}</p>
-                                    <p className="text-[11px] text-muted-foreground mt-0.5">{m.description}</p>
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* 간편인증 선택 시 앱 선택 */}
-                        {authMethod === 'simple' && (
+                        {true && (
                             <>
                                 <p className="text-xs text-muted-foreground font-medium pt-1">간편인증 앱 선택</p>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
