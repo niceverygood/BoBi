@@ -193,22 +193,59 @@ function MedicalInfoContent() {
         }
     };
 
-    // 결과 데이터 적용 헬퍼
+    // 결과 데이터 적용 헬퍼 — 내가먹는약을 심평원 데이터에 통합
     const applyResults = (data: Record<string, unknown>) => {
         const med = data.medical as { records: HiraMedicalRecord[] } | undefined;
         const car = data.carInsurance as { records: HiraCarInsuranceRecord[] } | undefined;
-        if (med) {
-            const records = med.records || [];
-            setMedicalTreatRecords(records.flatMap(r => r.resBasicTreatList || []));
-            setMedicalDrugRecords(records.flatMap(r => r.resPrescribeDrugList || []));
-        }
-        if (car) {
-            const records = car.records || [];
-            setCarTreatRecords(records.flatMap(r => r.resBasicTreatList || []));
-        }
         const medicine = data.myMedicine as { records: MyMedicineRecord[] } | undefined;
+
+        // 심평원 기본진료내역
+        const treatRecords: HiraBasicTreatRecord[] = med
+            ? (med.records || []).flatMap(r => r.resBasicTreatList || [])
+            : [];
+
+        // 심평원 처방조제내역
+        const drugRecords: HiraPrescribeDrugRecord[] = med
+            ? (med.records || []).flatMap(r => r.resPrescribeDrugList || [])
+            : [];
+
+        // 내가먹는약 → 심평원 형태로 변환 후 합침
         if (medicine) {
+            for (const rec of (medicine.records || [])) {
+                // 진료내역에 추가 (처방기관 기준)
+                if (rec.resPrescribeOrg) {
+                    treatRecords.push({
+                        resTreatStartDate: rec.resManufactureDate,
+                        resHospitalName: rec.resPrescribeOrg,
+                        resTreatType: '처방조제',
+                        resVisitDays: '1',
+                    });
+                }
+                // 약품 목록을 처방조제내역에 추가
+                for (const drug of (rec.resDrugList || [])) {
+                    drugRecords.push({
+                        resTreatStartDate: rec.resManufactureDate,
+                        resHospitalName: rec.resPrescribeOrg || rec.commBrandName || '',
+                        resDrugName: drug.resDrugName,
+                        resIngredients: drug.resIngredients,
+                        resOneDose: drug.resOneDose,
+                        resDailyDosesNumber: drug.resDailyDosesNumber,
+                        resTotalDosingdays: drug.resTotalDosingdays,
+                    });
+                }
+            }
             setMyMedicineRecords(medicine.records || []);
+        }
+
+        // 날짜순 정렬 (최신 먼저)
+        treatRecords.sort((a, b) => (b.resTreatStartDate || '').localeCompare(a.resTreatStartDate || ''));
+        drugRecords.sort((a, b) => (b.resTreatStartDate || '').localeCompare(a.resTreatStartDate || ''));
+
+        setMedicalTreatRecords(treatRecords);
+        setMedicalDrugRecords(drugRecords);
+
+        if (car) {
+            setCarTreatRecords((car.records || []).flatMap(r => r.resBasicTreatList || []));
         }
     };
 
@@ -896,67 +933,8 @@ function MedicalInfoContent() {
                 </div>
             )}
 
-            {/* 내가먹는약 한눈에 */}
-            {myMedicineRecords.length > 0 && (
-                <div className="space-y-3">
-                    <h2 className="text-lg font-semibold flex items-center gap-2">
-                        <Pill className="w-5 h-5 text-emerald-600" />
-                        내가먹는약
-                        <Badge variant="secondary" className="text-xs">{myMedicineRecords.length}건</Badge>
-                    </h2>
-                    {myMedicineRecords.map((record, idx) => (
-                        <Card key={`med-${idx}`} className="border-0 shadow-sm overflow-hidden">
-                            <button
-                                onClick={() => toggleRecord(idx + 10000)}
-                                className="w-full text-left p-4 hover:bg-muted/30 transition-colors"
-                            >
-                                <div className="flex items-start justify-between">
-                                    <div className="flex items-start gap-3 min-w-0 flex-1">
-                                        <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0 mt-0.5">
-                                            <Pill className="w-4 h-4 text-emerald-600" />
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="font-semibold text-sm truncate">{record.resPrescribeOrg || record.commBrandName || '의료기관'}</p>
-                                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                                                <Calendar className="w-3 h-3" />
-                                                <span>{formatDate(record.resManufactureDate)}</span>
-                                                {record.commBrandName && <><span>·</span><span>조제: {record.commBrandName}</span></>}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0 ml-3">
-                                        <span className="text-xs text-muted-foreground">{record.resDrugList?.length || 0}종</span>
-                                        {expandedRecords.has(idx + 10000)
-                                            ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                                            : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                                    </div>
-                                </div>
-                            </button>
-                            {expandedRecords.has(idx + 10000) && record.resDrugList && record.resDrugList.length > 0 && (
-                                <div className="px-4 pb-4 pt-0 border-t space-y-2 mt-2">
-                                    {record.resDrugList.map((d, dIdx) => (
-                                        <div key={dIdx} className="text-xs p-2 bg-muted/20 rounded-md">
-                                            <p className="font-medium">{d.resDrugName || '-'}</p>
-                                            <p className="text-muted-foreground mt-0.5">
-                                                {d.resIngredients && `${d.resIngredients}`}
-                                                {d.resPrescribeDrugEffect && ` · ${d.resPrescribeDrugEffect}`}
-                                            </p>
-                                            <p className="text-muted-foreground">
-                                                {d.resOneDose && `1회 ${d.resOneDose}`}
-                                                {d.resDailyDosesNumber && ` · 1일 ${d.resDailyDosesNumber}회`}
-                                                {d.resTotalDosingdays && ` · ${d.resTotalDosingdays}일분`}
-                                            </p>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </Card>
-                    ))}
-                </div>
-            )}
-
             {/* 결과 없음 */}
-            {totalMedical === 0 && totalCar === 0 && myMedicineRecords.length === 0 && (
+            {totalMedical === 0 && totalCar === 0 && (
                 <Card className="border-0 shadow-sm">
                     <CardContent className="py-12 text-center">
                         <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
