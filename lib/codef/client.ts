@@ -644,6 +644,10 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
     };
 
     if (isSmsLogin) {
+        body.certType = '';
+        body.certFile = '';
+        body.keyFile = '';
+        body.certPassword = '';
         body.authMethod = params.authMethod || '0';
         body.telecom = params.telecom || '';
         body.timeout = '170';
@@ -779,6 +783,10 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
     };
 
     if (isSmsLogin) {
+        body.certType = '';
+        body.certFile = '';
+        body.keyFile = '';
+        body.certPassword = '';
         body.authMethod = params.authMethod || '0';
         body.telecom = params.telecom || '';
         body.timeout = '170';
