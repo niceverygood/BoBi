@@ -122,7 +122,7 @@ export async function POST(request: Request) {
             };
             console.log(`[HIRA] 내진료정보 조회 완료: ${medicalResult.records.length}건`);
 
-            // 내가먹는약 한눈에 자동 조회 (같은 HIRA 0020, 별도 세션)
+            // 내가먹는약 한눈에 자동 조회 (같은 HIRA 0020, 같은 세션 ID로 인증 공유)
             if (effectiveQueryType === 'medical') {
                 try {
                     const medicineResult = await fetchMyMedicine({
@@ -132,7 +132,7 @@ export async function POST(request: Request) {
                         loginType,
                         loginTypeLevel,
                         telecom,
-                        id: `${baseSessionId}-med`,
+                        id: sessionId,
                     });
                     if (!medicineResult.requires2Way) {
                         result.myMedicine = {
