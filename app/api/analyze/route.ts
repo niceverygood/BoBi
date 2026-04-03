@@ -8,7 +8,7 @@ import { validateAndCorrectDates, formatCorrections } from '@/lib/ai/date-valida
 import { formatCodefRecordsAsText, formatMyMedicineAsText } from '@/lib/codef/formatter';
 import type { AnalysisResult } from '@/types/analysis';
 
-export const maxDuration = 120; // Claude needs more time for complex analyses
+export const maxDuration = 300; // Vercel Pro: 최대 300초
 // Truncate text to stay within Claude's context window
 // Claude Sonnet 4.5 supports 200K tokens (~800K chars), but we keep it reasonable
 // ~4 chars per token, keep under 60K chars total (~15K tokens input)
@@ -142,7 +142,7 @@ export async function POST(request: Request) {
         const prompt = STEP1_ANALYSIS_PROMPT
             .replace(/{TODAY_DATE}/g, todayDate)
             .replace('{PDF_TEXT}', combinedText);
-        const aiResponse = await callOpenAI({ prompt, maxTokens: 32000 });
+        const aiResponse = await callOpenAI({ prompt, maxTokens: 32000, retries: 1 });
 
         let result: AnalysisResult;
         try {

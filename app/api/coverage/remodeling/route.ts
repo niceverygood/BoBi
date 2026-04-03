@@ -6,7 +6,7 @@ import { REMODELING_PROPOSAL_PROMPT } from '@/lib/ai/prompts';
 import { parseAIResponse } from '@/lib/ai/parser';
 import type { CoverageAnalysisResult, CoverageInput, RemodelingProposal } from '@/types/coverage';
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
     try {

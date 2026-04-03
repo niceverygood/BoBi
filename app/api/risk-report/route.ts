@@ -8,7 +8,7 @@ import { matchRisks, extractMedications, extractPatientProfile } from '@/lib/ris
 import type { AnalysisResult } from '@/types/analysis';
 import type { RiskReport } from '@/types/risk-report';
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
     try {

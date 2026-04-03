@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { parseAIResponse } from '@/lib/ai/parser';
 import type { Policy } from '@/types/coverage';
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const OCR_PROMPT = `
 당신은 보험 증권(보험증서) 이미지를 분석하는 AI입니다.
