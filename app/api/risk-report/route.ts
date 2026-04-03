@@ -51,12 +51,6 @@ export async function POST(request: Request) {
         // Step 1: 매핑 테이블 기반 매칭 (검증된 데이터)
         const matchedRisks = matchRisks(medicalHistory);
 
-        if (matchedRisks.length === 0) {
-            return NextResponse.json({
-                error: '매칭된 위험 질환이 없습니다. 병력 데이터에 진단코드가 포함되어 있는지 확인해주세요.',
-            }, { status: 400 });
-        }
-
         // Step 2: 의학 요약 데이터 구성
         const profile = extractPatientProfile(medicalHistory);
         const medications = extractMedications(medicalHistory);
@@ -68,13 +62,23 @@ export async function POST(request: Request) {
             medicalHistory.diseaseSummary?.map(ds =>
                 `- ${ds.diseaseName}(${ds.diseaseCode}): ${ds.firstDate}~${ds.lastDate}, ${ds.totalVisits}회 방문, ${ds.status}`
             ).join('\n') || '',
+            // 추가: applicable한 항목의 summary도 포함
+            ...medicalHistory.items
+                .filter(item => item.applicable && item.summary)
+                .map(item => `- [${item.category}] ${item.summary}`),
         ].filter(Boolean).join('\n');
 
-        const matchedRisksText = matchedRisks.map((r, i) =>
-            `${i + 1}. [${r.sourceName}(${r.sourceCode})] → ${r.riskDisease} (${r.riskCategory})\n` +
-            `   상대위험도: ${r.relativeRisk}배 | 위험수준: ${r.riskLevel} | 근거수준: ${r.evidenceLevel}\n` +
-            `   근거: ${r.evidence}`
-        ).join('\n\n');
+        let matchedRisksText: string;
+        if (matchedRisks.length > 0) {
+            matchedRisksText = matchedRisks.map((r, i) =>
+                `${i + 1}. [${r.sourceName}(${r.sourceCode})] → ${r.riskDisease} (${r.riskCategory})\n` +
+                `   상대위험도: ${r.relativeRisk}배 | 위험수준: ${r.riskLevel} | 근거수준: ${r.evidenceLevel}\n` +
+                `   근거: ${r.evidence}`
+            ).join('\n\n');
+        } else {
+            // 매칭 0건이어도 AI가 병력 텍스트 기반으로 리포트 생성
+            matchedRisksText = '(사전 매칭 데이터 없음 — 위 병력 요약을 기반으로 의학 통계에 근거한 위험 질환을 직접 분석해주세요. 각 항목에 relativeRisk, evidence, evidenceLevel을 반드시 포함하세요.)';
+        }
 
         // Step 3: Claude AI 호출 — 매칭 데이터를 환자 맥락으로 해석
         const todayDate = new Date().toISOString().split('T')[0];
