@@ -46,23 +46,26 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(url);
     }
 
-    // 정지된 유저 차단 (dashboard, API 접근 금지 — admin, auth 제외)
+    // 정지된 유저 쉐도우밴 — 정지 사실을 모르게 조용히 로그아웃 후 랜딩페이지로 이동
     if (user && user.user_metadata?.suspended === true) {
-        if (isProtectedRoute || (isApiRoute && !request.nextUrl.pathname.startsWith('/api/auth'))) {
-            // API 요청이면 JSON 에러 반환
+        if (isProtectedRoute || isAdminRoute || (isApiRoute && !request.nextUrl.pathname.startsWith('/api/auth'))) {
+            // API 요청이면 일반적인 인증 에러처럼 반환 (정지 사실 숨김)
             if (isApiRoute) {
                 return NextResponse.json(
-                    { error: '계정이 이용정지 상태입니다. 관리자에게 문의해주세요.' },
-                    { status: 403 },
+                    { error: '인증이 필요합니다.' },
+                    { status: 401 },
                 );
             }
-            // 페이지 요청이면 로그인으로 리다이렉트 (정지 메시지 표시)
-            const url = request.nextUrl.clone();
-            url.pathname = '/auth/login';
-            url.searchParams.set('suspended', 'true');
-            // 세션 삭제
+            // 페이지 요청이면 조용히 세션 삭제 후 랜딩페이지로
             await supabase.auth.signOut();
+            const url = request.nextUrl.clone();
+            url.pathname = '/';
             return NextResponse.redirect(url);
+        }
+        // auth 경로 접근 시에도 조용히 로그아웃 (재로그인해도 다시 튕김)
+        if (isAuthRoute) {
+            await supabase.auth.signOut();
+            return supabaseResponse;
         }
     }
 
