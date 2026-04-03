@@ -10,6 +10,7 @@ import {
     Calendar, Building2, DollarSign, FileText, Pill, CheckCircle2,
     Smartphone, AlertCircle, ChevronDown, ChevronUp, HeartPulse,
 } from 'lucide-react';
+import { apiFetch } from '@/lib/api/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { HiraMedicalRecord, HiraBasicTreatRecord, HiraCarInsuranceRecord, HiraCarBasicTreatRecord, HiraPrescribeDrugRecord, MyMedicineRecord } from '@/lib/codef/client';
@@ -151,17 +152,10 @@ function MedicalInfoContent() {
                 ? { is2Way: true, twoWayInfo: twoWayData, simpleAuth: '1', ...(isSmsAuth && smsCode ? { smsAuthNo: smsCode } : {}), sessionId, bothStep }
                 : {};
 
-            const res = await fetch(apiUrl, {
+            const data = await apiFetch<Record<string, unknown>>(apiUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(buildRequestBody(extraParams)),
+                body: buildRequestBody(extraParams),
             });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.error || '조회에 실패했습니다.');
-            }
 
             if (data.requires2Way) {
                 setTwoWayData(data.twoWayData);
@@ -254,17 +248,14 @@ function MedicalInfoContent() {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch('/api/codef/medical-info', {
+            const data = await apiFetch<Record<string, unknown>>('/api/codef/medical-info', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(buildRequestBody({
+                body: buildRequestBody({
                     bothStep: 'car',
                     sessionId: baseSessionId,
                     previousMedical: medicalData,
-                })),
+                }),
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || '자동차보험 조회 실패');
 
             if (data.requires2Way) {
                 setTwoWayData(data.twoWayData);
@@ -299,10 +290,9 @@ function MedicalInfoContent() {
         setError(null);
 
         try {
-            const res = await fetch('/api/codef/medical-info', {
+            const data = await apiFetch<Record<string, unknown>>('/api/codef/medical-info', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(buildRequestBody({
+                body: buildRequestBody({
                     is2Way: true,
                     twoWayInfo: twoWayData,
                     simpleAuth: '1',
@@ -310,14 +300,8 @@ function MedicalInfoContent() {
                     sessionId,
                     bothStep,
                     previousMedical: pendingMedical,
-                })),
+                }),
             });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.error || '인증 확인에 실패했습니다.');
-            }
 
             if (data.requires2Way) {
                 setTwoWayData(data.twoWayData);
@@ -392,16 +376,10 @@ function MedicalInfoContent() {
                 };
             }
 
-            const res = await fetch('/api/analyze', {
+            const data = await apiFetch<{ analysisId: string }>('/api/analyze', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(analyzeBody),
+                body: analyzeBody,
             });
-
-            const data = await res.json();
-            if (!res.ok) {
-                throw new Error(data.error || '분석에 실패했습니다.');
-            }
 
             router.push(`/dashboard/analyze?analysisId=${data.analysisId}`);
         } catch (err) {

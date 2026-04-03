@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import type { CoverageInput, Policy, Coverage, CustomerInfo } from '@/types/coverage';
 import { toast } from 'sonner';
+import { apiFetch } from '@/lib/api/client';
 
 interface PolicyInputFormProps {
     onSubmit: (data: CoverageInput) => void;
@@ -86,27 +87,20 @@ export default function PolicyInputForm({ onSubmit, loading }: PolicyInputFormPr
         toast.info('보험 정보 조회 중... (약 15~30초 소요)');
 
         try {
-            const res = await fetch('/api/codef/fetch-insurance', {
+            const data = await apiFetch<{ requires2Way?: boolean; coverageInput?: { policies: unknown[] }; summary?: { insurers: { length: number }; totalPolicies: number; totalCoverages: number } }>('/api/codef/fetch-insurance', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+                body: {
                     loginId: codefLoginId,
                     loginPassword: codefLoginPw,
                     customerName: customer.name,
                     customerBirth: customer.birth,
                     customerGender: customer.gender,
-                }),
+                },
             });
-
-            const data = await res.json();
 
             if (data.requires2Way) {
                 toast.error('추가 인증이 필요합니다. 내보험다보여 앱에서 인증을 완료해주세요.');
                 return;
-            }
-
-            if (!res.ok) {
-                throw new Error(data.error || '조회 실패');
             }
 
             if (data.coverageInput?.policies?.length > 0) {
@@ -194,17 +188,20 @@ export default function PolicyInputForm({ onSubmit, loading }: PolicyInputFormPr
             const formData = new FormData();
             formData.append('file', file);
 
-            const res = await fetch('/api/coverage/parse-excel', {
+            const response = await fetch('/api/coverage/parse-excel', {
                 method: 'POST',
                 body: formData,
             });
 
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error || '엑셀 파싱 실패');
+            let result;
+            try {
+                result = await response.json();
+            } catch {
+                throw new Error('서버 응답을 처리할 수 없습니다.');
             }
+            if (!response.ok) throw new Error(result.error || '엑셀 파싱 실패');
 
-            const { policies: parsed } = await res.json();
+            const { policies: parsed } = result;
             if (parsed && parsed.length > 0) {
                 setPolicies(parsed);
                 setExpandedPolicies(new Set(parsed.map((_: unknown, i: number) => i)));
@@ -229,17 +226,20 @@ export default function PolicyInputForm({ onSubmit, loading }: PolicyInputFormPr
                 formData.append('images', files[i]);
             }
 
-            const res = await fetch('/api/coverage/ocr', {
+            const ocrResponse = await fetch('/api/coverage/ocr', {
                 method: 'POST',
                 body: formData,
             });
 
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error || 'OCR 처리 실패');
+            let ocrResult;
+            try {
+                ocrResult = await ocrResponse.json();
+            } catch {
+                throw new Error('서버 응답을 처리할 수 없습니다.');
             }
+            if (!ocrResponse.ok) throw new Error(ocrResult.error || 'OCR 처리 실패');
 
-            const { policies: parsed } = await res.json();
+            const { policies: parsed } = ocrResult;
             if (parsed && parsed.length > 0) {
                 setPolicies(prev => {
                     const existing = prev.filter(p => p.insurer || p.product_name);

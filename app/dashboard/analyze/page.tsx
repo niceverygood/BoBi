@@ -12,6 +12,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { useSubscription } from '@/hooks/useSubscription';
 import { createClient } from '@/lib/supabase/client';
 import { CREDIT_PACKS } from '@/lib/utils/constants';
+import { apiFetch } from '@/lib/api/client';
 import type { AnalysisResult } from '@/types/analysis';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
@@ -66,18 +67,15 @@ function AnalyzeContent() {
                 }
 
                 // 서버에 영수증 검증 + 크레딧 충전 요청
-                const res = await fetch('/api/credits/purchase', {
+                await apiFetch('/api/credits/purchase', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                    body: {
                         packId,
                         platform,
                         receipt: iapResult.receipt,
                         transactionId: iapResult.transactionId,
-                    }),
+                    },
                 });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || '크레딧 충전 실패');
 
             } else {
                 // ── 웹 결제 (PortOne + KG이니시스) ──
@@ -106,17 +104,14 @@ function AnalyzeContent() {
                 }
 
                 // 서버에 결제 확인 + 크레딧 충전 요청
-                const res = await fetch('/api/credits/purchase', {
+                await apiFetch('/api/credits/purchase', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                    body: {
                         packId,
                         paymentId,
                         platform: 'web',
-                    }),
+                    },
                 });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || '크레딧 충전 실패');
             }
 
             refresh(); // 크레딧 잔량 새로고침
@@ -186,24 +181,10 @@ function AnalyzeContent() {
         setError(null);
 
         try {
-            const response = await fetch('/api/analyze', {
+            const data = await apiFetch<{ result: AnalysisResult; analysisId: string }>('/api/analyze', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    uploadIds: successFiles.map((f) => f.id),
-                }),
+                body: { uploadIds: successFiles.map((f) => f.id) },
             });
-
-            let data;
-            try {
-                data = await response.json();
-            } catch {
-                throw new Error('서버 응답을 처리할 수 없습니다. 잠시 후 다시 시도해주세요.');
-            }
-
-            if (!response.ok) {
-                throw new Error(data.error || '분석에 실패했습니다.');
-            }
 
             // ⚠️ 클라이언트 측에서도 날짜 교정 적용 (이중 방어)
             let result = data.result as AnalysisResult;

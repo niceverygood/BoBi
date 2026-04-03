@@ -10,6 +10,7 @@ import {
     Shield, ShieldPlus, ArrowLeft, Loader2, User, Calendar,
     ChevronRight, Star, FileText
 } from 'lucide-react';
+import { apiFetch } from '@/lib/api/client';
 import EmptyState from '@/components/common/EmptyState';
 
 interface CoverageHistoryItem {
@@ -41,11 +42,8 @@ export default function CoverageHistoryPage() {
     useEffect(() => {
         const fetchHistory = async () => {
             try {
-                const res = await fetch('/api/coverage/history');
-                if (res.ok) {
-                    const data = await res.json();
-                    setItems(data.analyses || []);
-                }
+                const data = await apiFetch<{ analyses: CoverageHistoryItem[] }>('/api/coverage/history');
+                setItems(data.analyses || []);
             } catch {
                 // ignore
             } finally {

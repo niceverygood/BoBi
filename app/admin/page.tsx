@@ -15,6 +15,7 @@ import { useAdmin } from '@/hooks/useAdmin';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
 import MobileNav from '@/components/layout/MobileNav';
+import { apiFetch } from '@/lib/api/client';
 
 interface AdminStats {
     totalUsers: number;
@@ -65,9 +66,7 @@ export default function AdminPage() {
 
     const fetchStats = useCallback(async () => {
         try {
-            const res = await fetch('/api/admin/stats');
-            if (!res.ok) throw new Error('Failed to fetch stats');
-            const data = await res.json();
+            const data = await apiFetch<AdminStats>('/api/admin/stats');
             setStats(data);
         } catch (err) {
             setError((err as Error).message);
@@ -78,9 +77,7 @@ export default function AdminPage() {
 
     const fetchUsers = useCallback(async () => {
         try {
-            const res = await fetch('/api/admin/users');
-            if (!res.ok) throw new Error('Failed to fetch users');
-            const data = await res.json();
+            const data = await apiFetch<{ users: AdminUser[] }>('/api/admin/users');
             setUsers(data.users || []);
         } catch (err) {
             console.error('Failed to load users:', err);
@@ -106,13 +103,10 @@ export default function AdminPage() {
         setChangingPlan(targetUserId);
         setPlanMessage(null);
         try {
-            const res = await fetch('/api/admin/update-plan', {
+            const data = await apiFetch<{ message: string }>('/api/admin/update-plan', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ targetEmail, planSlug: newPlan }),
+                body: { targetEmail, planSlug: newPlan },
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
             setPlanMessage({ type: 'success', text: data.message });
             // Update local state
             setUsers((prev) =>
@@ -469,9 +463,7 @@ function SubAdminManager() {
 
     const fetchSubAdmins = useCallback(async () => {
         try {
-            const res = await fetch('/api/admin/sub-admins');
-            if (!res.ok) throw new Error('Failed');
-            const data = await res.json();
+            const data = await apiFetch<{ subAdmins: SubAdmin[] }>('/api/admin/sub-admins');
             setSubAdmins(data.subAdmins || []);
         } catch {
             console.error('Failed to fetch sub-admins');
@@ -483,9 +475,7 @@ function SubAdminManager() {
     // 가입자 목록 불러오기
     const fetchUsers = useCallback(async () => {
         try {
-            const res = await fetch('/api/admin/users');
-            if (!res.ok) throw new Error('Failed');
-            const data = await res.json();
+            const data = await apiFetch<{ users: AdminUser[] }>('/api/admin/users');
             setAllUsers(data.users || []);
         } catch {
             console.error('Failed to fetch users');
@@ -538,18 +528,15 @@ function SubAdminManager() {
         setAdding(true);
         setMessage(null);
         try {
-            const res = await fetch('/api/admin/sub-admins', {
+            await apiFetch('/api/admin/sub-admins', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+                body: {
                     email: newEmail,
                     kakao_id: newKakaoId || null,
                     name: newName || null,
                     note: newNote,
-                }),
+                },
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
             setMessage({ type: 'success', text: `"${newEmail}" 중간관리자로 등록되었습니다.` });
             setNewEmail('');
             setNewKakaoId('');
@@ -568,12 +555,10 @@ function SubAdminManager() {
 
     const toggleActive = async (id: string, currentActive: boolean) => {
         try {
-            const res = await fetch('/api/admin/sub-admins', {
+            await apiFetch('/api/admin/sub-admins', {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, active: !currentActive }),
+                body: { id, active: !currentActive },
             });
-            if (!res.ok) throw new Error('Failed');
             setSubAdmins(prev => prev.map(s => s.id === id ? { ...s, active: !currentActive } : s));
         } catch {
             setMessage({ type: 'error', text: '상태 변경 실패' });
@@ -583,8 +568,7 @@ function SubAdminManager() {
     const handleDelete = async (id: string, email: string) => {
         if (!confirm(`"${email}" 중간관리자를 삭제하시겠습니까?`)) return;
         try {
-            const res = await fetch(`/api/admin/sub-admins?id=${id}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error('Failed');
+            await apiFetch(`/api/admin/sub-admins?id=${id}`, { method: 'DELETE' });
             setSubAdmins(prev => prev.filter(s => s.id !== id));
             setMessage({ type: 'success', text: `"${email}" 삭제 완료` });
         } catch {
@@ -826,9 +810,7 @@ function PromoCodeManager() {
 
     const fetchCodes = useCallback(async () => {
         try {
-            const res = await fetch('/api/admin/promo-codes');
-            if (!res.ok) throw new Error('Failed');
-            const data = await res.json();
+            const data = await apiFetch<{ codes: PromoCode[] }>('/api/admin/promo-codes');
             setCodes(data.codes || []);
         } catch {
             console.error('Failed to fetch promo codes');
@@ -849,10 +831,9 @@ function PromoCodeManager() {
         setCreating(true);
         setMessage(null);
         try {
-            const res = await fetch('/api/admin/promo-codes', {
+            await apiFetch('/api/admin/promo-codes', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+                body: {
                     code: newCode,
                     description: newDesc,
                     plan_slug: newPlan,
@@ -861,10 +842,8 @@ function PromoCodeManager() {
                     price_override: newDiscountType === 'price_override' ? newPrice : 0,
                     duration_months: newDuration,
                     max_uses: newMaxUses,
-                }),
+                },
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
             setMessage({ type: 'success', text: `코드 "${newCode.toUpperCase()}" 생성 완료!` });
             setNewCode('');
             setNewDesc('');
@@ -879,12 +858,10 @@ function PromoCodeManager() {
 
     const toggleActive = async (id: string, currentActive: boolean) => {
         try {
-            const res = await fetch('/api/admin/promo-codes', {
+            await apiFetch('/api/admin/promo-codes', {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, active: !currentActive }),
+                body: { id, active: !currentActive },
             });
-            if (!res.ok) throw new Error('Failed');
             setCodes(prev => prev.map(c => c.id === id ? { ...c, active: !currentActive } : c));
         } catch {
             setMessage({ type: 'error', text: '상태 변경 실패' });
@@ -894,8 +871,7 @@ function PromoCodeManager() {
     const deleteCode = async (id: string, code: string) => {
         if (!confirm(`"${code}" 코드를 삭제하시겠습니까?`)) return;
         try {
-            const res = await fetch(`/api/admin/promo-codes?id=${id}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error('Failed');
+            await apiFetch(`/api/admin/promo-codes?id=${id}`, { method: 'DELETE' });
             setCodes(prev => prev.filter(c => c.id !== id));
             setMessage({ type: 'success', text: `"${code}" 삭제 완료` });
         } catch {
@@ -1173,9 +1149,7 @@ function PromoSubCleanup() {
 
     const fetchPromoSubs = useCallback(async () => {
         try {
-            const res = await fetch('/api/admin/cleanup-promo-subs');
-            if (!res.ok) throw new Error('Failed');
-            const data = await res.json();
+            const data = await apiFetch<{ subscriptions: PromoSubscription[] }>('/api/admin/cleanup-promo-subs');
             setPromoSubs(data.subscriptions || []);
         } catch {
             console.error('Failed to fetch promo subscriptions');
@@ -1194,13 +1168,10 @@ function PromoSubCleanup() {
         setCleaning(true);
         setMessage(null);
         try {
-            const res = await fetch('/api/admin/cleanup-promo-subs', {
+            const data = await apiFetch<{ message: string }>('/api/admin/cleanup-promo-subs', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({}),
+                body: {},
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
             setMessage({ type: 'success', text: data.message });
             fetchPromoSubs(); // 새로고침
         } catch (err) {
@@ -1294,8 +1265,7 @@ function PaymentHistory() {
     useEffect(() => {
         (async () => {
             try {
-                const res = await fetch('/api/admin/payments');
-                const data = await res.json();
+                const data = await apiFetch<{ payments: Record<string, unknown>[]; subscriptions: Record<string, unknown>[] }>('/api/admin/payments');
                 setPayments(data.payments || []);
                 setSubs(data.subscriptions || []);
             } catch { /* */ }

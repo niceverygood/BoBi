@@ -122,7 +122,15 @@ export default function PdfUploader({ onFilesUploaded, customerId }: PdfUploader
                 };
             }
 
-            const data = await response.json();
+            let data;
+            try {
+                data = await response.json();
+            } catch {
+                return {
+                    file, fileType: 'unknown' as const, status: 'error' as const,
+                    error: '서버 응답을 처리할 수 없습니다.',
+                };
+            }
 
             // Check if OCR is needed (image-based PDF)
             if (data.ocrNeeded) {
@@ -169,7 +177,7 @@ export default function PdfUploader({ onFilesUploaded, customerId }: PdfUploader
                         continue;
                     }
 
-                    lastOcrData = await ocrResponse.json();
+                    lastOcrData = await ocrResponse.json().catch(() => null);
                 }
 
                 if (!lastOcrData) {

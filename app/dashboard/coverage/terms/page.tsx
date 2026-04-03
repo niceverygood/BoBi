@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import {
     ArrowLeft, FileText, Search, Loader2, X, AlertCircle, Shield
 } from 'lucide-react';
+import { apiFetch } from '@/lib/api/client';
 import ProductTermsView from '@/components/coverage/ProductTermsView';
 import type { ProductTermsInfo } from '@/lib/codef/client';
 import { toast } from 'sonner';
@@ -46,25 +47,18 @@ export default function ProductTermsPage() {
             // Step 1: 내보험다보여 조회 + connectedId 획득
             toast.info('보험 정보 조회 중... (약 15~30초 소요)');
 
-            const connectRes = await fetch('/api/codef/fetch-insurance', {
+            const connectData = await apiFetch<{ requires2Way?: boolean; connectedId: string }>('/api/codef/fetch-insurance', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+                body: {
                     loginId, loginPassword: loginPw,
                     customerName, customerBirth, customerGender,
-                }),
+                },
             });
-
-            const connectData = await connectRes.json();
 
             if (connectData.requires2Way) {
                 toast.error('추가 인증이 필요합니다. 내보험다보여 앱에서 인증을 완료해주세요.');
                 setLoading(false);
                 return;
-            }
-
-            if (!connectRes.ok) {
-                throw new Error(connectData.error || '조회 실패');
             }
 
             const cid = connectData.connectedId;
@@ -73,17 +67,10 @@ export default function ProductTermsPage() {
             // Step 2: 약관/보장 상세 조회
             toast.info('약관/보장 상세 정보 조회 중...');
 
-            const termsRes = await fetch('/api/codef/product-terms', {
+            const termsData = await apiFetch<{ products: unknown[]; byInsurer: unknown }>('/api/codef/product-terms', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ connectedId: cid }),
+                body: { connectedId: cid },
             });
-
-            const termsData = await termsRes.json();
-
-            if (!termsRes.ok) {
-                throw new Error(termsData.error || '약관 조회 실패');
-            }
 
             setProducts(termsData.products);
             setByInsurer(termsData.byInsurer);

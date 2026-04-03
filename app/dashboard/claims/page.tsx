@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CheckCircle, Lightbulb, Loader2 } from 'lucide-react';
 import StepIndicator from '@/components/common/StepIndicator';
 import ClaimResultView from '@/components/claims/ClaimResult';
+import { apiFetch } from '@/lib/api/client';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import EmptyState from '@/components/common/EmptyState';
 import type { ClaimResult } from '@/types/analysis';
@@ -64,22 +65,10 @@ function ClaimsContent() {
         setError(null);
 
         try {
-            const response = await fetch('/api/claims', {
+            const data = await apiFetch<{ claims: unknown }>('/api/claims', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ analysisId }),
+                body: { analysisId },
             });
-
-            let data;
-            try {
-                data = await response.json();
-            } catch {
-                throw new Error('서버 응답을 파싱할 수 없습니다. 잠시 후 다시 시도해주세요.');
-            }
-
-            if (!response.ok) {
-                throw new Error(data.error || '청구 분석에 실패했습니다.');
-            }
 
             setResult(data.claims);
         } catch (err) {

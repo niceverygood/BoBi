@@ -22,6 +22,7 @@ import RemodelingProposalView from '@/components/coverage/RemodelingProposalView
 import RemodelingProposalPrint from '@/components/coverage/RemodelingProposalPrint';
 import type { CoverageInput, CoverageAnalysisResult, RemodelingProposal } from '@/types/coverage';
 import { toast } from 'sonner';
+import { apiFetch } from '@/lib/api/client';
 
 type ViewMode = 'report' | 'comparison' | 'remodeling';
 
@@ -80,18 +81,10 @@ export default function CoveragePage() {
         setInputData(data);
 
         try {
-            const res = await fetch('/api/coverage', {
+            const { result: analysisResult } = await apiFetch<{ result: CoverageAnalysisResult }>('/api/coverage', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
+                body: data,
             });
-
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error || '분석 실패');
-            }
-
-            const { result: analysisResult } = await res.json();
             setResult(analysisResult);
             setStep('result');
             setViewMode('report');
@@ -118,21 +111,10 @@ export default function CoveragePage() {
         toast.info('리모델링 제안서 생성 중... (약 15~30초 소요)');
 
         try {
-            const res = await fetch('/api/coverage/remodeling', {
+            const { proposal: proposalResult } = await apiFetch<{ proposal: RemodelingProposal }>('/api/coverage/remodeling', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    coverageResult: result,
-                    inputData: inputData,
-                }),
+                body: { coverageResult: result, inputData },
             });
-
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error || '제안서 생성 실패');
-            }
-
-            const { proposal: proposalResult } = await res.json();
             setProposal(proposalResult);
             setViewMode('remodeling');
             toast.success('리모델링 제안서가 생성되었습니다!');
