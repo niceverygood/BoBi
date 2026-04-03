@@ -194,7 +194,12 @@ function AnalyzeContent() {
                 }),
             });
 
-            const data = await response.json();
+            let data;
+            try {
+                data = await response.json();
+            } catch {
+                throw new Error('서버 응답을 처리할 수 없습니다. 잠시 후 다시 시도해주세요.');
+            }
 
             if (!response.ok) {
                 throw new Error(data.error || '분석에 실패했습니다.');

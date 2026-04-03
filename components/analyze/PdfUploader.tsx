@@ -111,7 +111,7 @@ export default function PdfUploader({ onFilesUploaded, customerId }: PdfUploader
             });
 
             if (!response.ok) {
-                const error = await response.json();
+                const error = await response.json().catch(() => ({}));
                 // Clean up storage on API error
                 await supabase.storage.from('pdfs').remove([filePath]);
                 return {
