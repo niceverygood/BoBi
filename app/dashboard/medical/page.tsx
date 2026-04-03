@@ -15,9 +15,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { HiraMedicalRecord, HiraBasicTreatRecord, HiraCarInsuranceRecord, HiraCarBasicTreatRecord, HiraPrescribeDrugRecord, MyMedicineRecord } from '@/lib/codef/client';
 
-// 인증 방식 (HIRA는 간편인증만 지원, SMS는 CF-12401 에러)
+// 인증 방식 (간편인증 + SMS)
 const AUTH_METHODS = [
     { id: 'simple', name: '간편인증', description: '앱에서 인증' },
+    { id: 'sms', name: 'SMS 인증', description: '문자 인증번호' },
 ];
 
 // 간편인증사 목록 - CODEF 공식 loginTypeLevel 코드
@@ -111,13 +112,15 @@ function MedicalInfoContent() {
         return dateStr;
     };
 
-    // PASS 인증 여부 확인
+    // PASS 또는 SMS 인증 시 통신사 필요 여부
     const selectedProvider = AUTH_PROVIDERS.find(a => a.id === authProvider);
     const needsTelecom = (selectedProvider as { needsTelecom?: boolean })?.needsTelecom === true;
     const isNhis = false; // NHIS는 medical에 통합됨
 
     // API 요청 body 생성
     const isSmsAuth = authMethod === 'sms';
+    // SMS 인증과 PASS 인증 모두 telecom(통신사) 파라미터 필수 (CF-12401 방지)
+    const needsTelecomParam = isSmsAuth || needsTelecom;
     const buildRequestBody = (extraFields?: Record<string, unknown>) => ({
         userName: userName.trim(),
         identity: identity.replace(/\D/g, ''),
@@ -125,7 +128,7 @@ function MedicalInfoContent() {
         loginType: isSmsAuth ? '2' : '5',
         loginTypeLevel: isSmsAuth ? '1' : authProvider,
         ...(isSmsAuth ? { authMethod: '0' } : {}),
-        telecom: needsTelecom ? telecom : '',
+        telecom: needsTelecomParam ? telecom : '',
         queryType,
         ...extraFields,
     });
@@ -514,8 +517,8 @@ function MedicalInfoContent() {
                             </>
                         )}
 
-                        {/* PASS 선택 시 통신사 선택 */}
-                        {needsTelecom && (
+                        {/* PASS 또는 SMS 인증 시 통신사 선택 */}
+                        {needsTelecomParam && (
                             <div className="pt-2 space-y-2">
                                 <p className="text-xs text-muted-foreground font-medium">
                                     통신사 선택 (필수)
