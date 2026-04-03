@@ -485,17 +485,36 @@ function MedicalInfoContent() {
                     </CardContent>
                 </Card>
 
-                {/* 간편인증 선택 */}
+                {/* 인증 방식 선택 */}
                 <Card className="border-0 shadow-sm">
                     <CardHeader className="pb-3">
                         <CardTitle className="text-base flex items-center gap-2">
                             <Smartphone className="w-4 h-4" />
-                            간편인증 선택
+                            인증 방식 선택
                         </CardTitle>
-                        <CardDescription>인증 요청이 선택한 앱으로 전송됩니다</CardDescription>
+                        <CardDescription>인증 요청이 선택한 방식으로 전송됩니다</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {true && (
+                        {/* 간편인증 / SMS 선택 */}
+                        <div className="grid grid-cols-2 gap-2">
+                            {AUTH_METHODS.map((m) => (
+                                <button
+                                    key={m.id}
+                                    onClick={() => setAuthMethod(m.id as 'simple' | 'sms')}
+                                    className={`flex flex-col items-center gap-1 px-3 py-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                                        authMethod === m.id
+                                            ? 'bg-primary/5 border-primary'
+                                            : 'border-muted hover:border-muted-foreground/30'
+                                    }`}
+                                >
+                                    <span>{m.name}</span>
+                                    <span className="text-[10px] text-muted-foreground">{m.description}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* 간편인증 앱 선택 (간편인증일 때만) */}
+                        {authMethod === 'simple' && (
                             <>
                                 <p className="text-xs text-muted-foreground font-medium pt-1">간편인증 앱 선택</p>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
