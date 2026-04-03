@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { Shield, ArrowLeft, Loader2 } from 'lucide-react';
 import { KakaoIcon } from '@/components/icons/KakaoIcon';
 import Link from 'next/link';
 
-export default function LoginPage() {
+function LoginContent() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -164,5 +164,13 @@ export default function LoginPage() {
                 </Card>
             </div>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense>
+            <LoginContent />
+        </Suspense>
     );
 }
