@@ -46,25 +46,45 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(url);
     }
 
-    // 정지된 유저 쉐도우밴 — 정지 사실을 모르게 조용히 로그아웃 후 랜딩페이지로 이동
+    // 정지된 유저 처리
     if (user && user.user_metadata?.suspended === true) {
+        const suspendType = user.user_metadata?.suspend_type as string; // 'shadow' | 'official'
+
         if (isProtectedRoute || isAdminRoute || (isApiRoute && !request.nextUrl.pathname.startsWith('/api/auth'))) {
-            // API 요청이면 일반적인 인증 에러처럼 반환 (정지 사실 숨김)
-            if (isApiRoute) {
-                return NextResponse.json(
-                    { error: '인증이 필요합니다.' },
-                    { status: 401 },
-                );
+            if (suspendType === 'official') {
+                // ── 공식 정지: 명확하게 정지 사실 고지 ──
+                if (isApiRoute) {
+                    const reason = user.user_metadata?.suspended_reason || '이용약관 위반';
+                    return NextResponse.json(
+                        { error: `계정이 이용정지 상태입니다. 사유: ${reason}` },
+                        { status: 403 },
+                    );
+                }
+                const url = request.nextUrl.clone();
+                url.pathname = '/auth/login';
+                url.searchParams.set('suspended', 'official');
+                url.searchParams.set('reason', user.user_metadata?.suspended_reason || '이용약관 위반');
+                await supabase.auth.signOut();
+                return NextResponse.redirect(url);
+            } else {
+                // ── 쉐도우 정지: 정지 사실 숨김, 조용히 로그아웃 ──
+                if (isApiRoute) {
+                    return NextResponse.json(
+                        { error: '인증이 필요합니다.' },
+                        { status: 401 },
+                    );
+                }
+                await supabase.auth.signOut();
+                const url = request.nextUrl.clone();
+                url.pathname = '/';
+                return NextResponse.redirect(url);
             }
-            // 페이지 요청이면 조용히 세션 삭제 후 랜딩페이지로
-            await supabase.auth.signOut();
-            const url = request.nextUrl.clone();
-            url.pathname = '/';
-            return NextResponse.redirect(url);
         }
-        // auth 경로 접근 시에도 조용히 로그아웃 (재로그인해도 다시 튕김)
+        // auth 경로: 쉐도우는 조용히 로그아웃, 공식은 통과 (로그인 페이지에서 메시지 표시)
         if (isAuthRoute) {
-            await supabase.auth.signOut();
+            if (suspendType !== 'official') {
+                await supabase.auth.signOut();
+            }
             return supabaseResponse;
         }
     }

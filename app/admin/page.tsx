@@ -31,6 +31,7 @@ interface AdminUser {
     name: string;
     company: string;
     suspended: boolean;
+    suspend_type: 'shadow' | 'official' | null;
     suspended_reason: string;
     created_at: string;
     plan_slug: string;
@@ -70,30 +71,41 @@ export default function AdminPage() {
     // Suspend user
     const [suspendingUser, setSuspendingUser] = useState<string | null>(null);
 
-    const handleSuspendToggle = async (targetUser: AdminUser) => {
-        const newSuspended = !targetUser.suspended;
-        const action = newSuspended ? '이용정지' : '정지 해제';
-        const reason = newSuspended
-            ? prompt(`${targetUser.name || targetUser.email} 유저를 이용정지합니다.\n사유를 입력해주세요:`, '관리자에 의한 이용정지')
-            : null;
+    const handleSuspend = async (targetUser: AdminUser, suspendType: 'shadow' | 'official' | null) => {
+        const labels = { shadow: '쉐도우 정지', official: '공식 정지' };
+        const isSuspending = suspendType !== null;
 
-        if (newSuspended && reason === null) return; // 취소
+        let reason = '';
+        if (isSuspending) {
+            const defaultReason = suspendType === 'official' ? '이용약관 위반' : '관리자에 의한 이용정지';
+            const input = prompt(
+                `${targetUser.name || targetUser.email} 유저를 ${labels[suspendType]} 처리합니다.\n` +
+                (suspendType === 'shadow' ? '(본인에게 정지 사실이 노출되지 않습니다)\n' : '(본인에게 정지 사유가 고지됩니다)\n') +
+                '사유를 입력해주세요:',
+                defaultReason,
+            );
+            if (input === null) return;
+            reason = input;
+        } else {
+            if (!confirm(`${targetUser.name || targetUser.email} 유저의 정지를 해제하시겠습니까?`)) return;
+        }
 
         setSuspendingUser(targetUser.id);
         setPlanMessage(null);
         try {
             await apiFetch('/api/admin/suspend-user', {
                 method: 'POST',
-                body: {
-                    targetUserId: targetUser.id,
-                    suspended: newSuspended,
-                    reason: reason || '',
-                },
+                body: { targetUserId: targetUser.id, suspendType, reason },
             });
             setUsers(prev => prev.map(u =>
-                u.id === targetUser.id ? { ...u, suspended: newSuspended, suspended_reason: reason || '' } : u
+                u.id === targetUser.id
+                    ? { ...u, suspended: isSuspending, suspend_type: suspendType, suspended_reason: reason }
+                    : u
             ));
-            setPlanMessage({ type: 'success', text: `${targetUser.name || targetUser.email}: ${action} 완료` });
+            setPlanMessage({
+                type: 'success',
+                text: `${targetUser.name || targetUser.email}: ${isSuspending ? labels[suspendType!] : '정지 해제'} 완료`,
+            });
         } catch (err) {
             setPlanMessage({ type: 'error', text: (err as Error).message });
         } finally {
@@ -374,7 +386,17 @@ export default function AdminPage() {
                                                     <p className={`text-sm font-medium truncate ${u.suspended ? 'line-through text-muted-foreground' : ''}`}>
                                                         {u.name || '(이름 없음)'}
                                                     </p>
-                                                    {u.suspended && (
+                                                    {u.suspended && u.suspend_type === 'shadow' && (
+                                                        <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200">
+                                                            쉐도우
+                                                        </Badge>
+                                                    )}
+                                                    {u.suspended && u.suspend_type === 'official' && (
+                                                        <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                                                            공식정지
+                                                        </Badge>
+                                                    )}
+                                                    {u.suspended && !u.suspend_type && (
                                                         <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
                                                             정지됨
                                                         </Badge>
@@ -397,16 +419,43 @@ export default function AdminPage() {
                                                 {new Date(u.created_at).toLocaleDateString('ko-KR')}
                                             </div>
 
-                                            {/* Suspend Button */}
-                                            <Button
-                                                size="sm"
-                                                variant={u.suspended ? 'outline' : 'destructive'}
-                                                className="text-[11px] h-7 px-2 shrink-0"
-                                                disabled={suspendingUser === u.id}
-                                                onClick={() => handleSuspendToggle(u)}
-                                            >
-                                                {suspendingUser === u.id ? '...' : u.suspended ? '해제' : '정지'}
-                                            </Button>
+                                            {/* Suspend Buttons */}
+                                            <div className="flex gap-1 shrink-0">
+                                                {u.suspended ? (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="text-[11px] h-7 px-2 border-green-300 text-green-700 hover:bg-green-50"
+                                                        disabled={suspendingUser === u.id}
+                                                        onClick={() => handleSuspend(u, null)}
+                                                    >
+                                                        {suspendingUser === u.id ? '...' : '해제'}
+                                                    </Button>
+                                                ) : (
+                                                    <>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="text-[11px] h-7 px-1.5 border-amber-300 text-amber-700 hover:bg-amber-50"
+                                                            disabled={suspendingUser === u.id}
+                                                            onClick={() => handleSuspend(u, 'shadow')}
+                                                            title="본인이 정지된 걸 모름"
+                                                        >
+                                                            {suspendingUser === u.id ? '...' : '쉐도우'}
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="destructive"
+                                                            className="text-[11px] h-7 px-1.5"
+                                                            disabled={suspendingUser === u.id}
+                                                            onClick={() => handleSuspend(u, 'official')}
+                                                            title="정지 사유가 본인에게 고지됨"
+                                                        >
+                                                            {suspendingUser === u.id ? '...' : '공식정지'}
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </div>
 
                                             {/* Plan Badge */}
                                             <Badge
