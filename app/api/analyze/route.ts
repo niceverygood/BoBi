@@ -92,10 +92,17 @@ export async function POST(request: Request) {
                 return NextResponse.json({ error: '업로드된 파일이 없습니다.' }, { status: 400 });
             }
 
+            // UUID 형식 검증 — 잘못된 ID가 Supabase 쿼리에 들어가면 "The string did not match the expected pattern" 에러 발생
+            const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            const validIds = uploadIds.filter((id: string) => typeof id === 'string' && UUID_RE.test(id));
+            if (validIds.length === 0) {
+                return NextResponse.json({ error: '유효한 업로드 ID가 없습니다.' }, { status: 400 });
+            }
+
             const { data: uploads, error: uploadError } = await supabase
                 .from('uploads')
                 .select('*')
-                .in('id', uploadIds)
+                .in('id', validIds)
                 .eq('user_id', user.id);
 
             if (uploadError || !uploads || uploads.length === 0) {
@@ -119,7 +126,7 @@ export async function POST(request: Request) {
             .insert({
                 user_id: user.id,
                 customer_id: customerId || null,
-                upload_ids: isCodef ? [] : (uploadIds || []),
+                upload_ids: isCodef ? [] : validIds,
                 status: 'processing',
             })
             .select()
@@ -203,8 +210,16 @@ export async function POST(request: Request) {
         });
     } catch (error) {
         console.error('Analysis error:', error);
+        const rawMsg = (error as Error).message || '';
+        // Supabase/내부 에러는 사용자에게 노출하지 않음
+        const userMsg = rawMsg.includes('did not match')
+            || rawMsg.includes('violates')
+            || rawMsg.includes('duplicate key')
+            || rawMsg.includes('connection')
+            ? '서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+            : rawMsg;
         return NextResponse.json({
-            error: `분석 중 오류가 발생했습니다: ${(error as Error).message}`,
+            error: `분석 중 오류가 발생했습니다: ${userMsg}`,
         }, { status: 500 });
     }
 }
