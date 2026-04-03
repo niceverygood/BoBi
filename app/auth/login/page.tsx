@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,15 @@ export default function LoginPage() {
     const [kakaoLoading, setKakaoLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
+    const searchParams = useSearchParams();
     const supabase = createClient();
+
+    // 이용정지 유저가 리다이렉트된 경우
+    useEffect(() => {
+        if (searchParams.get('suspended') === 'true') {
+            setError('계정이 이용정지 상태입니다. 관리자에게 문의해주세요.');
+        }
+    }, [searchParams]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();

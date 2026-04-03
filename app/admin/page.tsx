@@ -30,6 +30,8 @@ interface AdminUser {
     phone: string;
     name: string;
     company: string;
+    suspended: boolean;
+    suspended_reason: string;
     created_at: string;
     plan_slug: string;
     plan_name: string;
@@ -62,8 +64,42 @@ export default function AdminPage() {
     const [sortAsc, setSortAsc] = useState(false);
 
     // Plan change
-    const [changingPlan, setChangingPlan] = useState<string | null>(null); // user ID being changed
+    const [changingPlan, setChangingPlan] = useState<string | null>(null);
     const [planMessage, setPlanMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    // Suspend user
+    const [suspendingUser, setSuspendingUser] = useState<string | null>(null);
+
+    const handleSuspendToggle = async (targetUser: AdminUser) => {
+        const newSuspended = !targetUser.suspended;
+        const action = newSuspended ? '이용정지' : '정지 해제';
+        const reason = newSuspended
+            ? prompt(`${targetUser.name || targetUser.email} 유저를 이용정지합니다.\n사유를 입력해주세요:`, '관리자에 의한 이용정지')
+            : null;
+
+        if (newSuspended && reason === null) return; // 취소
+
+        setSuspendingUser(targetUser.id);
+        setPlanMessage(null);
+        try {
+            await apiFetch('/api/admin/suspend-user', {
+                method: 'POST',
+                body: {
+                    targetUserId: targetUser.id,
+                    suspended: newSuspended,
+                    reason: reason || '',
+                },
+            });
+            setUsers(prev => prev.map(u =>
+                u.id === targetUser.id ? { ...u, suspended: newSuspended, suspended_reason: reason || '' } : u
+            ));
+            setPlanMessage({ type: 'success', text: `${targetUser.name || targetUser.email}: ${action} 완료` });
+        } catch (err) {
+            setPlanMessage({ type: 'error', text: (err as Error).message });
+        } finally {
+            setSuspendingUser(null);
+        }
+    };
 
     const fetchStats = useCallback(async () => {
         try {
@@ -335,9 +371,14 @@ export default function AdminPage() {
                                             {/* Info */}
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2">
-                                                    <p className="text-sm font-medium truncate">
+                                                    <p className={`text-sm font-medium truncate ${u.suspended ? 'line-through text-muted-foreground' : ''}`}>
                                                         {u.name || '(이름 없음)'}
                                                     </p>
+                                                    {u.suspended && (
+                                                        <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                                                            정지됨
+                                                        </Badge>
+                                                    )}
                                                     {u.company && (
                                                         <span className="text-xs text-muted-foreground hidden sm:inline">
                                                             {u.company}
@@ -347,6 +388,7 @@ export default function AdminPage() {
                                                 <p className="text-xs text-muted-foreground truncate">{u.email}</p>
                                                 <p className="text-[10px] text-muted-foreground/60 truncate font-mono">
                                                     {u.id.slice(0, 8)}...{u.phone ? ` | ${u.phone}` : ''}
+                                                    {u.suspended && u.suspended_reason ? ` | 사유: ${u.suspended_reason}` : ''}
                                                 </p>
                                             </div>
 
@@ -354,6 +396,17 @@ export default function AdminPage() {
                                             <div className="hidden md:block text-xs text-muted-foreground whitespace-nowrap">
                                                 {new Date(u.created_at).toLocaleDateString('ko-KR')}
                                             </div>
+
+                                            {/* Suspend Button */}
+                                            <Button
+                                                size="sm"
+                                                variant={u.suspended ? 'outline' : 'destructive'}
+                                                className="text-[11px] h-7 px-2 shrink-0"
+                                                disabled={suspendingUser === u.id}
+                                                onClick={() => handleSuspendToggle(u)}
+                                            >
+                                                {suspendingUser === u.id ? '...' : u.suspended ? '해제' : '정지'}
+                                            </Button>
 
                                             {/* Plan Badge */}
                                             <Badge

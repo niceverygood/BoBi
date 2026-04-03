@@ -65,6 +65,8 @@ export async function GET() {
                 phone: u.phone || u.user_metadata?.phone || '',
                 name: u.user_metadata?.name || '',
                 company: u.user_metadata?.company || '',
+                suspended: u.user_metadata?.suspended === true,
+                suspended_reason: u.user_metadata?.suspended_reason || '',
                 created_at: u.created_at,
                 plan_slug: subMap.get(u.id)?.slug || 'free',
                 plan_name: subMap.get(u.id)?.name || '무료',
