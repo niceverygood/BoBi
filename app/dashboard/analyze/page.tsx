@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, Loader2, Lock, Sparkles, Coins, Zap } from 'lucide-react';
+import { ArrowRight, Loader2, Lock, Sparkles, Coins, Zap, HeartPulse } from 'lucide-react';
 import StepIndicator from '@/components/common/StepIndicator';
 import PdfUploader from '@/components/analyze/PdfUploader';
 import AnalysisResultView from '@/components/analyze/AnalysisResult';
@@ -200,7 +200,11 @@ function AnalyzeContent() {
             setAnalysisId(data.analysisId);
             refresh(); // Refresh usage count
         } catch (err) {
-            setError((err as Error).message);
+            console.error('[Analyze] Error:', err);
+            const msg = (err as Error).message || '알 수 없는 오류';
+            // 디버깅: uploadIds 로깅
+            console.error('[Analyze] uploadIds:', successFiles.map((f) => f.id));
+            setError(msg);
         } finally {
             setAnalyzing(false);
         }
@@ -434,7 +438,13 @@ function AnalyzeContent() {
                 <>
                     <AnalysisResultView result={analysisResult} />
 
-                    <div className="flex justify-end gap-3">
+                    <div className="flex justify-end gap-3 flex-wrap">
+                        <Link href={`/dashboard/risk-report${analysisId ? `?analysisId=${analysisId}` : ''}`}>
+                            <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50">
+                                <HeartPulse className="w-4 h-4 mr-2" />
+                                질병 위험도 리포트
+                            </Button>
+                        </Link>
                         {!isFeatureEnabled('product_match') && (
                             <Link href="/pricing">
                                 <Button variant="outline" size="sm" className="text-sm">
