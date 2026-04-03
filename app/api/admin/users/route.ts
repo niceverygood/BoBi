@@ -62,6 +62,7 @@ export async function GET() {
             const users = usersData.users.map((u) => ({
                 id: u.id,
                 email: u.email || '',
+                phone: u.phone || u.user_metadata?.phone || '',
                 name: u.user_metadata?.name || '',
                 company: u.user_metadata?.company || '',
                 created_at: u.created_at,
@@ -74,12 +75,13 @@ export async function GET() {
         // Fallback: profiles table
         const { data: profiles } = await supabase
             .from('profiles')
-            .select('id, email, name, company, plan, analysis_count, created_at')
+            .select('id, email, name, company, phone, plan, analysis_count, created_at')
             .order('created_at', { ascending: false });
 
         const users = (profiles || []).map((p) => ({
             id: p.id,
             email: p.email || '',
+            phone: p.phone || '',
             name: p.name || '',
             company: p.company || '',
             created_at: p.created_at,

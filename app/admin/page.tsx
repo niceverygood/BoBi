@@ -27,6 +27,7 @@ interface AdminStats {
 interface AdminUser {
     id: string;
     email: string;
+    phone: string;
     name: string;
     company: string;
     created_at: string;
@@ -140,7 +141,9 @@ export default function AdminPage() {
                 (u) =>
                     u.email.toLowerCase().includes(q) ||
                     u.name.toLowerCase().includes(q) ||
-                    u.company.toLowerCase().includes(q)
+                    u.company.toLowerCase().includes(q) ||
+                    u.id.toLowerCase().includes(q) ||
+                    (u.phone && u.phone.replace(/-/g, '').includes(q.replace(/-/g, '')))
             );
         }
         return [...filtered].sort((a, b) => {
@@ -269,7 +272,7 @@ export default function AdminPage() {
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                     <input
                                         type="text"
-                                        placeholder="이메일, 이름, 소속 검색..."
+                                        placeholder="이메일, 이름, 소속, UID, 전화번호 검색..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                         className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
@@ -342,6 +345,9 @@ export default function AdminPage() {
                                                     )}
                                                 </div>
                                                 <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                                                <p className="text-[10px] text-muted-foreground/60 truncate font-mono">
+                                                    {u.id.slice(0, 8)}...{u.phone ? ` | ${u.phone}` : ''}
+                                                </p>
                                             </div>
 
                                             {/* Date */}
