@@ -70,6 +70,8 @@ export async function POST(request: Request) {
         let combinedText: string;
         let sourceType: 'codef' | 'medicine' | 'pdf' = 'pdf';
         const textParts: string[] = [];
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        let validIds: string[] = [];
 
         if (codefRecords) {
             sourceType = 'codef';
@@ -93,8 +95,7 @@ export async function POST(request: Request) {
             }
 
             // UUID 형식 검증 — 잘못된 ID가 Supabase 쿼리에 들어가면 "The string did not match the expected pattern" 에러 발생
-            const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-            const validIds = uploadIds.filter((id: string) => typeof id === 'string' && UUID_RE.test(id));
+            validIds = uploadIds.filter((id: string) => typeof id === 'string' && UUID_RE.test(id));
             if (validIds.length === 0) {
                 return NextResponse.json({ error: '유효한 업로드 ID가 없습니다.' }, { status: 400 });
             }

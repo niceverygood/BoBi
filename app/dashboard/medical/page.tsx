@@ -152,7 +152,7 @@ function MedicalInfoContent() {
                 ? { is2Way: true, twoWayInfo: twoWayData, simpleAuth: '1', ...(isSmsAuth && smsCode ? { smsAuthNo: smsCode } : {}), sessionId, bothStep }
                 : {};
 
-            const data = await apiFetch<Record<string, unknown>>(apiUrl, {
+            const data = await apiFetch<Record<string, any>>(apiUrl, {
                 method: 'POST',
                 body: buildRequestBody(extraParams),
             });
@@ -248,7 +248,7 @@ function MedicalInfoContent() {
         setLoading(true);
         setError(null);
         try {
-            const data = await apiFetch<Record<string, unknown>>('/api/codef/medical-info', {
+            const data = await apiFetch<Record<string, any>>('/api/codef/medical-info', {
                 method: 'POST',
                 body: buildRequestBody({
                     bothStep: 'car',
@@ -290,7 +290,7 @@ function MedicalInfoContent() {
         setError(null);
 
         try {
-            const data = await apiFetch<Record<string, unknown>>('/api/codef/medical-info', {
+            const data = await apiFetch<Record<string, any>>('/api/codef/medical-info', {
                 method: 'POST',
                 body: buildRequestBody({
                     is2Way: true,

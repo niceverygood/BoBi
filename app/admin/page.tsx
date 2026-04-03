@@ -1149,7 +1149,7 @@ function PromoSubCleanup() {
 
     const fetchPromoSubs = useCallback(async () => {
         try {
-            const data = await apiFetch<{ subscriptions: PromoSubscription[] }>('/api/admin/cleanup-promo-subs');
+            const data = await apiFetch<{ subscriptions: PromoSubInfo[] }>('/api/admin/cleanup-promo-subs');
             setPromoSubs(data.subscriptions || []);
         } catch {
             console.error('Failed to fetch promo subscriptions');

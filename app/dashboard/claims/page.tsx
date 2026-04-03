@@ -65,7 +65,7 @@ function ClaimsContent() {
         setError(null);
 
         try {
-            const data = await apiFetch<{ claims: unknown }>('/api/claims', {
+            const data = await apiFetch<{ claims: ClaimResult }>('/api/claims', {
                 method: 'POST',
                 body: { analysisId },
             });

@@ -87,7 +87,7 @@ export default function PolicyInputForm({ onSubmit, loading }: PolicyInputFormPr
         toast.info('보험 정보 조회 중... (약 15~30초 소요)');
 
         try {
-            const data = await apiFetch<{ requires2Way?: boolean; coverageInput?: { policies: unknown[] }; summary?: { insurers: { length: number }; totalPolicies: number; totalCoverages: number } }>('/api/codef/fetch-insurance', {
+            const data = await apiFetch<Record<string, any>>('/api/codef/fetch-insurance', {
                 method: 'POST',
                 body: {
                     loginId: codefLoginId,

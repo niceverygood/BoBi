@@ -67,7 +67,7 @@ export default function ProductTermsPage() {
             // Step 2: 약관/보장 상세 조회
             toast.info('약관/보장 상세 정보 조회 중...');
 
-            const termsData = await apiFetch<{ products: unknown[]; byInsurer: unknown }>('/api/codef/product-terms', {
+            const termsData = await apiFetch<{ products: ProductTermsInfo[]; byInsurer: Record<string, ProductTermsInfo[]>; summary: { insurers: { length: number }; totalProducts: number; totalRiders: number } }>('/api/codef/product-terms', {
                 method: 'POST',
                 body: { connectedId: cid },
             });

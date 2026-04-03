@@ -64,7 +64,7 @@ function ProductsContent() {
         setError(null);
 
         try {
-            const data = await apiFetch<{ products: unknown }>('/api/products', {
+            const data = await apiFetch<{ products: ProductResult }>('/api/products', {
                 method: 'POST',
                 body: { analysisId },
             });
