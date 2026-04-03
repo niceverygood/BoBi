@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { FileSearch, ArrowRight, RefreshCw, Trash2, Eye, Download } from 'lucide-react';
+import { FileSearch, ArrowRight, RefreshCw, Trash2, Eye, Download, HeartPulse } from 'lucide-react';
 import EmptyState from '@/components/common/EmptyState';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import Link from 'next/link';
@@ -22,6 +22,7 @@ interface AnalysisRecord {
     product_eligibility: Record<string, unknown> | null;
     claim_assessment: Record<string, unknown> | null;
     disclosure_summary: Record<string, unknown> | null;
+    risk_report: Record<string, unknown> | null;
 }
 
 export default function HistoryPage() {
@@ -38,7 +39,7 @@ export default function HistoryPage() {
 
             const { data, error } = await supabase
                 .from('analyses')
-                .select('id, customer_id, status, created_at, updated_at, medical_history, product_eligibility, claim_assessment, disclosure_summary')
+                .select('id, customer_id, status, created_at, updated_at, medical_history, product_eligibility, claim_assessment, disclosure_summary, risk_report')
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false })
                 .limit(100);
@@ -112,9 +113,10 @@ export default function HistoryPage() {
 
     const getSteps = (analysis: AnalysisRecord) => {
         const steps = [];
-        if (analysis.medical_history) steps.push({ label: 'STEP1', color: 'bg-blue-500' });
-        if (analysis.product_eligibility) steps.push({ label: 'STEP2', color: 'bg-green-500' });
-        if (analysis.claim_assessment) steps.push({ label: 'STEP3', color: 'bg-violet-500' });
+        if (analysis.medical_history) steps.push({ label: 'S1', color: 'bg-blue-500' });
+        if (analysis.product_eligibility) steps.push({ label: 'S2', color: 'bg-green-500' });
+        if (analysis.claim_assessment) steps.push({ label: 'S3', color: 'bg-violet-500' });
+        if (analysis.risk_report) steps.push({ label: '위험도', color: 'bg-red-500' });
         return steps;
     };
 
@@ -234,6 +236,12 @@ export default function HistoryPage() {
                                                                 <Button variant="ghost" size="sm" title={analysis.claim_assessment ? "STEP 3 결과 보기" : "STEP 3 진행"} className={analysis.claim_assessment ? "text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/30" : "text-muted-foreground"}>
                                                                     <span className="text-[10px] font-bold mr-1">S3</span>
                                                                     {analysis.claim_assessment ? <Eye className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                                                                </Button>
+                                                            </Link>
+                                                            {/* 위험도 리포트 */}
+                                                            <Link href={`/dashboard/risk-report?analysisId=${analysis.id}`}>
+                                                                <Button variant="ghost" size="sm" title={analysis.risk_report ? "위험도 리포트 보기" : "위험도 리포트 생성"} className={analysis.risk_report ? "text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30" : "text-muted-foreground"}>
+                                                                    <HeartPulse className="w-3.5 h-3.5" />
                                                                 </Button>
                                                             </Link>
                                                         </>
