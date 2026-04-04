@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -56,24 +56,10 @@ const PLANS = [
 ];
 
 export default function PromoPage() {
-    const [pdfLoading, setPdfLoading] = useState(false);
-    const printRef = useRef<HTMLDivElement>(null);
+    const [pdfLoading] = useState(false);
 
-    const handleDownloadPdf = async () => {
-        if (!printRef.current) return;
-        setPdfLoading(true);
-        try {
-            const { generateReportPDF } = await import('@/lib/pdf/report-generator');
-            // sticky/fixed 요소가 html2canvas에서 깨지므로 스크롤 위치 초기화
-            window.scrollTo(0, 0);
-            await new Promise(r => setTimeout(r, 200));
-            await generateReportPDF(printRef.current, '보비_BoBi_소개서');
-        } catch (err) {
-            console.error('PDF 생성 실패:', err);
-            alert('PDF 생성에 실패했습니다. 잠시 후 다시 시도해주세요.');
-        } finally {
-            setPdfLoading(false);
-        }
+    const handleDownloadPdf = () => {
+        window.print();
     };
 
     return (
@@ -99,7 +85,7 @@ export default function PromoPage() {
                 </div>
             </nav>
 
-            <div ref={printRef}>
+            <div>
                 {/* Hero */}
                 <section className="py-16 sm:py-24 px-4">
                     <div className="max-w-4xl mx-auto text-center">
