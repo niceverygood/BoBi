@@ -2,7 +2,9 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Activity, Pill, HeartPulse, Shield, Info } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle, Activity, Pill, HeartPulse, Shield, Info, Receipt } from 'lucide-react';
+import Link from 'next/link';
 import RiskGauge from './RiskGauge';
 import type { RiskReport, RiskCategory } from '@/types/risk-report';
 
@@ -112,6 +114,14 @@ export default function RiskReportView({ report }: RiskReportViewProps) {
                                     <span className="font-medium">근거({item.evidenceLevel})</span>: {item.evidence}
                                 </span>
                             </div>
+
+                            {/* 가상 사고 영수증 연결 */}
+                            <Link href={`/dashboard/accident-receipt?disease=${encodeURIComponent(item.riskDisease)}&code=${item.sourceCode}&from=risk-report`}>
+                                <Button variant="outline" size="sm" className="w-full text-xs border-slate-300 hover:bg-slate-50">
+                                    <Receipt className="w-3.5 h-3.5 mr-1.5" />
+                                    이 질환으로 가상 사고 영수증 보기
+                                </Button>
+                            </Link>
                         </div>
                     ))}
                 </CardContent>
