@@ -33,12 +33,30 @@ function AccidentReceiptContent() {
 
     // 질환 선택
     const [selectedDisease, setSelectedDisease] = useState<DiseaseCostInfo | null>(() => {
+        // 1. 코드로 정확히 매칭
         if (preselectedCode) {
-            return DISEASE_COST_DATA.find(d => d.code === preselectedCode) || null;
+            const exact = DISEASE_COST_DATA.find(d => d.code === preselectedCode);
+            if (exact) return exact;
         }
+        // 2. 질환명으로 유연한 매칭 (괄호/특수문자 제거 후 키워드 매칭)
         if (preselectedDisease) {
-            const q = preselectedDisease.toLowerCase();
-            return DISEASE_COST_DATA.find(d => d.name.toLowerCase().includes(q)) || null;
+            const keywords = preselectedDisease
+                .replace(/[()\/·]/g, ' ')
+                .split(/\s+/)
+                .filter(k => k.length >= 2)
+                .map(k => k.toLowerCase());
+
+            // 키워드 중 하나라도 포함된 질환 찾기
+            for (const d of DISEASE_COST_DATA) {
+                const dName = d.name.toLowerCase();
+                if (keywords.some(k => dName.includes(k))) return d;
+            }
+            // 역방향: 데이터 이름의 키워드가 검색어에 포함되는지
+            for (const d of DISEASE_COST_DATA) {
+                const dKeywords = d.name.replace(/[()\/]/g, ' ').split(/\s+/).filter(k => k.length >= 2);
+                const searchText = preselectedDisease.toLowerCase();
+                if (dKeywords.some(k => searchText.includes(k.toLowerCase()))) return d;
+            }
         }
         return null;
     });

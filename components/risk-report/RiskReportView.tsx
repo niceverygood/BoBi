@@ -116,7 +116,7 @@ export default function RiskReportView({ report }: RiskReportViewProps) {
                             </div>
 
                             {/* 가상 사고 영수증 연결 */}
-                            <Link href={`/dashboard/accident-receipt?disease=${encodeURIComponent(item.riskDisease)}&code=${item.sourceCode}&from=risk-report`}>
+                            <Link href={`/dashboard/accident-receipt?disease=${encodeURIComponent(item.riskDisease)}&from=risk-report`}>
                                 <Button variant="outline" size="sm" className="w-full text-xs border-slate-300 hover:bg-slate-50">
                                     <Receipt className="w-3.5 h-3.5 mr-1.5" />
                                     이 질환으로 가상 사고 영수증 보기
