@@ -1,8 +1,8 @@
 'use client';
 
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
+import { AlertTriangle, TrendingUp, TrendingDown, Brain, Stethoscope, Wallet, HeartPulse, MessageCircle } from 'lucide-react';
 import type { AccidentReceipt } from '@/types/accident-receipt';
 
 interface ReceiptViewProps {
@@ -136,6 +136,68 @@ export default function ReceiptView({ receipt }: ReceiptViewProps) {
                     )}
                 </CardContent>
             </Card>
+
+            {/* AI 분석 */}
+            {receipt.aiAnalysis && (
+                <Card className="border-0 shadow-md">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <Brain className="w-4 h-4 text-primary" />
+                            AI 상세 분석
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-1.5 text-sm font-semibold">
+                                <Stethoscope className="w-3.5 h-3.5 text-blue-600" />
+                                질환 개요
+                            </div>
+                            <p className="text-sm text-muted-foreground leading-relaxed">{receipt.aiAnalysis.diseaseOverview}</p>
+                        </div>
+
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-1.5 text-sm font-semibold">
+                                <HeartPulse className="w-3.5 h-3.5 text-red-500" />
+                                치료 과정
+                            </div>
+                            <p className="text-sm text-muted-foreground leading-relaxed">{receipt.aiAnalysis.treatmentProcess}</p>
+                        </div>
+
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-1.5 text-sm font-semibold">
+                                <Wallet className="w-3.5 h-3.5 text-amber-600" />
+                                비용 구조
+                            </div>
+                            <p className="text-sm text-muted-foreground leading-relaxed">{receipt.aiAnalysis.costBreakdown}</p>
+                        </div>
+
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-1.5 text-sm font-semibold">
+                                <AlertTriangle className="w-3.5 h-3.5 text-orange-500" />
+                                투병 중 생활 영향
+                            </div>
+                            <p className="text-sm text-muted-foreground leading-relaxed">{receipt.aiAnalysis.lifeImpact}</p>
+                        </div>
+
+                        {receipt.aiAnalysis.consultingPoints && receipt.aiAnalysis.consultingPoints.length > 0 && (
+                            <div className="bg-primary/5 rounded-lg p-4 space-y-2">
+                                <div className="flex items-center gap-1.5 text-sm font-semibold">
+                                    <MessageCircle className="w-3.5 h-3.5 text-primary" />
+                                    상담 포인트
+                                </div>
+                                <ul className="space-y-1.5">
+                                    {receipt.aiAnalysis.consultingPoints.map((point, i) => (
+                                        <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                                            <span className="text-primary font-bold shrink-0">{i + 1}.</span>
+                                            {point}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
 
             {/* 면책 고지 */}
             <div className="text-[11px] text-muted-foreground bg-muted/30 rounded-lg p-4 leading-relaxed">

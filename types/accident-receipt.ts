@@ -40,4 +40,17 @@ export interface AccidentReceipt {
     shortage: number;
     /** 면책 문구 */
     disclaimer: string;
+    /** AI 분석 결과 */
+    aiAnalysis?: {
+        /** 질환 개요 (2~3문장) */
+        diseaseOverview: string;
+        /** 치료 과정 설명 */
+        treatmentProcess: string;
+        /** 비용 구조 설명 (급여/비급여 비중 등) */
+        costBreakdown: string;
+        /** 투병 중 생활 영향 */
+        lifeImpact: string;
+        /** 설계사 상담 포인트 (핵심 메시지 2~3개) */
+        consultingPoints: string[];
+    };
 }

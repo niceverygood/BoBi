@@ -267,7 +267,7 @@ function AccidentReceiptContent() {
                             ) : (
                                 <Calculator className="w-4 h-4 mr-2" />
                             )}
-                            영수증 생성
+                            AI 분석 + 영수증 생성
                         </Button>
                     </CardContent>
                 </Card>
