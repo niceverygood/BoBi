@@ -269,9 +269,13 @@ html {
 
 /* Print styles for PDF download */
 @media print {
-  [data-print-hide] { display: none !important; }
-  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  section { break-inside: avoid; }
+  [data-print-hide], nav, aside, header,
+  .fixed, button, a[href] { display: none !important; }
+  [data-print-show] { display: block !important; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; }
+  main, .max-w-4xl, .max-w-5xl, .max-w-6xl { max-width: 100% !important; margin: 0 !important; padding: 0.5rem !important; }
+  section, .border, .rounded-lg, .rounded-xl, .shadow-md, .shadow-lg { break-inside: avoid; }
+  * { box-shadow: none !important; }
 }
 
 .bg-gradient-hero {

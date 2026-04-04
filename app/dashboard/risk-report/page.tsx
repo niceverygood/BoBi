@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -20,21 +20,7 @@ function RiskReportContent() {
     const [loading, setLoading] = useState(false);
     const [loadingExisting, setLoadingExisting] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [pdfLoading, setPdfLoading] = useState(false);
-    const reportRef = useRef<HTMLDivElement>(null);
-
-    const handleDownloadPdf = async () => {
-        if (!reportRef.current) return;
-        setPdfLoading(true);
-        try {
-            const { generateReportPDF } = await import('@/lib/pdf/report-generator');
-            await generateReportPDF(reportRef.current, '보비_질병위험도리포트');
-        } catch (err) {
-            console.error('PDF 생성 실패:', err);
-        } finally {
-            setPdfLoading(false);
-        }
-    };
+    const handleDownloadPdf = () => window.print();
 
     // 기존 리포트 확인
     useEffect(() => {
@@ -183,23 +169,12 @@ function RiskReportContent() {
                             <Loader2 className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : 'hidden'}`} />
                             재생성
                         </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleDownloadPdf}
-                            disabled={pdfLoading}
-                        >
-                            {pdfLoading ? (
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            ) : (
-                                <Download className="w-4 h-4 mr-2" />
-                            )}
+                        <Button variant="outline" size="sm" onClick={handleDownloadPdf}>
+                            <Download className="w-4 h-4 mr-2" />
                             PDF 저장
                         </Button>
                     </div>
-                    <div ref={reportRef}>
-                        <RiskReportView report={report} />
-                    </div>
+                    <RiskReportView report={report} />
                 </>
             )}
         </div>

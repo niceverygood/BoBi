@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -73,8 +73,6 @@ function AccidentReceiptContent() {
     const [receipt, setReceipt] = useState<AccidentReceipt | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [pdfLoading, setPdfLoading] = useState(false);
-    const receiptRef = useRef<HTMLDivElement>(null);
 
     const categoryData = getDiseaseCostByCategory();
 
@@ -115,17 +113,8 @@ function AccidentReceiptContent() {
         }
     };
 
-    const handleDownloadPdf = async () => {
-        if (!receiptRef.current) return;
-        setPdfLoading(true);
-        try {
-            const { generateReportPDF } = await import('@/lib/pdf/report-generator');
-            await generateReportPDF(receiptRef.current, `보비_가상사고영수증_${selectedDisease?.name || ''}`);
-        } catch {
-            console.error('PDF 생성 실패');
-        } finally {
-            setPdfLoading(false);
-        }
+    const handleDownloadPdf = () => {
+        window.print();
     };
 
     return (
@@ -325,19 +314,12 @@ function AccidentReceiptContent() {
                             variant="outline"
                             size="sm"
                             onClick={handleDownloadPdf}
-                            disabled={pdfLoading}
                         >
-                            {pdfLoading ? (
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            ) : (
-                                <Download className="w-4 h-4 mr-2" />
-                            )}
+                            <Download className="w-4 h-4 mr-2" />
                             PDF 저장
                         </Button>
                     </div>
-                    <div ref={receiptRef}>
-                        <ReceiptView receipt={receipt} />
-                    </div>
+                    <ReceiptView receipt={receipt} />
                 </>
             )}
         </div>
