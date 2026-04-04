@@ -228,7 +228,7 @@ export default async function LandingPage() {
           <div className="flex flex-col md:flex-row items-start justify-between gap-8 mb-8">
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <Shield className="w-5 h-5 text-primary" />
+                <BobiLogo size="sm" />
                 <span className="font-semibold text-lg">보비 BoBi</span>
               </div>
               <p className="text-sm text-muted-foreground max-w-sm">
