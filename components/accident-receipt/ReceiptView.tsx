@@ -45,7 +45,9 @@ export default function ReceiptView({ receipt }: ReceiptViewProps) {
                         <div className="flex items-center justify-between px-6 py-4">
                             <div>
                                 <p className="text-sm font-medium">총 진료비</p>
-                                <p className="text-xs text-muted-foreground">급여 + 비급여 포함</p>
+                                <p className="text-xs text-muted-foreground">
+                                    급여 {formatMoney(receipt.coveredCost)}원 + 비급여 {formatMoney(receipt.uncoveredCost)}원
+                                </p>
                             </div>
                             <p className="text-base font-bold text-slate-800">{formatMoney(receipt.totalMedicalCost)}원</p>
                         </div>
@@ -53,17 +55,22 @@ export default function ReceiptView({ receipt }: ReceiptViewProps) {
                         <div className="flex items-center justify-between px-6 py-4 bg-green-50/50">
                             <div>
                                 <p className="text-sm font-medium text-green-700">건강보험 적용</p>
-                                <p className="text-xs text-muted-foreground">급여 본인부담 {Math.round((1 - receipt.insuranceCoverage / receipt.totalMedicalCost) * 100)}%</p>
+                                <p className="text-xs text-muted-foreground">급여 {formatMoney(receipt.coveredCost)}원의 {Math.round((1 - receipt.coveredSelfPayRatio) * 100)}% 공제</p>
                             </div>
                             <p className="text-base font-bold text-green-600">- {formatMoney(receipt.insuranceCoverage)}원</p>
                         </div>
 
-                        <div className="flex items-center justify-between px-6 py-4">
-                            <div>
-                                <p className="text-sm font-medium">개인 부담금</p>
-                                <p className="text-xs text-muted-foreground">본인이 직접 내야 하는 금액</p>
+                        <div className="px-6 py-4 space-y-2">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm font-medium">개인 부담금 합계</p>
+                                </div>
+                                <p className="text-base font-bold text-red-600">{formatMoney(receipt.selfPayAmount)}원</p>
                             </div>
-                            <p className="text-base font-bold text-red-600">{formatMoney(receipt.selfPayAmount)}원</p>
+                            <div className="text-xs text-muted-foreground space-y-0.5 pl-2 border-l-2 border-red-200">
+                                <p>급여 본인부담 ({Math.round(receipt.coveredSelfPayRatio * 100)}%): {formatMoney(receipt.coveredSelfPay)}원</p>
+                                <p>비급여 전액부담: {formatMoney(receipt.uncoveredCost)}원</p>
+                            </div>
                         </div>
 
                         <div className="flex items-center justify-between px-6 py-4 bg-blue-50/50">

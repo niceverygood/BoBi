@@ -12,8 +12,11 @@ const AI_PROMPT = `당신은 한국 보험 상담 전문가입니다. 아래 질
 ## 질환 정보
 - 질환명: {DISEASE_NAME}
 - 질병코드: {DISEASE_CODE}
-- 예상 총 진료비: {TOTAL_COST}만원
-- 건강보험 후 본인부담: {SELF_PAY}만원 (부담률 {SELF_PAY_RATIO}%)
+- 급여 진료비: {COVERED_COST}만원 (건강보험 적용 대상)
+- 비급여 진료비: {UNCOVERED_COST}만원 (전액 본인부담)
+- 총 진료비: {TOTAL_COST}만원
+- 급여 본인부담: {COVERED_SELF_PAY}만원 (급여의 {SELF_PAY_RATIO}%)
+- 개인 부담 합계: {SELF_PAY}만원 (급여 본인부담 + 비급여 전액)
 - 투병 기간: {TREATMENT_MONTHS}개월
 - 월 생활비: {MONTHLY_LIVING}만원
 - 설계 보험금: {INSURANCE_PAYOUT}만원
@@ -50,15 +53,21 @@ export async function POST(request: Request) {
 
         const scenario: AccidentScenario = await request.json();
 
-        if (!scenario.diseaseName || scenario.totalMedicalCost <= 0) {
+        if (!scenario.diseaseName || (scenario.coveredCost + scenario.uncoveredCost) <= 0) {
             return NextResponse.json({ error: '질환명과 진료비를 입력해주세요.' }, { status: 400 });
         }
 
-        // 계산
-        const totalMedicalCost = scenario.totalMedicalCost;
-        const selfPayRatio = scenario.selfPayRatio;
-        const insuranceCoverage = Math.round(totalMedicalCost * (1 - selfPayRatio));
-        const selfPayAmount = Math.round(totalMedicalCost * selfPayRatio);
+        // 급여/비급여 분리 계산
+        const coveredCost = scenario.coveredCost;
+        const uncoveredCost = scenario.uncoveredCost;
+        const totalMedicalCost = coveredCost + uncoveredCost;
+        const coveredSelfPayRatio = scenario.coveredSelfPayRatio;
+
+        // 건강보험 적용: 급여에서만 공제 (비급여는 전액 본인부담)
+        const coveredSelfPay = Math.round(coveredCost * coveredSelfPayRatio);
+        const insuranceCoverage = coveredCost - coveredSelfPay;
+        const selfPayAmount = coveredSelfPay + uncoveredCost; // 급여 본인부담 + 비급여 전액
+
         const totalLivingCost = scenario.monthlyLivingCost * scenario.treatmentMonths;
         const insurancePayout = scenario.insurancePayout;
         const finalAmount = insurancePayout - selfPayAmount - totalLivingCost;
@@ -67,9 +76,12 @@ export async function POST(request: Request) {
         const prompt = AI_PROMPT
             .replace('{DISEASE_NAME}', scenario.diseaseName)
             .replace('{DISEASE_CODE}', scenario.diseaseCode || '-')
+            .replace('{COVERED_COST}', String(coveredCost))
+            .replace('{UNCOVERED_COST}', String(uncoveredCost))
             .replace('{TOTAL_COST}', String(totalMedicalCost))
+            .replace('{COVERED_SELF_PAY}', String(coveredSelfPay))
             .replace('{SELF_PAY}', String(selfPayAmount))
-            .replace('{SELF_PAY_RATIO}', String(Math.round(selfPayRatio * 100)))
+            .replace('{SELF_PAY_RATIO}', String(Math.round(coveredSelfPayRatio * 100)))
             .replace('{TREATMENT_MONTHS}', String(scenario.treatmentMonths))
             .replace('{MONTHLY_LIVING}', String(scenario.monthlyLivingCost))
             .replace('{INSURANCE_PAYOUT}', String(insurancePayout))
@@ -87,8 +99,11 @@ export async function POST(request: Request) {
         const receipt: AccidentReceipt = {
             diseaseName: scenario.diseaseName,
             diseaseCode: scenario.diseaseCode,
+            coveredCost,
+            uncoveredCost,
             totalMedicalCost,
             insuranceCoverage,
+            coveredSelfPay,
             selfPayAmount,
             insurancePayout,
             totalLivingCost,
@@ -96,6 +111,7 @@ export async function POST(request: Request) {
             monthlyLivingCost: scenario.monthlyLivingCost,
             finalAmount,
             shortage: finalAmount,
+            coveredSelfPayRatio,
             disclaimer: '본 영수증은 평균 통계 기반 가상 시나리오이며, 실제 진료비와 보험금은 의료기관, 보험 가입 조건, 치료 방법에 따라 달라질 수 있습니다.',
             aiAnalysis,
         };

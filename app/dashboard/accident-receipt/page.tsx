@@ -44,8 +44,9 @@ function AccidentReceiptContent() {
     });
 
     // 입력 폼
-    const [totalCost, setTotalCost] = useState<number>(selectedDisease?.avgTotalCost || 0);
-    const [selfPayRatio, setSelfPayRatio] = useState<number>(selectedDisease?.selfPayRatio || 0.2);
+    const [coveredCost, setCoveredCost] = useState<number>(selectedDisease?.avgCoveredCost || 0);
+    const [uncoveredCost, setUncoveredCost] = useState<number>(selectedDisease?.avgUncoveredCost || 0);
+    const [coveredSelfPayRatio, setCoveredSelfPayRatio] = useState<number>(selectedDisease?.coveredSelfPayRatio || 0.2);
     const [treatmentMonths, setTreatmentMonths] = useState<number>(selectedDisease?.avgTreatmentMonths || 6);
     const [monthlyLivingCost, setMonthlyLivingCost] = useState<number>(200);
     const [insurancePayout, setInsurancePayout] = useState<number>(0);
@@ -61,8 +62,9 @@ function AccidentReceiptContent() {
 
     const handleSelectDisease = (d: DiseaseCostInfo) => {
         setSelectedDisease(d);
-        setTotalCost(d.avgTotalCost);
-        setSelfPayRatio(d.selfPayRatio);
+        setCoveredCost(d.avgCoveredCost);
+        setUncoveredCost(d.avgUncoveredCost);
+        setCoveredSelfPayRatio(d.coveredSelfPayRatio);
         setTreatmentMonths(d.avgTreatmentMonths);
         setReceipt(null);
         setError(null);
@@ -79,8 +81,9 @@ function AccidentReceiptContent() {
                 body: {
                     diseaseCode: selectedDisease.code,
                     diseaseName: selectedDisease.name,
-                    totalMedicalCost: totalCost,
-                    selfPayRatio,
+                    coveredCost,
+                    uncoveredCost,
+                    coveredSelfPayRatio,
                     treatmentMonths,
                     monthlyLivingCost,
                     insurancePayout,
@@ -179,34 +182,50 @@ function AccidentReceiptContent() {
                         </p>
                     </CardHeader>
                     <CardContent className="space-y-5">
-                        {/* 총 진료비 */}
-                        <div>
-                            <label className="text-sm font-medium">총 진료비 (만원)</label>
-                            <p className="text-xs text-muted-foreground mb-1">평균 통계 기반 자동 입력, 수동 조정 가능</p>
-                            <input
-                                type="number"
-                                value={totalCost}
-                                onChange={(e) => setTotalCost(Number(e.target.value))}
-                                className="w-full px-3 py-2.5 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                            />
+                        {/* 급여/비급여 진료비 */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-sm font-medium">급여 진료비 (만원)</label>
+                                <p className="text-xs text-muted-foreground mb-1">건강보험 적용 대상</p>
+                                <input
+                                    type="number"
+                                    value={coveredCost}
+                                    onChange={(e) => setCoveredCost(Number(e.target.value))}
+                                    className="w-full px-3 py-2.5 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium">비급여 진료비 (만원)</label>
+                                <p className="text-xs text-muted-foreground mb-1">전액 본인부담</p>
+                                <input
+                                    type="number"
+                                    value={uncoveredCost}
+                                    onChange={(e) => setUncoveredCost(Number(e.target.value))}
+                                    className="w-full px-3 py-2.5 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                />
+                            </div>
                         </div>
+                        <p className="text-xs text-muted-foreground -mt-2">
+                            총 진료비: <strong>{(coveredCost + uncoveredCost).toLocaleString()}만원</strong> (급여 {coveredCost.toLocaleString()} + 비급여 {uncoveredCost.toLocaleString()})
+                        </p>
 
-                        {/* 본인부담 비율 */}
+                        {/* 급여 본인부담 비율 */}
                         <div>
-                            <label className="text-sm font-medium">건강보험 후 본인부담 비율</label>
+                            <label className="text-sm font-medium">급여 본인부담 비율</label>
                             <p className="text-xs text-muted-foreground mb-1">
-                                {selectedDisease.category === '암' ? '암 산정특례 5%' : `일반 ${Math.round(selfPayRatio * 100)}%`}
+                                {selectedDisease.category === '암' ? '암 산정특례 5%' : `일반 ${Math.round(coveredSelfPayRatio * 100)}%`}
+                                {' '}(비급여는 100% 본인부담)
                             </p>
                             <input
                                 type="range"
                                 min={0.05} max={0.5} step={0.05}
-                                value={selfPayRatio}
-                                onChange={(e) => setSelfPayRatio(Number(e.target.value))}
+                                value={coveredSelfPayRatio}
+                                onChange={(e) => setCoveredSelfPayRatio(Number(e.target.value))}
                                 className="w-full"
                             />
                             <div className="flex justify-between text-xs text-muted-foreground">
                                 <span>5% (산정특례)</span>
-                                <span className="font-semibold text-foreground">{Math.round(selfPayRatio * 100)}%</span>
+                                <span className="font-semibold text-foreground">{Math.round(coveredSelfPayRatio * 100)}%</span>
                                 <span>50%</span>
                             </div>
                         </div>
