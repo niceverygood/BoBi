@@ -138,7 +138,7 @@ export default function SettingsPage() {
                             <div
                                 key={key}
                                 className={cn(
-                                    'rounded-xl border p-4 transition-all',
+                                    'rounded-xl border p-4 transition-all flex flex-col',
                                     key === currentSlug
                                         ? 'border-primary bg-primary/5 ring-1 ring-primary'
                                         : 'hover:border-primary/30'
@@ -154,7 +154,7 @@ export default function SettingsPage() {
                                 <p className="text-[11px] text-muted-foreground mb-3">
                                     월 {planInfo.analysisLimit === -1 ? '무제한' : `${planInfo.analysisLimit}건`}
                                 </p>
-                                <ul className="space-y-1 mb-3">
+                                <ul className="space-y-1 mb-3 flex-1">
                                     {planInfo.features.slice(0, 3).map((f) => (
                                         <li key={f} className="text-[11px] flex items-center gap-1">
                                             <CheckCircle2 className="w-3 h-3 text-green-500 shrink-0" />
@@ -168,13 +168,17 @@ export default function SettingsPage() {
                                         </li>
                                     ))}
                                 </ul>
-                                {key !== currentSlug && key !== 'free' && (
+                                {key !== currentSlug && key !== 'free' ? (
                                     <Link href={`/dashboard/subscribe?plan=${key}`}>
                                         <Button variant="outline" size="sm" className="w-full text-xs h-8">
                                             구독하기
                                         </Button>
                                     </Link>
-                                )}
+                                ) : key === currentSlug ? (
+                                    <Button variant="outline" size="sm" className="w-full text-xs h-8" disabled>
+                                        현재 플랜
+                                    </Button>
+                                ) : null}
                             </div>
                         ))}
                     </div>
