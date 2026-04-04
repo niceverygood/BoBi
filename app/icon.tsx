@@ -14,19 +14,27 @@ export default function Icon() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderRadius: 8,
-                    background: 'linear-gradient(135deg, #1e6bb8 0%, #0f4c8a 100%)',
+                    background: '#1a56db',
+                    position: 'relative',
                 }}
             >
+                <div style={{ fontSize: 18, fontWeight: 900, color: 'white', lineHeight: 1 }}>B</div>
                 <div
                     style={{
-                        fontSize: 18,
-                        fontWeight: 900,
-                        color: 'white',
-                        lineHeight: 1,
-                        letterSpacing: -1,
+                        position: 'absolute',
+                        top: 3,
+                        right: 3,
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        background: '#38bdf8',
+                        border: '1.5px solid white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                     }}
                 >
-                    B
+                    <div style={{ width: 3, height: 3, borderRadius: '50%', background: 'white' }} />
                 </div>
             </div>
         ),

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import BobiLogo from '@/components/common/BobiLogo';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useAdmin } from '@/hooks/useAdmin';
 import { FEATURE_FLAGS } from '@/lib/utils/constants';
@@ -48,9 +49,7 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
             {/* Logo */}
             <div className="flex items-center justify-between h-16 px-4">
                 <Link href="/dashboard" className="flex items-center gap-3 overflow-hidden">
-                    <div className="w-9 h-9 bg-gradient-primary rounded-xl flex items-center justify-center shrink-0">
-                        <Shield className="w-5 h-5 text-white" />
-                    </div>
+                    <BobiLogo size="md" className="shrink-0" />
                     {!collapsed && (
                         <span className="text-lg font-bold tracking-tight whitespace-nowrap">
                             보비 <span className="text-primary">BoBi</span>

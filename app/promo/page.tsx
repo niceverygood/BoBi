@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
-    Shield, FileSearch, HeartPulse, Receipt, TrendingUp,
+    FileSearch, HeartPulse, Receipt, TrendingUp,
     CheckCircle2, ArrowRight, Download, Loader2, Zap,
     Brain, BarChart3, Lock, Users, Building, Sparkles,
 } from 'lucide-react';
+import BobiLogo from '@/components/common/BobiLogo';
 import Link from 'next/link';
 
 const FEATURES = [
@@ -68,9 +69,7 @@ export default function PromoPage() {
             <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b" data-print-hide>
                 <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl flex items-center justify-center">
-                            <Shield className="w-4 h-4 text-white" />
-                        </div>
+                        <BobiLogo size="sm" />
                         <span className="text-lg font-bold">보비 <span className="text-blue-600">BoBi</span></span>
                     </div>
                     <div className="flex items-center gap-2">

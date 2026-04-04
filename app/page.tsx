@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Shield, FileSearch, Package, Receipt, ArrowRight, CheckCircle2, Sparkles, Zap, Lock, LayoutDashboard } from 'lucide-react';
+import { FileSearch, Package, Receipt, ArrowRight, CheckCircle2, Sparkles, Zap, Lock, LayoutDashboard } from 'lucide-react';
+import BobiLogo from '@/components/common/BobiLogo';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function LandingPage() {
@@ -14,9 +15,7 @@ export default async function LandingPage() {
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 sm:h-16">
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-primary rounded-xl flex items-center justify-center">
-                <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-              </div>
+              <BobiLogo size="sm" />
               <span className="text-lg sm:text-xl font-bold tracking-tight">
                 보비 <span className="text-primary">BoBi</span>
               </span>
