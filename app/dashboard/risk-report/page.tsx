@@ -65,7 +65,7 @@ function RiskReportContent() {
         loadExisting();
     }, [analysisId]);
 
-    const handleGenerate = async () => {
+    const handleGenerate = async (regenerate = false) => {
         if (!analysisId) return;
         setLoading(true);
         setError(null);
@@ -73,7 +73,7 @@ function RiskReportContent() {
         try {
             const data = await apiFetch<{ report: RiskReport }>('/api/risk-report', {
                 method: 'POST',
-                body: { analysisId },
+                body: { analysisId, regenerate },
             });
             setReport(data.report);
         } catch (err) {
@@ -163,7 +163,7 @@ function RiskReportContent() {
                     <CardContent className="py-8 text-center">
                         <AlertTriangle className="w-8 h-8 mx-auto mb-3 text-red-400" />
                         <p className="text-sm text-red-600 mb-4">{error}</p>
-                        <Button onClick={handleGenerate} variant="outline">
+                        <Button onClick={() => handleGenerate(true)} variant="outline">
                             재시도
                         </Button>
                     </CardContent>
@@ -173,7 +173,16 @@ function RiskReportContent() {
             {/* 리포트 */}
             {report && !loading && (
                 <>
-                    <div className="flex justify-end">
+                    <div className="flex justify-end gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleGenerate(true)}
+                            disabled={loading}
+                        >
+                            <Loader2 className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : 'hidden'}`} />
+                            재생성
+                        </Button>
                         <Button
                             variant="outline"
                             size="sm"
