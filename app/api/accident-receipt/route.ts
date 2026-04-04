@@ -75,10 +75,10 @@ export async function POST(request: Request) {
             .replace('{INSURANCE_PAYOUT}', String(insurancePayout))
             .replace('{FINAL_AMOUNT}', String(finalAmount));
 
-        let aiAnalysis = undefined;
+        let aiAnalysis: AccidentReceipt['aiAnalysis'] = undefined;
         try {
             const aiResponse = await callOpenAI({ prompt, maxTokens: 2000, retries: 1 });
-            aiAnalysis = parseAIResponse(aiResponse);
+            aiAnalysis = parseAIResponse(aiResponse) as AccidentReceipt['aiAnalysis'];
         } catch (err) {
             console.error('[AccidentReceipt] AI 분석 실패:', err);
             // AI 실패해도 영수증은 반환
