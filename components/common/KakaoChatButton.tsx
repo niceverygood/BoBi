@@ -1,12 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MessageCircle, X } from 'lucide-react';
 
 const KAKAO_CHANNEL_URL = 'https://pf.kakao.com/_xezBuX/chat';
 
 export default function KakaoChatButton() {
+    const [mounted, setMounted] = useState(false);
     const [showTooltip, setShowTooltip] = useState(false);
+
+    // hydration 불일치 방지: 클라이언트 마운트 후에만 렌더링
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    if (!mounted) return null;
 
     return (
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
