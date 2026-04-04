@@ -269,9 +269,8 @@ html {
 
 /* Print styles for PDF download */
 @media print {
-  nav, .print\\:hidden { display: none !important; }
+  [data-print-hide] { display: none !important; }
   body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  * { break-inside: avoid-page; }
   section { break-inside: avoid; }
 }
 

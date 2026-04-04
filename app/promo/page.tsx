@@ -65,7 +65,7 @@ export default function PromoPage() {
     return (
         <div className="min-h-screen bg-background">
             {/* Nav */}
-            <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b print:hidden">
+            <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b" data-print-hide>
                 <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl flex items-center justify-center">
