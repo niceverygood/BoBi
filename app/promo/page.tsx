@@ -64,9 +64,13 @@ export default function PromoPage() {
         setPdfLoading(true);
         try {
             const { generateReportPDF } = await import('@/lib/pdf/report-generator');
+            // sticky/fixed 요소가 html2canvas에서 깨지므로 스크롤 위치 초기화
+            window.scrollTo(0, 0);
+            await new Promise(r => setTimeout(r, 200));
             await generateReportPDF(printRef.current, '보비_BoBi_소개서');
-        } catch {
-            console.error('PDF 생성 실패');
+        } catch (err) {
+            console.error('PDF 생성 실패:', err);
+            alert('PDF 생성에 실패했습니다. 잠시 후 다시 시도해주세요.');
         } finally {
             setPdfLoading(false);
         }
@@ -75,7 +79,7 @@ export default function PromoPage() {
     return (
         <div className="min-h-screen bg-background">
             {/* Nav */}
-            <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b">
+            <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b print:hidden">
                 <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl flex items-center justify-center">

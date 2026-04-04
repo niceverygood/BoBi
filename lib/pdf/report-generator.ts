@@ -35,6 +35,12 @@ export async function generateReportPDF(
             htmlEl.style.whiteSpace = 'normal';
             htmlEl.style.maxWidth = 'none';
         }
+        // backdrop-blur는 html2canvas에서 미지원 — 제거
+        const computed = window.getComputedStyle(htmlEl);
+        if (computed.backdropFilter && computed.backdropFilter !== 'none') {
+            htmlEl.style.backdropFilter = 'none';
+            htmlEl.style.background = htmlEl.style.background || '#ffffff';
+        }
     });
 
     document.body.appendChild(clone);
@@ -44,9 +50,14 @@ export async function generateReportPDF(
     await new Promise(resolve => setTimeout(resolve, 300));
 
     try {
-        // Render HTML to canvas with high quality settings
+        // 콘텐츠 높이에 따라 scale 조정 — 긴 페이지에서 canvas 크기 제한 방지
+        const contentHeight = clone.scrollHeight || clone.offsetHeight;
+        const maxCanvasHeight = 16000; // 브라우저 canvas 최대 높이 제한
+        const scale = contentHeight * 2 > maxCanvasHeight ? 1 : 2;
+
+        // Render HTML to canvas
         const canvas = await html2canvas(clone, {
-            scale: 2,
+            scale,
             useCORS: true,
             logging: false,
             backgroundColor: '#ffffff',
@@ -55,6 +66,7 @@ export async function generateReportPDF(
             scrollX: 0,
             scrollY: 0,
             removeContainer: false,
+            height: contentHeight,
         });
 
         const imgData = canvas.toDataURL('image/png');
