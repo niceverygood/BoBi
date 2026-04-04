@@ -39,7 +39,7 @@ export default function HistoryPage() {
 
             const { data, error } = await supabase
                 .from('analyses')
-                .select('id, customer_id, status, created_at, updated_at, medical_history, product_eligibility, claim_assessment, disclosure_summary, risk_report')
+                .select('id, customer_id, status, created_at, updated_at, medical_history, product_eligibility, claim_assessment, disclosure_summary')
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false })
                 .limit(100);
@@ -49,7 +49,26 @@ export default function HistoryPage() {
                 return;
             }
 
-            setAnalyses(data || []);
+            // risk_report는 별도 조회 (컬럼이 없을 수 있음)
+            let enriched = (data || []).map(d => ({ ...d, risk_report: null }));
+            try {
+                const { data: riskData } = await supabase
+                    .from('analyses')
+                    .select('id, risk_report')
+                    .eq('user_id', user.id)
+                    .not('risk_report', 'is', null);
+                if (riskData) {
+                    const riskMap = new Map(riskData.map(r => [r.id, r.risk_report]));
+                    enriched = enriched.map(a => ({
+                        ...a,
+                        risk_report: riskMap.get(a.id) || null,
+                    }));
+                }
+            } catch {
+                // risk_report 컬럼이 없으면 무시
+            }
+
+            setAnalyses(enriched as unknown as AnalysisRecord[]);
         } catch (err) {
             console.error('History error:', err);
         } finally {
