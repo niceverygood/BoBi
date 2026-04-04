@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useAdmin } from '@/hooks/useAdmin';
 import { FEATURE_FLAGS } from '@/lib/utils/constants';
@@ -126,14 +127,22 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                     <div className="p-4 rounded-xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/10">
                         <div className="flex items-center gap-2 mb-2">
                             <Crown className="w-4 h-4 text-primary" />
-                            <span className="text-sm font-semibold">
-                                {loading ? '...' : `${plan.display_name} 플랜`}
-                            </span>
+                            {loading ? (
+                                <Skeleton className="h-4 w-20" />
+                            ) : (
+                                <span className="text-sm font-semibold">
+                                    {plan.display_name} 플랜
+                                </span>
+                            )}
                         </div>
                         <p className="text-xs text-muted-foreground mb-3">
-                            이번 달 남은 분석: <span className="font-semibold text-foreground">
-                                {loading ? '...' : displayRemaining}
-                            </span>
+                            이번 달 남은 분석: {loading ? (
+                                <Skeleton className="h-3 w-10 inline-block align-middle" />
+                            ) : (
+                                <span className="font-semibold text-foreground">
+                                    {displayRemaining}
+                                </span>
+                            )}
                         </p>
                         <Link href="/pricing">
                             <Button variant="outline" size="sm" className="w-full text-xs">
