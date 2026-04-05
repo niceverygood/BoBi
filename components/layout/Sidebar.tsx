@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Shield, LayoutDashboard, FileSearch, History, Settings, ChevronLeft, Crown, ShieldCheck, ShieldPlus, Stethoscope, Receipt, HeartPulse } from 'lucide-react';
+import { Shield, LayoutDashboard, FileSearch, History, Settings, ChevronLeft, Crown, ShieldCheck, ShieldPlus, Stethoscope, Receipt, HeartPulse, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,7 @@ import { FEATURE_FLAGS } from '@/lib/utils/constants';
 
 const navItems = [
     { title: '대시보드', href: '/dashboard', icon: LayoutDashboard },
+    { title: '고객 카드', href: '/dashboard/customers', icon: Users },
     { title: '새 분석', href: '/dashboard/analyze', icon: FileSearch },
     { title: '보장 분석', href: '/dashboard/coverage', icon: ShieldPlus, disabled: !FEATURE_FLAGS.coverage_analysis, comingSoon: !FEATURE_FLAGS.coverage_analysis },
     { title: '진료정보', href: '/dashboard/medical', icon: Stethoscope },
