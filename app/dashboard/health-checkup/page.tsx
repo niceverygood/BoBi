@@ -42,6 +42,7 @@ function HealthCheckupContent() {
     const [identity, setIdentity] = useState('');
     const [phoneNo, setPhoneNo] = useState('');
     const [authProvider, setAuthProvider] = useState('1');
+    const [privacyConsent, setPrivacyConsent] = useState(false);
     const [telecom, setTelecom] = useState('0');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -351,15 +352,33 @@ function HealthCheckupContent() {
                 </div>
             )}
 
-            <Button onClick={handleSubmit} disabled={loading} className="w-full" size="lg">
+            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                    <Shield className="w-4 h-4 mt-0.5 shrink-0 text-primary" />
+                    <div className="space-y-1">
+                        <p>입력하신 개인정보(이름, 주민등록번호, 전화번호)는 건강보험공단 본인인증에만 사용되며 서버에 저장되지 않습니다.</p>
+                        <p>조회된 건강검진 결과는 질병 위험도 분석을 위해 AI(OpenRouter/Claude)에 전송될 수 있습니다.</p>
+                    </div>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                        type="checkbox"
+                        checked={privacyConsent}
+                        onChange={(e) => setPrivacyConsent(e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <span className="text-sm">
+                        <strong>개인정보 수집·이용 및 제3자 제공에 동의합니다.</strong>
+                        {' '}
+                        <a href="/privacy" target="_blank" className="text-primary underline">개인정보처리방침</a>
+                    </span>
+                </label>
+            </div>
+
+            <Button onClick={handleSubmit} disabled={loading || !privacyConsent} className="w-full" size="lg">
                 {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <HeartPulse className="w-4 h-4 mr-2" />}
                 건강검진 조회하기
             </Button>
-
-            <p className="text-xs text-muted-foreground text-center">
-                <Shield className="w-3 h-3 inline mr-1" />
-                입력하신 개인정보는 건강보험공단 본인인증에만 사용되며, 서버에 저장되지 않습니다.
-            </p>
         </div>
     );
 }

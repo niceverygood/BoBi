@@ -128,8 +128,12 @@ export default function PrivacyPage() {
                                         <td className="p-2">데이터 저장 및 인증 서비스</td>
                                     </tr>
                                     <tr className="border-b">
-                                        <td className="p-2">OpenAI (미국)</td>
-                                        <td className="p-2">AI 분석 처리</td>
+                                        <td className="p-2">OpenRouter/Anthropic (미국)</td>
+                                        <td className="p-2">AI 분석 처리 (고지사항 분석, 상품 판단, 질병 위험도 분석, 가상 사고 영수증 분석). 진료이력, 진단명, 처방 내역 등 건강 관련 데이터가 AI 모델에 전송되며, 분석 목적으로만 사용됩니다.</td>
+                                    </tr>
+                                    <tr className="border-b">
+                                        <td className="p-2">CODEF/헥토데이터 (한국)</td>
+                                        <td className="p-2">건강보험심사평가원, 건강보험공단 데이터 연동 (진료정보, 건강검진결과 조회). 본인인증 시 이름, 주민등록번호, 전화번호가 전송됩니다.</td>
                                     </tr>
                                     <tr>
                                         <td className="p-2">Vercel (미국)</td>
@@ -141,6 +145,17 @@ export default function PrivacyPage() {
                     </section>
 
                     {/* 6조 */}
+                    <section>
+                        <h2 className="text-xl font-bold mb-3">제5조의2 (민감정보 및 건강정보 처리)</h2>
+                        <ul className="list-decimal pl-5 space-y-2 text-muted-foreground">
+                            <li>회사는 이용자의 건강 관련 정보(진료이력, 진단명, 처방내역, 건강검진 결과 등)를 <strong>이용자의 별도 동의</strong>를 받아 수집·처리합니다.</li>
+                            <li>수집된 건강정보는 AI 보험 분석(고지사항 분석, 가입가능 상품 판단, 질병 위험도 분석, 보험금 청구 안내) 목적으로만 사용됩니다.</li>
+                            <li>AI 분석을 위해 건강정보는 AI 서비스 제공업체(OpenRouter/Anthropic, 미국)에 전송됩니다. 전송 시 이용자의 이름, 주민등록번호 등 직접 식별 정보는 포함되지 않으며, 진단명과 진료내역만 전송됩니다.</li>
+                            <li>주민등록번호는 심평원/건강보험공단 본인인증 목적으로만 CODEF API에 전송되며, 보비 서버에 저장되지 않습니다.</li>
+                            <li>이용자는 건강정보 수집·이용 동의를 언제든 철회할 수 있으며, 철회 시 관련 데이터는 즉시 삭제됩니다.</li>
+                        </ul>
+                    </section>
+
                     <section>
                         <h2 className="text-xl font-bold mb-3">제6조 (개인정보의 파기)</h2>
                         <ul className="list-decimal pl-5 space-y-2 text-muted-foreground">

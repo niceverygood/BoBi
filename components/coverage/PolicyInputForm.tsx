@@ -557,7 +557,7 @@ export default function PolicyInputForm({ onSubmit, loading }: PolicyInputFormPr
                             </div>
 
                             <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 text-xs text-amber-700 dark:text-amber-300">
-                                🔒 입력하신 정보는 보험 조회 목적으로만 사용되며, 서버에 저장되지 않습니다.
+                                🔒 입력하신 개인정보는 보험 조회 목적으로만 사용되며, 인증 정보는 서버에 저장되지 않습니다.
                             </div>
 
                             <Button
