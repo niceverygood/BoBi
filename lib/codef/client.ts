@@ -959,3 +959,182 @@ export async function fetchMyMedicine(params: HiraMedicalRequest): Promise<{
 
     return { records };
 }
+
+// ═══════════════════════════════════════════════════════════
+// 건강보험공단 건강검진 API (데모 키 사용)
+// ═══════════════════════════════════════════════════════════
+
+const CODEF_DEMO_API_URL = 'https://development.codef.io';
+
+let cachedDemoToken: { token: string; expiresAt: number } | null = null;
+
+async function getDemoAccessToken(): Promise<string> {
+    if (cachedDemoToken && cachedDemoToken.expiresAt > Date.now()) {
+        return cachedDemoToken.token;
+    }
+    const clientId = process.env.CODEF_DEMO_CLIENT_ID;
+    const clientSecret = process.env.CODEF_DEMO_CLIENT_SECRET;
+    if (!clientId || !clientSecret) {
+        throw new Error('CODEF_DEMO_CLIENT_ID/SECRET 환경변수가 설정되지 않았습니다.');
+    }
+    const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    const res = await fetch(CODEF_TOKEN_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': `Basic ${credentials}` },
+        body: 'grant_type=client_credentials&scope=read',
+    });
+    if (!res.ok) throw new Error(`CODEF 데모 토큰 발급 실패: ${res.status}`);
+    const data = await res.json();
+    cachedDemoToken = {
+        token: data.access_token,
+        expiresAt: Date.now() + (data.expires_in ? data.expires_in * 1000 - 300000 : 6 * 24 * 60 * 60 * 1000),
+    };
+    return cachedDemoToken.token;
+}
+
+/** 건강검진 공통 요청 파라미터 */
+export interface HealthCheckupRequest {
+    userName: string;
+    identity: string;
+    phoneNo: string;
+    loginType: string;
+    loginTypeLevel?: string;
+    authMethod?: string;
+    telecom?: string;
+    is2Way?: boolean;
+    twoWayInfo?: Record<string, unknown>;
+    simpleAuth?: string;
+    smsAuthNo?: string;
+    id?: string;
+}
+
+/** 건강검진결과 한눈에보기 */
+export interface HealthCheckupPreview {
+    resCheckupYear: string;
+    resCheckupDate: string;
+    resHeight: string;
+    resWeight: string;
+    resWaist: string;
+    resBMI: string;
+    resBloodPressure: string;
+    resFastingBloodSuger: string;
+    resHemoglobin: string;
+    resTotalCholesterol: string;
+    resHDLCholesterol: string;
+    resLDLCholesterol: string;
+    resTriglyceride: string;
+    resSerumCreatinine: string;
+    resGFR: string;
+    resAST: string;
+    resALT: string;
+    resyGPT: string;
+    resTBChestDisease: string;
+    resOsteoporosis: string;
+    resJudgement: string;
+    resOrganizationName: string;
+    resOpinion: string;
+}
+
+/** 건강나이 결과 */
+export interface HealthAgeResult {
+    resUserNm: string;
+    resGender: string;
+    commBirthDate: string;
+    resHeight: string;
+    resWeight: string;
+    resAge: string;
+    resChronologicalAge: string;
+    resCheckupDate: string;
+    resNote: string;
+    resNote1: string;
+    resChangeAfter: string;
+    resDetailList: Array<{
+        resType: string;
+        resState: string;
+        resRiskFactor: string;
+        resRecommendValue: string;
+    }>;
+}
+
+/** 뇌졸중/심뇌혈관 예측 결과 */
+export interface DiseaseRiskPrediction {
+    resCheckupDate: string;
+    resRiskGrade: string;
+    resRatio: string;
+    resDetailList: Array<{
+        resType: string;
+        resState: string;
+        resAverage: string;
+        resRecommendValue: string;
+        resRiskFactor?: string;
+        resProgressList?: Array<{ resYear: string; resAmount: string }>;
+    }>;
+    resCompareList: Array<{ resCheckupDate: string; resState: string }>;
+}
+
+/** 건강검진 API 공통 호출 */
+async function callHealthCheckupApi(
+    endpoint: string,
+    params: HealthCheckupRequest,
+    apiName: string
+): Promise<{ data: unknown; requires2Way?: boolean; twoWayData?: Record<string, unknown> }> {
+    const token = await getDemoAccessToken();
+    const isSmsLogin = params.loginType === '2';
+    const body: Record<string, unknown> = {
+        organization: '0002',
+        loginType: params.loginType,
+        loginTypeLevel: isSmsLogin ? '1' : (params.loginTypeLevel || ''),
+        identity: params.identity,
+        phoneNo: params.phoneNo,
+        userName: params.userName,
+        id: params.id || '',
+    };
+    if (isSmsLogin) {
+        body.authMethod = params.authMethod || '0';
+        body.telecom = params.telecom || '';
+        body.timeout = '170';
+        body.secureNoYN = '1';
+    } else {
+        body.telecom = params.telecom || '';
+    }
+    if (params.is2Way && params.twoWayInfo) {
+        Object.assign(body, params.twoWayInfo);
+        if (params.simpleAuth) body.simpleAuth = params.simpleAuth;
+        if (isSmsLogin && params.smsAuthNo) body.smsAuthNo = params.smsAuthNo;
+    }
+    console.log(`[CODEF] ${apiName} request:`, JSON.stringify(body, null, 2));
+    const res = await fetch(`${CODEF_DEMO_API_URL}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(body),
+    });
+    const data = await parseCodefResponse<{ result: { code: string; message: string }; data: unknown }>(res);
+    console.log(`[CODEF] ${apiName} response:`, data.result?.code, data.result?.message);
+    if (data.result?.code === 'CF-03002') {
+        return { data: null, requires2Way: true, twoWayData: data.data as Record<string, unknown> };
+    }
+    if (data.result?.code !== 'CF-00000') {
+        throw new Error(`${apiName} 실패: ${data.result?.code} ${data.result?.message}`);
+    }
+    return { data: data.data };
+}
+
+/** 건강검진결과 조회 */
+export async function fetchHealthCheckupResult(params: HealthCheckupRequest) {
+    return callHealthCheckupApi('/v1/kr/public/pp/nhis-health-checkup/result', params, '건강검진결과');
+}
+
+/** 건강나이알아보기 */
+export async function fetchHealthAge(params: HealthCheckupRequest) {
+    return callHealthCheckupApi('/v1/kr/public/pp/hi-nhis-list/review-health-age', params, '건강나이알아보기');
+}
+
+/** 뇌졸중 예측 */
+export async function fetchStrokePrediction(params: HealthCheckupRequest) {
+    return callHealthCheckupApi('/v1/kr/public/pp/hi-nhis-list/stroke', params, '뇌졸중예측');
+}
+
+/** 심뇌혈관 질환예측 */
+export async function fetchCardioPrediction(params: HealthCheckupRequest) {
+    return callHealthCheckupApi('/v1/kr/public/pp/hi-nhis-list/cardio-cerebrovascular', params, '심뇌혈관질환예측');
+}
