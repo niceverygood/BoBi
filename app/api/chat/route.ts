@@ -56,14 +56,18 @@ export async function POST(request: Request) {
             { role: 'user' as const, content: message },
         ];
 
-        // Claude API 호출
-        const prompt = messages.map(m =>
-            m.role === 'system' ? m.content :
-            m.role === 'user' ? `사용자: ${m.content}` :
-            `어시스턴트: ${m.content}`
-        ).join('\n\n');
+        // Claude API 호출 — 시스템 메시지는 별도로 전달, 대화만 프롬프트로
+        const prompt = messages
+            .filter(m => m.role !== 'system')
+            .map(m => m.role === 'user' ? `사용자: ${m.content}` : `어시스턴트: ${m.content}`)
+            .join('\n\n');
 
-        const reply = await callOpenAI({ prompt, maxTokens: 500, retries: 1 });
+        const reply = await callOpenAI({
+            prompt,
+            maxTokens: 500,
+            retries: 1,
+            systemMessage: SYSTEM_PROMPT,
+        });
 
         return NextResponse.json({ reply: reply.trim() });
     } catch (error) {
