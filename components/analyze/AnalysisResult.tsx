@@ -10,6 +10,7 @@ import type { AnalysisResult, AnalysisItem } from '@/types/analysis';
 import { getCategoryLabel } from '@/lib/utils/format';
 import { cn } from '@/lib/utils';
 import { getBodyPartIcon } from '@/lib/kcd/client-utils';
+import AnalysisSummaryVisual from './AnalysisSummaryVisual';
 
 type DisplayGroup = { type: 'single'; items: AnalysisItem[]; label: string } | { type: 'yearly'; items: AnalysisItem[]; label: string };
 
@@ -59,6 +60,9 @@ interface AnalysisResultProps {
 export default function AnalysisResultView({ result }: AnalysisResultProps) {
     return (
         <div className="space-y-6 animate-fade-in">
+            {/* 시각화 요약 (고객 친화적) */}
+            <AnalysisSummaryVisual result={result} />
+
             {/* Overall Summary */}
             <Card className="border-0 shadow-sm bg-gradient-to-br from-primary/5 to-primary/10">
                 <CardContent className="p-4 sm:p-6">
