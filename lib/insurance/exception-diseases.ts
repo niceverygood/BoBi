@@ -182,5 +182,48 @@ export function generateExceptionContext(
         context += `\n`;
     }
 
+    // 2026년 기준 예외질환 데이터 추가 매칭
+    try {
+        const { searchByDisease } = require('@/lib/insurance/exception-diseases-loader');
+        const matched2026: Array<{ insurer: string; disease: string; accidentLimit: string; periodCondition: string; hospitalization: string; restrictions: string }> = [];
+
+        for (const diag of customerDiagnoses) {
+            const results = searchByDisease(diag.name);
+            for (const r of results) {
+                if (!matched2026.some(m => m.insurer === r.insurer && m.disease === r.disease)) {
+                    matched2026.push(r);
+                }
+            }
+        }
+
+        if (matched2026.length > 0) {
+            context += `\n## 2026년 기준 초경증 예외질환 매칭 (통합 리스트)\n\n`;
+            context += `아래는 2026년 3월 기준 생보/손보 통합 예외질환 데이터에서 매칭된 결과입니다.\n\n`;
+
+            const byInsurer = new Map<string, typeof matched2026>();
+            for (const m of matched2026) {
+                if (!byInsurer.has(m.insurer)) byInsurer.set(m.insurer, []);
+                byInsurer.get(m.insurer)!.push(m);
+            }
+
+            for (const [insurer, diseases] of byInsurer) {
+                context += `### ${insurer} (2026 기준)\n`;
+                for (const d of diseases.slice(0, 10)) { // 보험사당 최대 10건
+                    context += `- **${d.disease}**`;
+                    if (d.accidentLimit) context += ` | 사고제한: ${d.accidentLimit}`;
+                    if (d.periodCondition) context += ` | 경과: ${d.periodCondition.substring(0, 80)}`;
+                    if (d.hospitalization) context += ` | 입원/수술: ${d.hospitalization.substring(0, 80)}`;
+                    context += `\n`;
+                }
+                if (diseases.length > 10) {
+                    context += `  ... 외 ${diseases.length - 10}건\n`;
+                }
+                context += `\n`;
+            }
+        }
+    } catch {
+        // 2026 데이터 로드 실패 시 무시
+    }
+
     return context;
 }
