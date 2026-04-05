@@ -53,6 +53,7 @@ function MedicalInfoContent() {
     const router = useRouter();
     const [step, setStep] = useState<Step>('form');
     const [loading, setLoading] = useState(false);
+    const [loadingPhase, setLoadingPhase] = useState('');
     const [error, setError] = useState<string | null>(null);
 
     // 폼 입력
@@ -133,6 +134,20 @@ function MedicalInfoContent() {
         ...extraFields,
     });
 
+    // 로딩 단계 자동 업데이트
+    const startLoadingPhases = () => {
+        setLoadingPhase('인증 요청 중...');
+        const timer = setInterval(() => {
+            setLoadingPhase(prev => {
+                if (prev === '인증 요청 중...') return '본인 인증 확인 중...';
+                if (prev === '본인 인증 확인 중...') return '심평원 데이터 수집 중...';
+                if (prev === '심평원 데이터 수집 중...') return '진료 기록 분석 중...';
+                return prev;
+            });
+        }, 5000);
+        return timer;
+    };
+
     // 제출
     const handleSubmit = async () => {
         if (!userName.trim() || !identity.trim() || !phoneNo.trim()) {
@@ -148,6 +163,7 @@ function MedicalInfoContent() {
 
         setLoading(true);
         setError(null);
+        const phaseTimer = startLoadingPhases();
 
         try {
             const apiUrl = '/api/codef/medical-info';
@@ -186,7 +202,9 @@ function MedicalInfoContent() {
         } catch (err) {
             setError((err as Error).message);
         } finally {
+            clearInterval(phaseTimer);
             setLoading(false);
+            setLoadingPhase('');
         }
     };
 
@@ -588,7 +606,7 @@ function MedicalInfoContent() {
                     {loading ? (
                         <>
                             <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                            조회 요청 중...
+                            {loadingPhase || '조회 요청 중...'}
                         </>
                     ) : (
                         <>
