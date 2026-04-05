@@ -1,7 +1,14 @@
 // app/api/chat/support/route.ts
-// 상담사 연결: 메시지를 DB에 저장하여 관리자가 실시간으로 응대
+// 상담사 연결: 메시지를 DB에 저장 (service role 사용 — RLS 우회)
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+
+async function getServiceSupabase() {
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!serviceKey) throw new Error('SERVICE_ROLE_KEY 미설정');
+    const { createClient: createAdminClient } = await import('@supabase/supabase-js');
+    return createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey);
+}
 
 export async function POST(request: Request) {
     try {
@@ -18,8 +25,8 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: '메시지를 입력해주세요.' }, { status: 400 });
         }
 
-        // support_chats 테이블에 저장
-        const { data, error } = await supabase
+        const svcSupabase = await getServiceSupabase();
+        const { data, error } = await svcSupabase
             .from('support_chats')
             .insert({
                 session_id: sessionId || crypto.randomUUID(),
@@ -44,7 +51,6 @@ export async function POST(request: Request) {
     }
 }
 
-// GET: 특정 세션의 메시지 조회
 export async function GET(request: Request) {
     try {
         const supabase = await createClient();
@@ -57,9 +63,10 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const sessionId = searchParams.get('sessionId');
 
+        const svcSupabase = await getServiceSupabase();
+
         if (!sessionId) {
-            // 내 세션 목록 조회
-            const { data } = await supabase
+            const { data } = await svcSupabase
                 .from('support_chats')
                 .select('session_id, created_at')
                 .eq('user_id', user.id)
@@ -69,8 +76,7 @@ export async function GET(request: Request) {
             return NextResponse.json({ sessions });
         }
 
-        // 특정 세션 메시지 조회
-        const { data } = await supabase
+        const { data } = await svcSupabase
             .from('support_chats')
             .select('*')
             .eq('session_id', sessionId)
