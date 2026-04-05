@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, Loader2, Sparkles } from 'lucide-react';
 import StepIndicator from '@/components/common/StepIndicator';
 import ProductCard from '@/components/products/ProductCard';
+import VisualProductCard from '@/components/products/VisualProductCard';
+import EligibilitySummary from '@/components/products/EligibilitySummary';
 import { apiFetch } from '@/lib/api/client';
 import ComparisonTable from '@/components/products/ComparisonTable';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
@@ -126,10 +128,13 @@ function ProductsContent() {
 
             {result && (
                 <>
-                    {/* Product Cards */}
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {/* 가입 가능 여부 요약 (도넛 차트) */}
+                    <EligibilitySummary products={result.products} />
+
+                    {/* 시각적 상품 카드 */}
+                    <div className="grid gap-4 md:grid-cols-2">
                         {result.products.map((product, index) => (
-                            <ProductCard key={index} product={product} />
+                            <VisualProductCard key={index} product={product} />
                         ))}
                     </div>
 
