@@ -93,6 +93,7 @@ export default function PrivacyPage() {
                         <ul className="list-disc pl-5 space-y-2 text-muted-foreground">
                             <li><strong>회원 정보:</strong> 회원 탈퇴 시까지 (탈퇴 후 즉시 파기)</li>
                             <li><strong>분석 데이터(PDF, 분석 결과):</strong> 플랜별 보관 기간에 따름 (무료 7일, 베이직 30일, 프로 이상 무제한)</li>
+                            <li><strong>설계사 공유 PDF/분석 결과:</strong> 설계사 계정 유지 기간 동안 보관하며, 설계사 탈퇴 또는 고객의 삭제 요청 시 즉시 파기합니다.</li>
                             <li><strong>결제 기록:</strong> 「전자상거래 등에서의 소비자 보호에 관한 법률」에 따라 5년 보관</li>
                             <li><strong>접속 로그:</strong> 「통신비밀보호법」에 따라 3개월 보관</li>
                         </ul>
@@ -153,6 +154,16 @@ export default function PrivacyPage() {
                             <li>AI 분석을 위해 건강정보는 AI 서비스 제공업체(OpenRouter/Anthropic, 미국)에 전송됩니다. 전송 시 이용자의 이름, 주민등록번호 등 직접 식별 정보는 포함되지 않으며, 진단명과 진료내역만 전송됩니다.</li>
                             <li>주민등록번호는 심평원/건강보험공단 본인인증 목적으로만 CODEF API에 전송되며, 보비 서버에 저장되지 않습니다.</li>
                             <li>이용자는 건강정보 수집·이용 동의를 언제든 철회할 수 있으며, 철회 시 관련 데이터는 즉시 삭제됩니다.</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h2 className="text-xl font-bold mb-3">제5조의3 (분석 결과의 설계사 공유)</h2>
+                        <ul className="list-decimal pl-5 space-y-2 text-muted-foreground">
+                            <li>고객의 진료정보를 기반으로 생성된 분석 결과(고지사항 분석, 상품 판단, 질병 위험도 리포트, 가상 사고 영수증 등) 및 PDF 리포트는 해당 고객을 담당하는 보험설계사와 공유될 수 있습니다.</li>
+                            <li>보험설계사는 공유받은 분석 결과를 <strong>보험 상담 목적으로만</strong> 활용하여야 하며, 이를 제3자에게 제공하거나 상담 외 목적으로 사용할 수 없습니다.</li>
+                            <li>설계사가 공유받은 분석 결과를 목적 외로 사용하거나 제3자에게 제공하여 발생하는 분쟁 및 법적 책임은 해당 설계사에게 귀속됩니다.</li>
+                            <li>고객은 분석 결과의 설계사 공유를 거부할 수 있으며, 거부 시 해당 데이터는 설계사에게 제공되지 않습니다.</li>
                         </ul>
                     </section>
 

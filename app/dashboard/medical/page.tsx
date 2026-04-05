@@ -616,6 +616,7 @@ function MedicalInfoContent() {
                         <div className="space-y-1">
                             <p>입력하신 개인정보(이름, 주민등록번호, 전화번호)는 심평원 본인인증에만 사용되며 서버에 저장되지 않습니다.</p>
                             <p>단, 분석 결과(진단명, 진료내역 등)는 서비스 제공을 위해 암호화하여 저장되며, AI 분석을 위해 제3자(OpenRouter/Claude)에 전송됩니다.</p>
+                            <p>조회된 진료정보를 바탕으로 생성된 분석 결과는 담당 보험설계사와 공유되며 보험 상담 목적으로만 활용됩니다.</p>
                         </div>
                     </div>
                     <label className="flex items-center gap-2 cursor-pointer">
