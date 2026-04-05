@@ -62,8 +62,12 @@ export async function GET() {
             const users = usersData.users.map((u) => ({
                 id: u.id,
                 email: u.email || '',
+                phone: u.phone || u.user_metadata?.phone || '',
                 name: u.user_metadata?.name || '',
                 company: u.user_metadata?.company || '',
+                suspended: u.user_metadata?.suspended === true,
+                suspend_type: u.user_metadata?.suspend_type || null,
+                suspended_reason: u.user_metadata?.suspended_reason || '',
                 created_at: u.created_at,
                 plan_slug: subMap.get(u.id)?.slug || 'free',
                 plan_name: subMap.get(u.id)?.name || '무료',
@@ -74,14 +78,18 @@ export async function GET() {
         // Fallback: profiles table
         const { data: profiles } = await supabase
             .from('profiles')
-            .select('id, email, name, company, plan, analysis_count, created_at')
+            .select('id, email, name, company, phone, plan, analysis_count, created_at')
             .order('created_at', { ascending: false });
 
         const users = (profiles || []).map((p) => ({
             id: p.id,
             email: p.email || '',
+            phone: p.phone || '',
             name: p.name || '',
             company: p.company || '',
+            suspended: false,
+            suspend_type: null,
+            suspended_reason: '',
             created_at: p.created_at,
             plan_slug: subMap.get(p.id)?.slug || p.plan || 'free',
             plan_name: subMap.get(p.id)?.name || '무료',
@@ -92,8 +100,12 @@ export async function GET() {
             users.push({
                 id: user.id,
                 email: user.email || '',
+                phone: user.phone || user.user_metadata?.phone || '',
                 name: user.user_metadata?.name || '',
                 company: user.user_metadata?.company || '',
+                suspended: user.user_metadata?.suspended === true,
+                suspend_type: user.user_metadata?.suspend_type || null,
+                suspended_reason: user.user_metadata?.suspended_reason || '',
                 created_at: user.created_at || new Date().toISOString(),
                 plan_slug: subMap.get(user.id)?.slug || 'free',
                 plan_name: subMap.get(user.id)?.name || '무료',

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
     Shield, Users, FileText, CreditCard, Activity, BarChart3,
     TrendingUp, AlertCircle, Search, CheckCircle2, ArrowUpDown,
@@ -15,6 +16,7 @@ import { useAdmin } from '@/hooks/useAdmin';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
 import MobileNav from '@/components/layout/MobileNav';
+import { apiFetch } from '@/lib/api/client';
 
 interface AdminStats {
     totalUsers: number;
@@ -26,8 +28,12 @@ interface AdminStats {
 interface AdminUser {
     id: string;
     email: string;
+    phone: string;
     name: string;
     company: string;
+    suspended: boolean;
+    suspend_type: 'shadow' | 'official' | null;
+    suspended_reason: string;
     created_at: string;
     plan_slug: string;
     plan_name: string;
@@ -60,14 +66,57 @@ export default function AdminPage() {
     const [sortAsc, setSortAsc] = useState(false);
 
     // Plan change
-    const [changingPlan, setChangingPlan] = useState<string | null>(null); // user ID being changed
+    const [changingPlan, setChangingPlan] = useState<string | null>(null);
     const [planMessage, setPlanMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    // Suspend user
+    const [suspendingUser, setSuspendingUser] = useState<string | null>(null);
+
+    const handleSuspend = async (targetUser: AdminUser, suspendType: 'shadow' | 'official' | null) => {
+        const labels = { shadow: '쉐도우 정지', official: '공식 정지' };
+        const isSuspending = suspendType !== null;
+
+        let reason = '';
+        if (isSuspending) {
+            const defaultReason = suspendType === 'official' ? '이용약관 위반' : '관리자에 의한 이용정지';
+            const input = prompt(
+                `${targetUser.name || targetUser.email} 유저를 ${labels[suspendType]} 처리합니다.\n` +
+                (suspendType === 'shadow' ? '(본인에게 정지 사실이 노출되지 않습니다)\n' : '(본인에게 정지 사유가 고지됩니다)\n') +
+                '사유를 입력해주세요:',
+                defaultReason,
+            );
+            if (input === null) return;
+            reason = input;
+        } else {
+            if (!confirm(`${targetUser.name || targetUser.email} 유저의 정지를 해제하시겠습니까?`)) return;
+        }
+
+        setSuspendingUser(targetUser.id);
+        setPlanMessage(null);
+        try {
+            await apiFetch('/api/admin/suspend-user', {
+                method: 'POST',
+                body: { targetUserId: targetUser.id, suspendType, reason },
+            });
+            setUsers(prev => prev.map(u =>
+                u.id === targetUser.id
+                    ? { ...u, suspended: isSuspending, suspend_type: suspendType, suspended_reason: reason }
+                    : u
+            ));
+            setPlanMessage({
+                type: 'success',
+                text: `${targetUser.name || targetUser.email}: ${isSuspending ? labels[suspendType!] : '정지 해제'} 완료`,
+            });
+        } catch (err) {
+            setPlanMessage({ type: 'error', text: (err as Error).message });
+        } finally {
+            setSuspendingUser(null);
+        }
+    };
 
     const fetchStats = useCallback(async () => {
         try {
-            const res = await fetch('/api/admin/stats');
-            if (!res.ok) throw new Error('Failed to fetch stats');
-            const data = await res.json();
+            const data = await apiFetch<AdminStats>('/api/admin/stats');
             setStats(data);
         } catch (err) {
             setError((err as Error).message);
@@ -78,9 +127,7 @@ export default function AdminPage() {
 
     const fetchUsers = useCallback(async () => {
         try {
-            const res = await fetch('/api/admin/users');
-            if (!res.ok) throw new Error('Failed to fetch users');
-            const data = await res.json();
+            const data = await apiFetch<{ users: AdminUser[] }>('/api/admin/users');
             setUsers(data.users || []);
         } catch (err) {
             console.error('Failed to load users:', err);
@@ -106,13 +153,10 @@ export default function AdminPage() {
         setChangingPlan(targetUserId);
         setPlanMessage(null);
         try {
-            const res = await fetch('/api/admin/update-plan', {
+            const data = await apiFetch<{ message: string }>('/api/admin/update-plan', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ targetEmail, planSlug: newPlan }),
+                body: { targetEmail, planSlug: newPlan },
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
             setPlanMessage({ type: 'success', text: data.message });
             // Update local state
             setUsers((prev) =>
@@ -146,7 +190,9 @@ export default function AdminPage() {
                 (u) =>
                     u.email.toLowerCase().includes(q) ||
                     u.name.toLowerCase().includes(q) ||
-                    u.company.toLowerCase().includes(q)
+                    u.company.toLowerCase().includes(q) ||
+                    u.id.toLowerCase().includes(q) ||
+                    (u.phone && u.phone.replace(/-/g, '').includes(q.replace(/-/g, '')))
             );
         }
         return [...filtered].sort((a, b) => {
@@ -275,7 +321,7 @@ export default function AdminPage() {
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                     <input
                                         type="text"
-                                        placeholder="이메일, 이름, 소속 검색..."
+                                        placeholder="이메일, 이름, 소속, UID, 전화번호 검색..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                         className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
@@ -338,9 +384,24 @@ export default function AdminPage() {
                                             {/* Info */}
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2">
-                                                    <p className="text-sm font-medium truncate">
+                                                    <p className={`text-sm font-medium truncate ${u.suspended ? 'line-through text-muted-foreground' : ''}`}>
                                                         {u.name || '(이름 없음)'}
                                                     </p>
+                                                    {u.suspended && u.suspend_type === 'shadow' && (
+                                                        <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200">
+                                                            쉐도우
+                                                        </Badge>
+                                                    )}
+                                                    {u.suspended && u.suspend_type === 'official' && (
+                                                        <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                                                            공식정지
+                                                        </Badge>
+                                                    )}
+                                                    {u.suspended && !u.suspend_type && (
+                                                        <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                                                            정지됨
+                                                        </Badge>
+                                                    )}
                                                     {u.company && (
                                                         <span className="text-xs text-muted-foreground hidden sm:inline">
                                                             {u.company}
@@ -348,11 +409,53 @@ export default function AdminPage() {
                                                     )}
                                                 </div>
                                                 <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                                                <p className="text-[10px] text-muted-foreground/60 truncate font-mono">
+                                                    {u.id.slice(0, 8)}...{u.phone ? ` | ${u.phone}` : ''}
+                                                    {u.suspended && u.suspended_reason ? ` | 사유: ${u.suspended_reason}` : ''}
+                                                </p>
                                             </div>
 
                                             {/* Date */}
                                             <div className="hidden md:block text-xs text-muted-foreground whitespace-nowrap">
                                                 {new Date(u.created_at).toLocaleDateString('ko-KR')}
+                                            </div>
+
+                                            {/* Suspend Buttons */}
+                                            <div className="flex gap-1 shrink-0">
+                                                {u.suspended ? (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="text-[11px] h-7 px-2 border-green-300 text-green-700 hover:bg-green-50"
+                                                        disabled={suspendingUser === u.id}
+                                                        onClick={() => handleSuspend(u, null)}
+                                                    >
+                                                        {suspendingUser === u.id ? '...' : '해제'}
+                                                    </Button>
+                                                ) : (
+                                                    <>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="text-[11px] h-7 px-1.5 border-amber-300 text-amber-700 hover:bg-amber-50"
+                                                            disabled={suspendingUser === u.id}
+                                                            onClick={() => handleSuspend(u, 'shadow')}
+                                                            title="본인이 정지된 걸 모름"
+                                                        >
+                                                            {suspendingUser === u.id ? '...' : '쉐도우'}
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="destructive"
+                                                            className="text-[11px] h-7 px-1.5"
+                                                            disabled={suspendingUser === u.id}
+                                                            onClick={() => handleSuspend(u, 'official')}
+                                                            title="정지 사유가 본인에게 고지됨"
+                                                        >
+                                                            {suspendingUser === u.id ? '...' : '공식정지'}
+                                                        </Button>
+                                                    </>
+                                                )}
                                             </div>
 
                                             {/* Plan Badge */}
@@ -386,6 +489,26 @@ export default function AdminPage() {
                         </CardContent>
                     </Card>
                     )}
+
+                    {/* 상담 관리 바로가기 */}
+                    <Card className="border-0 shadow-md mb-8">
+                        <CardContent className="p-5">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                                        <Users className="w-5 h-5 text-amber-600" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-sm">고객 상담 관리</p>
+                                        <p className="text-xs text-muted-foreground">실시간 상담 요청 확인 및 응대</p>
+                                    </div>
+                                </div>
+                                <Link href="/admin/support">
+                                    <Button size="sm">상담 관리</Button>
+                                </Link>
+                            </div>
+                        </CardContent>
+                    </Card>
 
                     {/* Sub Admin Management - 총괄관리자만 */}
                     {isAdmin && <SubAdminManager />}
@@ -469,9 +592,7 @@ function SubAdminManager() {
 
     const fetchSubAdmins = useCallback(async () => {
         try {
-            const res = await fetch('/api/admin/sub-admins');
-            if (!res.ok) throw new Error('Failed');
-            const data = await res.json();
+            const data = await apiFetch<{ subAdmins: SubAdmin[] }>('/api/admin/sub-admins');
             setSubAdmins(data.subAdmins || []);
         } catch {
             console.error('Failed to fetch sub-admins');
@@ -483,9 +604,7 @@ function SubAdminManager() {
     // 가입자 목록 불러오기
     const fetchUsers = useCallback(async () => {
         try {
-            const res = await fetch('/api/admin/users');
-            if (!res.ok) throw new Error('Failed');
-            const data = await res.json();
+            const data = await apiFetch<{ users: AdminUser[] }>('/api/admin/users');
             setAllUsers(data.users || []);
         } catch {
             console.error('Failed to fetch users');
@@ -538,18 +657,15 @@ function SubAdminManager() {
         setAdding(true);
         setMessage(null);
         try {
-            const res = await fetch('/api/admin/sub-admins', {
+            await apiFetch('/api/admin/sub-admins', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+                body: {
                     email: newEmail,
                     kakao_id: newKakaoId || null,
                     name: newName || null,
                     note: newNote,
-                }),
+                },
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
             setMessage({ type: 'success', text: `"${newEmail}" 중간관리자로 등록되었습니다.` });
             setNewEmail('');
             setNewKakaoId('');
@@ -568,12 +684,10 @@ function SubAdminManager() {
 
     const toggleActive = async (id: string, currentActive: boolean) => {
         try {
-            const res = await fetch('/api/admin/sub-admins', {
+            await apiFetch('/api/admin/sub-admins', {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, active: !currentActive }),
+                body: { id, active: !currentActive },
             });
-            if (!res.ok) throw new Error('Failed');
             setSubAdmins(prev => prev.map(s => s.id === id ? { ...s, active: !currentActive } : s));
         } catch {
             setMessage({ type: 'error', text: '상태 변경 실패' });
@@ -583,8 +697,7 @@ function SubAdminManager() {
     const handleDelete = async (id: string, email: string) => {
         if (!confirm(`"${email}" 중간관리자를 삭제하시겠습니까?`)) return;
         try {
-            const res = await fetch(`/api/admin/sub-admins?id=${id}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error('Failed');
+            await apiFetch(`/api/admin/sub-admins?id=${id}`, { method: 'DELETE' });
             setSubAdmins(prev => prev.filter(s => s.id !== id));
             setMessage({ type: 'success', text: `"${email}" 삭제 완료` });
         } catch {
@@ -826,9 +939,7 @@ function PromoCodeManager() {
 
     const fetchCodes = useCallback(async () => {
         try {
-            const res = await fetch('/api/admin/promo-codes');
-            if (!res.ok) throw new Error('Failed');
-            const data = await res.json();
+            const data = await apiFetch<{ codes: PromoCode[] }>('/api/admin/promo-codes');
             setCodes(data.codes || []);
         } catch {
             console.error('Failed to fetch promo codes');
@@ -849,10 +960,9 @@ function PromoCodeManager() {
         setCreating(true);
         setMessage(null);
         try {
-            const res = await fetch('/api/admin/promo-codes', {
+            await apiFetch('/api/admin/promo-codes', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+                body: {
                     code: newCode,
                     description: newDesc,
                     plan_slug: newPlan,
@@ -861,10 +971,8 @@ function PromoCodeManager() {
                     price_override: newDiscountType === 'price_override' ? newPrice : 0,
                     duration_months: newDuration,
                     max_uses: newMaxUses,
-                }),
+                },
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
             setMessage({ type: 'success', text: `코드 "${newCode.toUpperCase()}" 생성 완료!` });
             setNewCode('');
             setNewDesc('');
@@ -879,12 +987,10 @@ function PromoCodeManager() {
 
     const toggleActive = async (id: string, currentActive: boolean) => {
         try {
-            const res = await fetch('/api/admin/promo-codes', {
+            await apiFetch('/api/admin/promo-codes', {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, active: !currentActive }),
+                body: { id, active: !currentActive },
             });
-            if (!res.ok) throw new Error('Failed');
             setCodes(prev => prev.map(c => c.id === id ? { ...c, active: !currentActive } : c));
         } catch {
             setMessage({ type: 'error', text: '상태 변경 실패' });
@@ -894,8 +1000,7 @@ function PromoCodeManager() {
     const deleteCode = async (id: string, code: string) => {
         if (!confirm(`"${code}" 코드를 삭제하시겠습니까?`)) return;
         try {
-            const res = await fetch(`/api/admin/promo-codes?id=${id}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error('Failed');
+            await apiFetch(`/api/admin/promo-codes?id=${id}`, { method: 'DELETE' });
             setCodes(prev => prev.filter(c => c.id !== id));
             setMessage({ type: 'success', text: `"${code}" 삭제 완료` });
         } catch {
@@ -1173,9 +1278,7 @@ function PromoSubCleanup() {
 
     const fetchPromoSubs = useCallback(async () => {
         try {
-            const res = await fetch('/api/admin/cleanup-promo-subs');
-            if (!res.ok) throw new Error('Failed');
-            const data = await res.json();
+            const data = await apiFetch<{ subscriptions: PromoSubInfo[] }>('/api/admin/cleanup-promo-subs');
             setPromoSubs(data.subscriptions || []);
         } catch {
             console.error('Failed to fetch promo subscriptions');
@@ -1194,13 +1297,10 @@ function PromoSubCleanup() {
         setCleaning(true);
         setMessage(null);
         try {
-            const res = await fetch('/api/admin/cleanup-promo-subs', {
+            const data = await apiFetch<{ message: string }>('/api/admin/cleanup-promo-subs', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({}),
+                body: {},
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
             setMessage({ type: 'success', text: data.message });
             fetchPromoSubs(); // 새로고침
         } catch (err) {
@@ -1294,8 +1394,7 @@ function PaymentHistory() {
     useEffect(() => {
         (async () => {
             try {
-                const res = await fetch('/api/admin/payments');
-                const data = await res.json();
+                const data = await apiFetch<{ payments: Record<string, unknown>[]; subscriptions: Record<string, unknown>[] }>('/api/admin/payments');
                 setPayments(data.payments || []);
                 setSubs(data.subscriptions || []);
             } catch { /* */ }

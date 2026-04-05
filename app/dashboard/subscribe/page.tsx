@@ -10,6 +10,7 @@ import { Check, Loader2, ArrowLeft, CreditCard, Shield, Zap, Crown, Apple, Smart
 import { PLAN_LIMITS, type PlanSlug } from '@/lib/utils/constants';
 import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
+import { apiFetch } from '@/lib/api/client';
 import Link from 'next/link';
 import { getPlatform, isNative, type AppPlatform } from '@/lib/iap/platform';
 
@@ -103,28 +104,24 @@ function SubscribeContent() {
             (async () => {
                 setCouponLoading(true);
                 try {
-                    const res = await fetch('/api/coupon/validate', {
+                    const data = await apiFetch<{ coupon: { id: string; code: string; description: string; upgradeToPlan?: string }; pricing: { discountLabel: string; discountAmount: number; finalPrice: number }; upgradePlan?: { name: string } }>('/api/coupon/validate', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
+                        body: {
                             code: couponParam,
                             planSlug: selectedPlan,
                             billingCycle,
-                        }),
+                        },
                     });
-                    const data = await res.json();
-                    if (res.ok) {
-                        setAppliedCoupon({
-                            id: data.coupon.id,
-                            code: data.coupon.code,
-                            description: data.coupon.description,
-                            discountLabel: data.pricing.discountLabel,
-                            discountAmount: data.pricing.discountAmount,
-                            finalPrice: data.pricing.finalPrice,
-                            upgradeToPlan: data.coupon.upgradeToPlan || null,
-                            upgradePlanName: data.upgradePlan?.name || null,
-                        });
-                    }
+                    setAppliedCoupon({
+                        id: data.coupon.id,
+                        code: data.coupon.code,
+                        description: data.coupon.description,
+                        discountLabel: data.pricing.discountLabel,
+                        discountAmount: data.pricing.discountAmount,
+                        finalPrice: data.pricing.finalPrice,
+                        upgradeToPlan: data.coupon.upgradeToPlan || null,
+                        upgradePlanName: data.upgradePlan?.name || null,
+                    });
                 } catch { /* ignore */ } finally {
                     setCouponLoading(false);
                 }
@@ -151,20 +148,14 @@ function SubscribeContent() {
         setCouponError(null);
 
         try {
-            const res = await fetch('/api/coupon/validate', {
+            const data = await apiFetch<{ coupon: { id: string; code: string; description: string; upgradeToPlan?: string }; pricing: { discountLabel: string; discountAmount: number; finalPrice: number }; upgradePlan?: { name: string } }>('/api/coupon/validate', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+                body: {
                     code: couponCode,
                     planSlug: selectedPlan,
                     billingCycle,
-                }),
+                },
             });
-            const data = await res.json();
-            if (!res.ok) {
-                setCouponError(data.error || '유효하지 않은 쿠폰입니다.');
-                return;
-            }
             setAppliedCoupon({
                 id: data.coupon.id,
                 code: data.coupon.code,
@@ -175,8 +166,8 @@ function SubscribeContent() {
                 upgradeToPlan: data.coupon.upgradeToPlan || null,
                 upgradePlanName: data.upgradePlan?.name || null,
             });
-        } catch {
-            setCouponError('쿠폰 검증 중 오류가 발생했습니다.');
+        } catch (err) {
+            setCouponError((err as Error).message || '쿠폰 검증 중 오류가 발생했습니다.');
         } finally {
             setCouponLoading(false);
         }
@@ -227,24 +218,15 @@ function SubscribeContent() {
             });
 
             // 서버에 영수증 검증 요청
-            const res = await fetch('/api/iap/verify', {
+            await apiFetch('/api/iap/verify', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+                body: {
                     platform,
                     receipt: result.receipt,
                     productId: `kr.bobi.app.${selectedPlan}.${billingCycle}`,
                     purchaseToken: result.transactionId || result.receipt,
-                }),
+                },
             });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                setError(data.error || '구독 등록에 실패했습니다.');
-                setLoading(false);
-                return;
-            }
 
             setSuccess(true);
         } catch (err) {
@@ -261,24 +243,15 @@ function SubscribeContent() {
         setError(null);
 
         try {
-            const res = await fetch('/api/kakaopay/ready', {
+            const data = await apiFetch<{ mobileRedirectUrl: string; redirectUrl: string }>('/api/kakaopay/ready', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+                body: {
                     planSlug: selectedPlan,
                     billingCycle,
                     ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
                     ...(appliedCoupon?.upgradeToPlan ? { upgradePlanSlug: appliedCoupon.upgradeToPlan } : {}),
-                }),
+                },
             });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                setError(data.error || '카카오페이 결제 준비에 실패했습니다.');
-                setLoading(false);
-                return;
-            }
 
             // 카카오페이 결제 페이지로 리다이렉트
             const isMobile = /Mobile|Android|iPhone/i.test(navigator.userAgent);
@@ -334,26 +307,17 @@ function SubscribeContent() {
                 return;
             }
 
-            const res = await fetch('/api/billing/issue', {
+            await apiFetch('/api/billing/issue', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+                body: {
                     billingKey: response.billingKey,
                     planSlug: selectedPlan,
                     billingCycle,
                     paymentMethod: 'card',
                     ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
                     ...(appliedCoupon?.upgradeToPlan ? { upgradePlanSlug: appliedCoupon.upgradeToPlan } : {}),
-                }),
+                },
             });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                setError(data.error || '구독 등록에 실패했습니다.');
-                setLoading(false);
-                return;
-            }
 
             setSuccess(true);
         } catch (err) {
@@ -375,23 +339,14 @@ function SubscribeContent() {
                 return;
             }
 
-            const res = await fetch('/api/coupon/subscribe', {
+            await apiFetch('/api/coupon/subscribe', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+                body: {
                     couponCode: appliedCoupon.code,
                     planSlug: appliedCoupon.upgradeToPlan || selectedPlan,
                     billingCycle,
-                }),
+                },
             });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                setError(data.error || '쿠폰 구독 처리에 실패했습니다.');
-                setLoading(false);
-                return;
-            }
 
             setSuccess(true);
         } catch (err) {

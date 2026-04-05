@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, Loader2, Lock, Sparkles, Coins, Zap } from 'lucide-react';
+import { ArrowRight, Loader2, Lock, Sparkles, Coins, Zap, HeartPulse } from 'lucide-react';
 import StepIndicator from '@/components/common/StepIndicator';
 import PdfUploader from '@/components/analyze/PdfUploader';
 import AnalysisResultView from '@/components/analyze/AnalysisResult';
@@ -12,6 +12,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { useSubscription } from '@/hooks/useSubscription';
 import { createClient } from '@/lib/supabase/client';
 import { CREDIT_PACKS } from '@/lib/utils/constants';
+import { apiFetch } from '@/lib/api/client';
 import type { AnalysisResult } from '@/types/analysis';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
@@ -66,18 +67,15 @@ function AnalyzeContent() {
                 }
 
                 // 서버에 영수증 검증 + 크레딧 충전 요청
-                const res = await fetch('/api/credits/purchase', {
+                await apiFetch('/api/credits/purchase', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                    body: {
                         packId,
                         platform,
                         receipt: iapResult.receipt,
                         transactionId: iapResult.transactionId,
-                    }),
+                    },
                 });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || '크레딧 충전 실패');
 
             } else {
                 // ── 웹 결제 (PortOne + KG이니시스) ──
@@ -106,17 +104,14 @@ function AnalyzeContent() {
                 }
 
                 // 서버에 결제 확인 + 크레딧 충전 요청
-                const res = await fetch('/api/credits/purchase', {
+                await apiFetch('/api/credits/purchase', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                    body: {
                         packId,
                         paymentId,
                         platform: 'web',
-                    }),
+                    },
                 });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || '크레딧 충전 실패');
             }
 
             refresh(); // 크레딧 잔량 새로고침
@@ -186,19 +181,10 @@ function AnalyzeContent() {
         setError(null);
 
         try {
-            const response = await fetch('/api/analyze', {
+            const data = await apiFetch<{ result: AnalysisResult; analysisId: string }>('/api/analyze', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    uploadIds: successFiles.map((f) => f.id),
-                }),
+                body: { uploadIds: successFiles.map((f) => f.id) },
             });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || '분석에 실패했습니다.');
-            }
 
             // ⚠️ 클라이언트 측에서도 날짜 교정 적용 (이중 방어)
             let result = data.result as AnalysisResult;
@@ -214,7 +200,11 @@ function AnalyzeContent() {
             setAnalysisId(data.analysisId);
             refresh(); // Refresh usage count
         } catch (err) {
-            setError((err as Error).message);
+            console.error('[Analyze] Error:', err);
+            const msg = (err as Error).message || '알 수 없는 오류';
+            // 디버깅: uploadIds 로깅
+            console.error('[Analyze] uploadIds:', successFiles.map((f) => f.id));
+            setError(msg);
         } finally {
             setAnalyzing(false);
         }
@@ -448,7 +438,13 @@ function AnalyzeContent() {
                 <>
                     <AnalysisResultView result={analysisResult} />
 
-                    <div className="flex justify-end gap-3">
+                    <div className="flex justify-end gap-3 flex-wrap">
+                        <Link href={`/dashboard/risk-report${analysisId ? `?analysisId=${analysisId}` : ''}`}>
+                            <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50">
+                                <HeartPulse className="w-4 h-4 mr-2" />
+                                질병 위험도 리포트
+                            </Button>
+                        </Link>
                         {!isFeatureEnabled('product_match') && (
                             <Link href="/pricing">
                                 <Button variant="outline" size="sm" className="text-sm">

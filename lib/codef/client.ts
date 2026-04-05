@@ -651,7 +651,7 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
         body.authMethod = params.authMethod || '0';
         body.telecom = params.telecom || '';
         body.timeout = '170';
-        body.secureNoYN = '0';
+        body.secureNoYN = '1';
     } else {
         body.telecom = params.telecom || '';
     }
@@ -790,7 +790,7 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
         body.authMethod = params.authMethod || '0';
         body.telecom = params.telecom || '';
         body.timeout = '170';
-        body.secureNoYN = '0';
+        body.secureNoYN = '1';
     } else {
         body.telecom = params.telecom || '';
     }
@@ -906,7 +906,7 @@ export async function fetchMyMedicine(params: HiraMedicalRequest): Promise<{
         body.loginTypeLevel = '1';
         body.authMethod = params.authMethod || '0';
         body.timeout = '170';
-        body.secureNoYN = '0';
+        body.secureNoYN = '1';
     }
 
     if (params.is2Way && params.twoWayInfo) {

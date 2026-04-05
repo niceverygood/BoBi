@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { structureExtractedText } from '@/lib/pdf/extractor';
 
-export const maxDuration = 120; // Each batch is small now
+export const maxDuration = 300; // Each batch is small now
 
 type PdfFileType = 'basic_info' | 'prescription' | 'detail_treatment' | 'unknown';
 

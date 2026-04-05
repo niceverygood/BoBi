@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, Loader2, Sparkles } from 'lucide-react';
 import StepIndicator from '@/components/common/StepIndicator';
 import ProductCard from '@/components/products/ProductCard';
+import { apiFetch } from '@/lib/api/client';
 import ComparisonTable from '@/components/products/ComparisonTable';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import EmptyState from '@/components/common/EmptyState';
@@ -63,22 +64,10 @@ function ProductsContent() {
         setError(null);
 
         try {
-            const response = await fetch('/api/products', {
+            const data = await apiFetch<{ products: ProductResult }>('/api/products', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ analysisId }),
+                body: { analysisId },
             });
-
-            let data;
-            try {
-                data = await response.json();
-            } catch {
-                throw new Error('서버 응답을 파싱할 수 없습니다. 잠시 후 다시 시도해주세요.');
-            }
-
-            if (!response.ok) {
-                throw new Error(data.error || '상품 판단에 실패했습니다.');
-            }
 
             setResult(data.products);
         } catch (err) {

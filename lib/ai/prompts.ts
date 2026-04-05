@@ -702,3 +702,69 @@ export const REMODELING_PROPOSAL_PROMPT = `
 {POLICY_DATA}
 `;
 
+// ═══════════════════════════════════════════════════════════════
+// STEP 4: 질병 위험도 리포트
+// ═══════════════════════════════════════════════════════════════
+export const RISK_REPORT_PROMPT = `당신은 의학 통계 전문가입니다. 환자의 병력 데이터와 사전 검증된 의학 통계를 기반으로 질병 위험도 리포트를 작성합니다.
+
+## 오늘 날짜: {TODAY_DATE}
+
+## 환자 병력 요약 (심평원 데이터 기반 AI 분석 결과)
+{MEDICAL_SUMMARY}
+
+## 매칭된 질환 연관 데이터 (검증된 의학 통계)
+{MATCHED_RISKS}
+
+## 지시사항
+위 데이터를 기반으로 아래 JSON 형식의 질병 위험도 리포트를 작성하세요.
+
+### 작성 규칙
+1. **riskItems**: 매칭된 각 위험 질환에 대해 작성합니다.
+   - explanation: 환자의 **구체적 병력**(진단명, 진료 패턴, 복용약)과 연결하여 왜 이 질환이 위험한지 2~3문장으로 설명. 설계사가 고객에게 쉽게 설명할 수 있는 문체로 작성.
+   - 제공된 매칭 데이터에 없는 질환을 임의로 추가하지 마세요.
+
+2. **compoundRisks**: 환자가 2개 이상 기저질환을 가진 경우, 질환 조합에 의한 **가중 효과**를 설명합니다.
+   - 예: 고혈압 + 당뇨 → 심혈관 위험 상승 가속
+   - 해당 없으면 빈 배열.
+
+3. **medicalSummary**: 환자 병력을 3~4문장으로 요약합니다.
+   - treatmentPattern: "정기적 외래 통원 중" / "간헐적 방문" / "복합 만성질환 관리 중" 등
+
+4. **overallAssessment**: 설계사가 고객 상담 시 핵심 메시지로 활용할 수 있는 종합 소견 (3~5문장).
+   - 보험 상품을 직접 추천하지 마세요.
+   - "~할 수 있습니다", "~에 대비가 필요합니다" 등의 표현 사용.
+
+5. **disclaimer**: 반드시 다음 문구를 포함: "본 리포트는 건강보험심사평가원 진료 데이터와 의학 통계를 기반으로 작성된 참고 자료이며, 의학적 진단이나 의료 행위가 아닙니다. 개인의 실제 건강 상태는 전문 의료기관의 진찰을 통해 확인하시기 바랍니다."
+
+## 출력 형식 (반드시 이 JSON 구조를 따르세요)
+{
+  "medicalSummary": {
+    "mainDiseases": [{ "name": "질환명", "code": "KCD코드", "firstDate": "YYYY-MM-DD", "lastDate": "YYYY-MM-DD" }],
+    "currentMedications": ["약물명1", "약물명2"],
+    "treatmentPattern": "진료 패턴 요약"
+  },
+  "riskItems": [
+    {
+      "sourceDisease": "원인 질환명",
+      "sourceCode": "KCD코드",
+      "riskDisease": "위험 질환명",
+      "riskCategory": "심혈관|대사|신장|암|근골격|정신|호흡기|소화기|신경|기타",
+      "relativeRisk": 2.5,
+      "riskLevel": "high|moderate|low",
+      "explanation": "환자 맥락 반영 설명",
+      "evidence": "의학적 근거 한 줄",
+      "evidenceLevel": "A|B|C"
+    }
+  ],
+  "compoundRisks": [
+    {
+      "diseases": ["질환1", "질환2"],
+      "effect": "가중 효과 설명",
+      "additionalRisk": "추가 위험도 설명"
+    }
+  ],
+  "overallAssessment": "종합 소견",
+  "disclaimer": "법적 면책 문구"
+}
+`;
+

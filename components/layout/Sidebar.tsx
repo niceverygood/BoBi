@@ -2,11 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Shield, LayoutDashboard, FileSearch, History, Settings, ChevronLeft, Crown, ShieldCheck, ShieldPlus, Stethoscope } from 'lucide-react';
+import { Shield, LayoutDashboard, FileSearch, History, Settings, ChevronLeft, Crown, ShieldCheck, ShieldPlus, Stethoscope, Receipt } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
+import BobiLogo from '@/components/common/BobiLogo';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useAdmin } from '@/hooks/useAdmin';
 import { FEATURE_FLAGS } from '@/lib/utils/constants';
@@ -16,6 +18,7 @@ const navItems = [
     { title: '새 분석', href: '/dashboard/analyze', icon: FileSearch },
     { title: '보장 분석', href: '/dashboard/coverage', icon: ShieldPlus, disabled: !FEATURE_FLAGS.coverage_analysis, comingSoon: !FEATURE_FLAGS.coverage_analysis },
     { title: '진료정보', href: '/dashboard/medical', icon: Stethoscope },
+    { title: '가상 영수증', href: '/dashboard/accident-receipt', icon: Receipt },
     { title: '분석 이력', href: '/dashboard/history', icon: History },
     { title: '설정', href: '/dashboard/settings', icon: Settings },
 ];
@@ -46,9 +49,7 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
             {/* Logo */}
             <div className="flex items-center justify-between h-16 px-4">
                 <Link href="/dashboard" className="flex items-center gap-3 overflow-hidden">
-                    <div className="w-9 h-9 bg-gradient-primary rounded-xl flex items-center justify-center shrink-0">
-                        <Shield className="w-5 h-5 text-white" />
-                    </div>
+                    <BobiLogo size="md" className="shrink-0" />
                     {!collapsed && (
                         <span className="text-lg font-bold tracking-tight whitespace-nowrap">
                             보비 <span className="text-primary">BoBi</span>
@@ -126,14 +127,22 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                     <div className="p-4 rounded-xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/10">
                         <div className="flex items-center gap-2 mb-2">
                             <Crown className="w-4 h-4 text-primary" />
-                            <span className="text-sm font-semibold">
-                                {loading ? '...' : `${plan.display_name} 플랜`}
-                            </span>
+                            {loading ? (
+                                <Skeleton className="h-4 w-20" />
+                            ) : (
+                                <span className="text-sm font-semibold">
+                                    {plan.display_name} 플랜
+                                </span>
+                            )}
                         </div>
                         <p className="text-xs text-muted-foreground mb-3">
-                            이번 달 남은 분석: <span className="font-semibold text-foreground">
-                                {loading ? '...' : displayRemaining}
-                            </span>
+                            이번 달 남은 분석: {loading ? (
+                                <Skeleton className="h-3 w-10 inline-block align-middle" />
+                            ) : (
+                                <span className="font-semibold text-foreground">
+                                    {displayRemaining}
+                                </span>
+                            )}
                         </p>
                         <Link href="/pricing">
                             <Button variant="outline" size="sm" className="w-full text-xs">

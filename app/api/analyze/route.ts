@@ -8,7 +8,7 @@ import { validateAndCorrectDates, formatCorrections } from '@/lib/ai/date-valida
 import { formatCodefRecordsAsText, formatMyMedicineAsText } from '@/lib/codef/formatter';
 import type { AnalysisResult } from '@/types/analysis';
 
-export const maxDuration = 120; // Claude needs more time for complex analyses
+export const maxDuration = 300; // Vercel Pro: 최대 300초
 // Truncate text to stay within Claude's context window
 // Claude Sonnet 4.5 supports 200K tokens (~800K chars), but we keep it reasonable
 // ~4 chars per token, keep under 60K chars total (~15K tokens input)
@@ -70,6 +70,8 @@ export async function POST(request: Request) {
         let combinedText: string;
         let sourceType: 'codef' | 'medicine' | 'pdf' = 'pdf';
         const textParts: string[] = [];
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        let validIds: string[] = [];
 
         if (codefRecords) {
             sourceType = 'codef';
@@ -92,10 +94,16 @@ export async function POST(request: Request) {
                 return NextResponse.json({ error: '업로드된 파일이 없습니다.' }, { status: 400 });
             }
 
+            // UUID 형식 검증 — 잘못된 ID가 Supabase 쿼리에 들어가면 "The string did not match the expected pattern" 에러 발생
+            validIds = uploadIds.filter((id: string) => typeof id === 'string' && UUID_RE.test(id));
+            if (validIds.length === 0) {
+                return NextResponse.json({ error: '유효한 업로드 ID가 없습니다.' }, { status: 400 });
+            }
+
             const { data: uploads, error: uploadError } = await supabase
                 .from('uploads')
                 .select('*')
-                .in('id', uploadIds)
+                .in('id', validIds)
                 .eq('user_id', user.id);
 
             if (uploadError || !uploads || uploads.length === 0) {
@@ -119,7 +127,7 @@ export async function POST(request: Request) {
             .insert({
                 user_id: user.id,
                 customer_id: customerId || null,
-                upload_ids: isCodef ? [] : (uploadIds || []),
+                upload_ids: isCodef ? [] : validIds,
                 status: 'processing',
             })
             .select()
@@ -134,7 +142,7 @@ export async function POST(request: Request) {
         const prompt = STEP1_ANALYSIS_PROMPT
             .replace(/{TODAY_DATE}/g, todayDate)
             .replace('{PDF_TEXT}', combinedText);
-        const aiResponse = await callOpenAI({ prompt, maxTokens: 32000 });
+        const aiResponse = await callOpenAI({ prompt, maxTokens: 32000, retries: 1 });
 
         let result: AnalysisResult;
         try {
@@ -203,8 +211,16 @@ export async function POST(request: Request) {
         });
     } catch (error) {
         console.error('Analysis error:', error);
+        const rawMsg = (error as Error).message || '';
+        // Supabase/내부 에러는 사용자에게 노출하지 않음
+        const userMsg = rawMsg.includes('did not match')
+            || rawMsg.includes('violates')
+            || rawMsg.includes('duplicate key')
+            || rawMsg.includes('connection')
+            ? '서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+            : rawMsg;
         return NextResponse.json({
-            error: `분석 중 오류가 발생했습니다: ${(error as Error).message}`,
+            error: `분석 중 오류가 발생했습니다: ${userMsg}`,
         }, { status: 500 });
     }
 }

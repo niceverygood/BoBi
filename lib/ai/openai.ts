@@ -27,6 +27,8 @@ interface OpenAIRequestOptions {
     maxTokens?: number;
     temperature?: number;
     retries?: number;
+    /** 시스템 메시지 오버라이드 (기본: JSON 응답 지시) */
+    systemMessage?: string;
 }
 
 export async function callOpenAI({
@@ -34,6 +36,7 @@ export async function callOpenAI({
     maxTokens = 4096,
     temperature = 0.1,
     retries = 3,
+    systemMessage,
 }: OpenAIRequestOptions): Promise<string> {
     let lastError: Error | null = null;
 
@@ -47,7 +50,7 @@ export async function callOpenAI({
                     messages: [
                         {
                             role: 'system',
-                            content: '당신은 한국 보험 전문 AI입니다. 반드시 유효한 JSON 형식으로만 응답하세요. JSON 외의 텍스트는 절대 포함하지 마세요. 마크다운 코드블록도 사용하지 마세요.',
+                            content: systemMessage || '당신은 한국 보험 전문 AI입니다. 반드시 유효한 JSON 형식으로만 응답하세요. JSON 외의 텍스트는 절대 포함하지 마세요. 마크다운 코드블록도 사용하지 마세요.',
                         },
                         {
                             role: 'user',

@@ -10,6 +10,7 @@ import CoverageReport from '@/components/coverage/CoverageReport';
 import CoverageReportPrint from '@/components/coverage/CoverageReportPrint';
 import type { CoverageAnalysisResult } from '@/types/coverage';
 import { toast } from 'sonner';
+import { apiFetch } from '@/lib/api/client';
 
 export default function CoverageDetailPage() {
     const params = useParams<{ id: string }>();
@@ -21,12 +22,7 @@ export default function CoverageDetailPage() {
     useEffect(() => {
         const fetchDetail = async () => {
             try {
-                const res = await fetch(`/api/coverage/${params.id}`);
-                if (!res.ok) {
-                    const err = await res.json();
-                    throw new Error(err.error || '조회 실패');
-                }
-                const data = await res.json();
+                const data = await apiFetch<{ result: CoverageAnalysisResult }>(`/api/coverage/${params.id}`);
                 setResult(data.result);
             } catch (err) {
                 setError((err as Error).message);

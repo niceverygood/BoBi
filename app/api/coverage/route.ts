@@ -5,7 +5,7 @@ import { analyzeCoverage } from '@/lib/insurance/coverage-analyzer';
 import type { CoverageInput } from '@/types/coverage';
 import { FEATURE_FLAGS } from '@/lib/utils/constants';
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
     // Feature flag guard

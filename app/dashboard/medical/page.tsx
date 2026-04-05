@@ -10,13 +10,15 @@ import {
     Calendar, Building2, DollarSign, FileText, Pill, CheckCircle2,
     Smartphone, AlertCircle, ChevronDown, ChevronUp, HeartPulse,
 } from 'lucide-react';
+import { apiFetch } from '@/lib/api/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { HiraMedicalRecord, HiraBasicTreatRecord, HiraCarInsuranceRecord, HiraCarBasicTreatRecord, HiraPrescribeDrugRecord, MyMedicineRecord } from '@/lib/codef/client';
 
-// 인증 방식 (HIRA는 간편인증만 지원, SMS는 CF-12401 에러)
+// 인증 방식 (간편인증 + SMS)
 const AUTH_METHODS = [
     { id: 'simple', name: '간편인증', description: '앱에서 인증' },
+    { id: 'sms', name: 'SMS 인증', description: '문자 인증번호' },
 ];
 
 // 간편인증사 목록 - CODEF 공식 loginTypeLevel 코드
@@ -110,13 +112,15 @@ function MedicalInfoContent() {
         return dateStr;
     };
 
-    // PASS 인증 여부 확인
+    // PASS 또는 SMS 인증 시 통신사 필요 여부
     const selectedProvider = AUTH_PROVIDERS.find(a => a.id === authProvider);
     const needsTelecom = (selectedProvider as { needsTelecom?: boolean })?.needsTelecom === true;
     const isNhis = false; // NHIS는 medical에 통합됨
 
     // API 요청 body 생성
     const isSmsAuth = authMethod === 'sms';
+    // SMS 인증과 PASS 인증 모두 telecom(통신사) 파라미터 필수 (CF-12401 방지)
+    const needsTelecomParam = isSmsAuth || needsTelecom;
     const buildRequestBody = (extraFields?: Record<string, unknown>) => ({
         userName: userName.trim(),
         identity: identity.replace(/\D/g, ''),
@@ -124,7 +128,7 @@ function MedicalInfoContent() {
         loginType: isSmsAuth ? '2' : '5',
         loginTypeLevel: isSmsAuth ? '1' : authProvider,
         ...(isSmsAuth ? { authMethod: '0' } : {}),
-        telecom: needsTelecom ? telecom : '',
+        telecom: needsTelecomParam ? telecom : '',
         queryType,
         ...extraFields,
     });
@@ -151,17 +155,10 @@ function MedicalInfoContent() {
                 ? { is2Way: true, twoWayInfo: twoWayData, simpleAuth: '1', ...(isSmsAuth && smsCode ? { smsAuthNo: smsCode } : {}), sessionId, bothStep }
                 : {};
 
-            const res = await fetch(apiUrl, {
+            const data = await apiFetch<Record<string, any>>(apiUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(buildRequestBody(extraParams)),
+                body: buildRequestBody(extraParams),
             });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.error || '조회에 실패했습니다.');
-            }
 
             if (data.requires2Way) {
                 setTwoWayData(data.twoWayData);
@@ -254,17 +251,14 @@ function MedicalInfoContent() {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch('/api/codef/medical-info', {
+            const data = await apiFetch<Record<string, any>>('/api/codef/medical-info', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(buildRequestBody({
+                body: buildRequestBody({
                     bothStep: 'car',
                     sessionId: baseSessionId,
                     previousMedical: medicalData,
-                })),
+                }),
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || '자동차보험 조회 실패');
 
             if (data.requires2Way) {
                 setTwoWayData(data.twoWayData);
@@ -299,10 +293,9 @@ function MedicalInfoContent() {
         setError(null);
 
         try {
-            const res = await fetch('/api/codef/medical-info', {
+            const data = await apiFetch<Record<string, any>>('/api/codef/medical-info', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(buildRequestBody({
+                body: buildRequestBody({
                     is2Way: true,
                     twoWayInfo: twoWayData,
                     simpleAuth: '1',
@@ -310,14 +303,8 @@ function MedicalInfoContent() {
                     sessionId,
                     bothStep,
                     previousMedical: pendingMedical,
-                })),
+                }),
             });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.error || '인증 확인에 실패했습니다.');
-            }
 
             if (data.requires2Way) {
                 setTwoWayData(data.twoWayData);
@@ -392,16 +379,10 @@ function MedicalInfoContent() {
                 };
             }
 
-            const res = await fetch('/api/analyze', {
+            const data = await apiFetch<{ analysisId: string }>('/api/analyze', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(analyzeBody),
+                body: analyzeBody,
             });
-
-            const data = await res.json();
-            if (!res.ok) {
-                throw new Error(data.error || '분석에 실패했습니다.');
-            }
 
             router.push(`/dashboard/analyze?analysisId=${data.analysisId}`);
         } catch (err) {
@@ -504,17 +485,36 @@ function MedicalInfoContent() {
                     </CardContent>
                 </Card>
 
-                {/* 간편인증 선택 */}
+                {/* 인증 방식 선택 */}
                 <Card className="border-0 shadow-sm">
                     <CardHeader className="pb-3">
                         <CardTitle className="text-base flex items-center gap-2">
                             <Smartphone className="w-4 h-4" />
-                            간편인증 선택
+                            인증 방식 선택
                         </CardTitle>
-                        <CardDescription>인증 요청이 선택한 앱으로 전송됩니다</CardDescription>
+                        <CardDescription>인증 요청이 선택한 방식으로 전송됩니다</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {true && (
+                        {/* 간편인증 / SMS 선택 */}
+                        <div className="grid grid-cols-2 gap-2">
+                            {AUTH_METHODS.map((m) => (
+                                <button
+                                    key={m.id}
+                                    onClick={() => setAuthMethod(m.id as 'simple' | 'sms')}
+                                    className={`flex flex-col items-center gap-1 px-3 py-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                                        authMethod === m.id
+                                            ? 'bg-primary/5 border-primary'
+                                            : 'border-muted hover:border-muted-foreground/30'
+                                    }`}
+                                >
+                                    <span>{m.name}</span>
+                                    <span className="text-[10px] text-muted-foreground">{m.description}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* 간편인증 앱 선택 (간편인증일 때만) */}
+                        {authMethod === 'simple' && (
                             <>
                                 <p className="text-xs text-muted-foreground font-medium pt-1">간편인증 앱 선택</p>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -536,8 +536,8 @@ function MedicalInfoContent() {
                             </>
                         )}
 
-                        {/* PASS 선택 시 통신사 선택 */}
-                        {needsTelecom && (
+                        {/* PASS 또는 SMS 인증 시 통신사 선택 */}
+                        {needsTelecomParam && (
                             <div className="pt-2 space-y-2">
                                 <p className="text-xs text-muted-foreground font-medium">
                                     통신사 선택 (필수)

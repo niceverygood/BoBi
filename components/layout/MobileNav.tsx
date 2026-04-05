@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Shield, LayoutDashboard, FileSearch, History, Settings, Menu, ShieldCheck, ShieldPlus, Stethoscope } from 'lucide-react';
+import { LayoutDashboard, FileSearch, History, Settings, Menu, ShieldCheck, ShieldPlus, Stethoscope, Receipt } from 'lucide-react';
+import BobiLogo from '@/components/common/BobiLogo';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +18,7 @@ const navItems = [
     { title: '새 분석', href: '/dashboard/analyze', icon: FileSearch },
     { title: '보장 분석', href: '/dashboard/coverage', icon: ShieldPlus, disabled: !FEATURE_FLAGS.coverage_analysis, comingSoon: !FEATURE_FLAGS.coverage_analysis },
     { title: '진료정보', href: '/dashboard/medical', icon: Stethoscope },
+    { title: '가상 영수증', href: '/dashboard/accident-receipt', icon: Receipt },
     { title: '분석 이력', href: '/dashboard/history', icon: History },
     { title: '설정', href: '/dashboard/settings', icon: Settings },
 ];
@@ -39,9 +41,7 @@ export default function MobileNav() {
                 <SheetContent side="left" className="w-[280px] p-0">
                     <SheetTitle className="sr-only">내비게이션 메뉴</SheetTitle>
                     <div className="flex items-center gap-3 h-16 px-6">
-                        <div className="w-9 h-9 bg-gradient-primary rounded-xl flex items-center justify-center">
-                            <Shield className="w-5 h-5 text-white" />
-                        </div>
+                        <BobiLogo size="md" />
                         <span className="text-lg font-bold">
                             보비 <span className="text-primary">BoBi</span>
                         </span>

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { FileSearch, TrendingUp, Clock, ArrowRight, Plus, FileText, Sparkles, Crown, ShieldPlus, Eye, Loader2 } from 'lucide-react';
 import EmptyState from '@/components/common/EmptyState';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useSubscription } from '@/hooks/useSubscription';
 import { createClient } from '@/lib/supabase/client';
 
@@ -92,6 +93,9 @@ export default function DashboardPage() {
             </div>
 
             {/* Free plan upgrade banner */}
+            {loading && (
+                <Skeleton className="h-20 w-full rounded-2xl" />
+            )}
             {plan.slug === 'free' && !loading && (
                 <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary/10 via-blue-50 to-violet-50 dark:from-primary/5 dark:via-blue-950/20 dark:to-violet-950/20 p-5 border border-primary/10">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -123,7 +127,11 @@ export default function DashboardPage() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-muted-foreground">이번 달 분석</p>
-                                <p className="text-2xl font-bold mt-1">{loading ? '...' : `${usage.analyses_used}건`}</p>
+                                {loading ? (
+                                    <Skeleton className="h-8 w-16 mt-1" />
+                                ) : (
+                                    <p className="text-2xl font-bold mt-1">{usage.analyses_used}건</p>
+                                )}
                             </div>
                             <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
                                 <FileSearch className="w-5 h-5 text-blue-500" />
@@ -137,7 +145,11 @@ export default function DashboardPage() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-muted-foreground">가입가능 판단</p>
-                                <p className="text-2xl font-bold mt-1">{recentLoading ? '...' : `${productCount}건`}</p>
+                                {recentLoading ? (
+                                    <Skeleton className="h-8 w-16 mt-1" />
+                                ) : (
+                                    <p className="text-2xl font-bold mt-1">{productCount}건</p>
+                                )}
                             </div>
                             <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
                                 <TrendingUp className="w-5 h-5 text-green-500" />
@@ -151,7 +163,11 @@ export default function DashboardPage() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-muted-foreground">청구 안내</p>
-                                <p className="text-2xl font-bold mt-1">{recentLoading ? '...' : `${claimsCount}건`}</p>
+                                {recentLoading ? (
+                                    <Skeleton className="h-8 w-16 mt-1" />
+                                ) : (
+                                    <p className="text-2xl font-bold mt-1">{claimsCount}건</p>
+                                )}
                             </div>
                             <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center">
                                 <FileText className="w-5 h-5 text-violet-500" />
@@ -165,7 +181,11 @@ export default function DashboardPage() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-muted-foreground">남은 분석</p>
-                                <p className="text-2xl font-bold mt-1">{loading ? '...' : displayRemaining}</p>
+                                {loading ? (
+                                    <Skeleton className="h-8 w-16 mt-1" />
+                                ) : (
+                                    <p className="text-2xl font-bold mt-1">{displayRemaining}</p>
+                                )}
                             </div>
                             <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
                                 <Clock className="w-5 h-5 text-amber-500" />
@@ -217,8 +237,17 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                     {recentLoading ? (
-                        <div className="flex items-center justify-center py-8">
-                            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                        <div className="space-y-2">
+                            {[1, 2, 3].map((i) => (
+                                <div key={i} className="flex items-center gap-3 p-3 rounded-lg">
+                                    <Skeleton className="w-9 h-9 rounded-lg shrink-0" />
+                                    <div className="flex-1 space-y-2">
+                                        <Skeleton className="h-4 w-3/4" />
+                                        <Skeleton className="h-3 w-1/3" />
+                                    </div>
+                                    <Skeleton className="w-4 h-4 rounded shrink-0" />
+                                </div>
+                            ))}
                         </div>
                     ) : recentAnalyses.length === 0 ? (
                         <EmptyState
