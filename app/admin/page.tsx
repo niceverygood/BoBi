@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
     Shield, Users, FileText, CreditCard, Activity, BarChart3,
     TrendingUp, AlertCircle, Search, CheckCircle2, ArrowUpDown,
@@ -488,6 +489,26 @@ export default function AdminPage() {
                         </CardContent>
                     </Card>
                     )}
+
+                    {/* 상담 관리 바로가기 */}
+                    <Card className="border-0 shadow-md mb-8">
+                        <CardContent className="p-5">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                                        <Users className="w-5 h-5 text-amber-600" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-sm">고객 상담 관리</p>
+                                        <p className="text-xs text-muted-foreground">실시간 상담 요청 확인 및 응대</p>
+                                    </div>
+                                </div>
+                                <Link href="/admin/support">
+                                    <Button size="sm">상담 관리</Button>
+                                </Link>
+                            </div>
+                        </CardContent>
+                    </Card>
 
                     {/* Sub Admin Management - 총괄관리자만 */}
                     {isAdmin && <SubAdminManager />}

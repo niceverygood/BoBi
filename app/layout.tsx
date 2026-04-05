@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Toaster } from "@/components/ui/sonner";
-import KakaoChatButton from "@/components/common/KakaoChatButton";
+import ChatBot from "@/components/chat/ChatBot";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -36,7 +36,7 @@ export default function RootLayout({
       <body className="font-sans antialiased" suppressHydrationWarning>
         {children}
         <Toaster position="top-right" richColors />
-        <KakaoChatButton />
+        <ChatBot />
       </body>
     </html>
   );
