@@ -12,6 +12,6 @@ export async function analyzeClaims(
         .replace('{MEDICAL_HISTORY}', medicalHistory)
         .replace('{INSURANCE_CLAUSES}', insuranceClauses);
 
-    const response = await callOpenAI({ prompt, maxTokens: 16384 });
+    const response = await callOpenAI({ prompt, maxTokens: 8000, retries: 1 });
     return parseAIResponse<ClaimResult>(response);
 }

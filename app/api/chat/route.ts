@@ -67,6 +67,7 @@ export async function POST(request: Request) {
             maxTokens: 500,
             retries: 1,
             systemMessage: SYSTEM_PROMPT,
+            fast: true,
         });
 
         return NextResponse.json({ reply: reply.trim() });

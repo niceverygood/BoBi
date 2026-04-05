@@ -89,7 +89,7 @@ export async function POST(request: Request) {
 
         let aiAnalysis: AccidentReceipt['aiAnalysis'] = undefined;
         try {
-            const aiResponse = await callOpenAI({ prompt, maxTokens: 2000, retries: 1 });
+            const aiResponse = await callOpenAI({ prompt, maxTokens: 2000, retries: 1, fast: true });
             aiAnalysis = parseAIResponse(aiResponse) as AccidentReceipt['aiAnalysis'];
         } catch (err) {
             console.error('[AccidentReceipt] AI 분석 실패:', err);

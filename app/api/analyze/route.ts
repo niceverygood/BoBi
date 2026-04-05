@@ -11,9 +11,9 @@ import type { AnalysisResult } from '@/types/analysis';
 export const maxDuration = 300; // Vercel Pro: 최대 300초
 // Truncate text to stay within Claude's context window
 // Claude Sonnet 4.5 supports 200K tokens (~800K chars), but we keep it reasonable
-// ~4 chars per token, keep under 60K chars total (~15K tokens input)
-const MAX_CHARS_PER_FILE = 20000;
-const MAX_TOTAL_CHARS = 60000;
+// ~4 chars per token, 40K chars (~10K tokens) = faster AI response
+const MAX_CHARS_PER_FILE = 15000;
+const MAX_TOTAL_CHARS = 40000;
 
 function truncateText(text: string, maxChars: number): string {
     if (text.length <= maxChars) return text;
@@ -142,7 +142,7 @@ export async function POST(request: Request) {
         const prompt = STEP1_ANALYSIS_PROMPT
             .replace(/{TODAY_DATE}/g, todayDate)
             .replace('{PDF_TEXT}', combinedText);
-        const aiResponse = await callOpenAI({ prompt, maxTokens: 32000, retries: 1 });
+        const aiResponse = await callOpenAI({ prompt, maxTokens: 16000, retries: 1 });
 
         let result: AnalysisResult;
         try {

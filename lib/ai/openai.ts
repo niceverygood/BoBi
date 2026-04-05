@@ -1,5 +1,5 @@
 // lib/ai/openai.ts
-// OpenRouter API를 통해 Claude Opus 4.6 사용
+// OpenRouter API를 통해 Claude 사용
 import OpenAI from 'openai';
 
 let _client: OpenAI | null = null;
@@ -27,24 +27,28 @@ interface OpenAIRequestOptions {
     maxTokens?: number;
     temperature?: number;
     retries?: number;
-    /** 시스템 메시지 오버라이드 (기본: JSON 응답 지시) */
     systemMessage?: string;
+    /** 빠른 모델 사용 (챗봇, 간단한 분석용) */
+    fast?: boolean;
 }
 
 export async function callOpenAI({
     prompt,
     maxTokens = 4096,
     temperature = 0.1,
-    retries = 3,
+    retries = 1,
     systemMessage,
+    fast = false,
 }: OpenAIRequestOptions): Promise<string> {
     let lastError: Error | null = null;
+    const model = fast ? 'anthropic/claude-haiku-3.5' : 'anthropic/claude-sonnet-4.5';
+    const timeout = fast ? 30000 : 60000;
 
     for (let attempt = 0; attempt <= retries; attempt++) {
         try {
             const response = await getClient().chat.completions.create(
                 {
-                    model: 'anthropic/claude-sonnet-4.5',
+                    model,
                     max_tokens: maxTokens,
                     temperature,
                     messages: [
@@ -58,67 +62,32 @@ export async function callOpenAI({
                         },
                     ],
                 },
-                {
-                    timeout: 90000, // 90 second timeout per request
-                },
+                { timeout },
             );
 
             const content = response.choices[0]?.message?.content;
-            if (content) {
-                return content;
-            }
+            if (content) return content;
 
-            throw new Error('Unexpected response format from OpenRouter API');
+            throw new Error('Empty response from AI');
         } catch (error) {
             lastError = error as Error;
             const errorMessage = (error as Error).message || '';
+            console.error(`AI attempt ${attempt + 1}/${retries + 1} failed:`, errorMessage.substring(0, 200));
 
-            // Log each attempt
-            console.error(`OpenRouter API attempt ${attempt + 1}/${retries + 1} failed:`, errorMessage.substring(0, 200));
+            // 인증 에러는 재시도 안 함
+            if (errorMessage.includes('401') || errorMessage.includes('403')) break;
 
-            // Don't retry on auth errors
-            if (errorMessage.includes('401') || errorMessage.includes('403')) {
-                break;
-            }
-
-            // On rate limit, wait longer before retry
-            if (errorMessage.includes('429') || errorMessage.includes('rate')) {
-                if (attempt < retries) {
-                    const waitMs = 3000 * Math.pow(2, attempt); // 3s, 6s, 12s
-                    console.log(`Rate limited. Waiting ${waitMs}ms before retry...`);
-                    await new Promise((resolve) => setTimeout(resolve, waitMs));
-                    continue;
-                }
-                break;
-            }
-
-            // On server overloaded (502/503), retry with backoff
-            if (errorMessage.includes('502') || errorMessage.includes('503') || errorMessage.includes('overloaded')) {
-                if (attempt < retries) {
-                    const waitMs = 2000 * Math.pow(2, attempt);
-                    await new Promise((resolve) => setTimeout(resolve, waitMs));
-                    continue;
-                }
-                break;
-            }
-
-            // General retry with exponential backoff
+            // 재시도 대기 (짧게)
             if (attempt < retries) {
-                await new Promise((resolve) => setTimeout(resolve, 1500 * Math.pow(2, attempt)));
+                const waitMs = errorMessage.includes('429') ? 2000 : 1000;
+                await new Promise(r => setTimeout(r, waitMs));
             }
         }
     }
 
-    // Provide user-friendly error messages
     const msg = lastError?.message || '';
-    if (msg.includes('429') || msg.includes('rate')) {
-        throw new Error('AI 서비스가 현재 사용량이 많습니다. 잠시 후 다시 시도해주세요.');
-    }
-    if (msg.includes('timeout') || msg.includes('TIMEOUT')) {
-        throw new Error('AI 응답 시간이 초과되었습니다. 파일 크기가 큰 경우 잠시 후 다시 시도해주세요.');
-    }
-    if (msg.includes('401') || msg.includes('403')) {
-        throw new Error('AI 서비스 인증 오류입니다. 관리자에게 문의해주세요.');
-    }
-    throw new Error(`AI 분석에 실패했습니다. 잠시 후 다시 시도해주세요. (${msg.substring(0, 100)})`);
+    if (msg.includes('429')) throw new Error('AI 서비스가 현재 사용량이 많습니다. 잠시 후 다시 시도해주세요.');
+    if (msg.includes('timeout') || msg.includes('TIMEOUT')) throw new Error('AI 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.');
+    if (msg.includes('401') || msg.includes('403')) throw new Error('AI 서비스 인증 오류입니다. 관리자에게 문의해주세요.');
+    throw new Error(`AI 분석에 실패했습니다. (${msg.substring(0, 100)})`);
 }

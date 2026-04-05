@@ -8,6 +8,6 @@ export async function analyzeCoverage(input: CoverageInput): Promise<CoverageAna
     const prompt = COVERAGE_ANALYSIS_PROMPT
         .replace('{POLICY_DATA}', JSON.stringify(input, null, 2));
 
-    const response = await callOpenAI({ prompt, maxTokens: 16384, temperature: 0.1 });
+    const response = await callOpenAI({ prompt, maxTokens: 8000, retries: 1 });
     return parseAIResponse<CoverageAnalysisResult>(response);
 }

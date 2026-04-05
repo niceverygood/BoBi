@@ -31,7 +31,7 @@ export async function POST(request: Request) {
             .replace('{COVERAGE_RESULT}', JSON.stringify(body.coverageResult, null, 2))
             .replace('{POLICY_DATA}', JSON.stringify(body.inputData, null, 2));
 
-        const response = await callOpenAI({ prompt, maxTokens: 16384, temperature: 0.2 });
+        const response = await callOpenAI({ prompt, maxTokens: 8000, retries: 1 });
         const proposal = parseAIResponse<RemodelingProposal>(response);
 
         return NextResponse.json({ proposal });

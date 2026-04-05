@@ -28,7 +28,7 @@ export async function matchProducts(analysisResult: AnalysisResult): Promise<Pro
         .replace('{EXCEPTION_DISEASE_CONTEXT}', exceptionContext)
         .replace('{RULE_ENGINE_RESULT}', ruleEngineContext + '\n' + kcdMappingContext);
 
-    const response = await callOpenAI({ prompt, maxTokens: 16384 });
+    const response = await callOpenAI({ prompt, maxTokens: 8000, retries: 1 });
     return parseAIResponse<ProductResult>(response);
 }
 
