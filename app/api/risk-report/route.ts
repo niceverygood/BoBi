@@ -19,7 +19,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
         }
 
-        const { analysisId, regenerate } = await request.json();
+        const { analysisId, regenerate, healthCheckupData } = await request.json();
 
         if (!analysisId) {
             return NextResponse.json({ error: '분석 ID가 필요합니다.' }, { status: 400 });
@@ -107,6 +107,47 @@ export async function POST(request: Request) {
             summaryParts.push('[주의사항]');
             for (const rf of medicalHistory.riskFlags) {
                 summaryParts.push(`- [${rf.severity}] ${rf.flag} → ${rf.recommendation}`);
+            }
+        }
+
+        // 건강검진 데이터 추가 (있는 경우)
+        if (healthCheckupData) {
+            summaryParts.push('\n[건강검진 결과 (건강보험공단)]');
+
+            // 건강나이
+            if (healthCheckupData.healthAge) {
+                const ha = healthCheckupData.healthAge;
+                summaryParts.push(`- 건강나이: ${ha.resAge}세 (실제 ${ha.resChronologicalAge}세)`);
+                if (ha.resNote1) summaryParts.push(`- 소견: ${ha.resNote1}`);
+                if (ha.resDetailList) {
+                    for (const d of ha.resDetailList) {
+                        summaryParts.push(`  · 위험요인 [${d.resRiskFactor}]: ${d.resState} → 권고: ${d.resRecommendValue}`);
+                    }
+                }
+            }
+
+            // 검진 수치
+            if (healthCheckupData.checkup?.resPreviewList?.[0]) {
+                const p = healthCheckupData.checkup.resPreviewList[0];
+                summaryParts.push(`- 검진일: ${p.resCheckupYear}년`);
+                if (p.resBMI) summaryParts.push(`- BMI: ${p.resBMI} (신장 ${p.resHeight}cm, 체중 ${p.resWeight}kg)`);
+                if (p.resBloodPressure) summaryParts.push(`- 혈압: ${p.resBloodPressure} mmHg`);
+                if (p.resFastingBloodSuger) summaryParts.push(`- 공복혈당: ${p.resFastingBloodSuger} mg/dL`);
+                if (p.resTotalCholesterol) summaryParts.push(`- 총콜레스테롤: ${p.resTotalCholesterol} / HDL: ${p.resHDLCholesterol || '-'} / LDL: ${p.resLDLCholesterol || '-'} / 중성지방: ${p.resTriglyceride || '-'} mg/dL`);
+                if (p.resGFR) summaryParts.push(`- 신사구체여과율(GFR): ${p.resGFR} mL/min`);
+                if (p.resAST) summaryParts.push(`- 간기능: AST ${p.resAST} / ALT ${p.resALT} / y-GTP ${p.resyGPT} U/L`);
+                if (p.resJudgement) summaryParts.push(`- 종합 판정: ${p.resJudgement}`);
+                if (p.resOpinion) summaryParts.push(`- 소견: ${p.resOpinion}`);
+            }
+
+            // 뇌졸중 예측
+            if (healthCheckupData.stroke?.resRiskGrade) {
+                summaryParts.push(`- 뇌졸중 예측: ${healthCheckupData.stroke.resRiskGrade} (${healthCheckupData.stroke.resRatio || ''})`);
+            }
+
+            // 심뇌혈관 예측
+            if (healthCheckupData.cardio?.resRiskGrade) {
+                summaryParts.push(`- 심뇌혈관 질환예측: ${healthCheckupData.cardio.resRiskGrade} (${healthCheckupData.cardio.resRatio || ''})`);
             }
         }
 
