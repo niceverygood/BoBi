@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -81,6 +81,19 @@ function MedicalInfoContent() {
 
     // 고지분석 관련
     const [analyzing, setAnalyzing] = useState(false);
+
+    // 간편인증 자동 폴링 — 5초마다 인증 완료 자동 시도
+    useEffect(() => {
+        if (step !== 'auth-waiting' || authMethod === 'sms' || loading) return;
+
+        const pollTimer = setTimeout(() => {
+            // handleAuthComplete를 직접 호출하지 않고 버튼 클릭 시뮬레이션
+            const btn = document.querySelector('[data-auth-confirm]') as HTMLButtonElement;
+            if (btn && !btn.disabled) btn.click();
+        }, 5000);
+
+        return () => clearTimeout(pollTimer);
+    }, [step, authMethod, loading]);
 
     // 전화번호 포맷팅
     const formatPhone = (value: string) => {
@@ -328,8 +341,7 @@ function MedicalInfoContent() {
                 setTwoWayData(data.twoWayData);
                 if (data.bothStep) setBothStep(data.bothStep);
                 if (data.medical) setPendingMedical(data.medical);
-                const providerName = AUTH_PROVIDERS.find(a => a.id === authProvider)?.name || '인증 앱';
-                setError(`${providerName}에서 인증을 완료해주세요.`);
+                // 폴링 중이면 에러 안 보여줌 (자동 재시도)
                 setLoading(false);
                 return;
             }
@@ -348,7 +360,11 @@ function MedicalInfoContent() {
             applyResults(data);
             setStep('results');
         } catch (err) {
-            setError((err as Error).message);
+            const msg = (err as Error).message;
+            // 대기시간 초과는 무시 (폴링이 자동 재시도)
+            if (!msg.includes('CF-01004') && !msg.includes('대기시간')) {
+                setError(msg);
+            }
         } finally {
             setLoading(false);
         }
@@ -687,6 +703,7 @@ function MedicalInfoContent() {
 
                         <div className="space-y-3">
                             <Button
+                                data-auth-confirm
                                 onClick={handleAuthComplete}
                                 disabled={loading || (isSmsAuth && !smsCode)}
                                 className="w-full bg-gradient-primary hover:opacity-90 h-11"
