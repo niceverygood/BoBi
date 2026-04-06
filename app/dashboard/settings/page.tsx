@@ -273,6 +273,9 @@ export default function SettingsPage() {
                 </Card>
             )}
 
+            {/* 기기 관리 */}
+            <DeviceManagement />
+
             {/* 친구 초대 */}
             <ReferralSection />
 
@@ -433,6 +436,86 @@ function ReferralSection() {
                         </p>
                     )}
                 </div>
+            </CardContent>
+        </Card>
+    );
+}
+
+// ── 기기 관리 섹션 ──
+function DeviceManagement() {
+    const [devices, setDevices] = useState<Array<{
+        id: string; device_id: string; device_name: string;
+        device_type: string; last_active: string;
+    }>>([]);
+    const [maxDevices, setMaxDevices] = useState(2);
+    const [loading, setLoading] = useState(true);
+
+    const fetchDevices = async () => {
+        try {
+            const res = await fetch('/api/auth/device');
+            if (res.ok) {
+                const data = await res.json();
+                setDevices(data.devices || []);
+                setMaxDevices(data.maxDevices || 2);
+            }
+        } catch { /* ignore */ }
+        finally { setLoading(false); }
+    };
+
+    useEffect(() => { fetchDevices(); }, []);
+
+    const removeDevice = async (deviceId: string) => {
+        if (!confirm('이 기기를 로그아웃시키겠습니까?')) return;
+        try {
+            await fetch(`/api/auth/device?deviceId=${deviceId}`, { method: 'DELETE' });
+            fetchDevices();
+        } catch { /* ignore */ }
+    };
+
+    const getDeviceIcon = (type: string) => {
+        if (type === 'mobile') return '📱';
+        if (type === 'tablet') return '📋';
+        return '💻';
+    };
+
+    return (
+        <Card className="border-0 shadow-sm">
+            <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-primary" />
+                    기기 관리
+                </CardTitle>
+                <CardDescription>
+                    최대 {maxDevices}대의 기기에서 동시 로그인할 수 있습니다.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                {loading ? (
+                    <Skeleton className="h-16 w-full" />
+                ) : devices.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">등록된 기기가 없습니다.</p>
+                ) : (
+                    devices.map(d => (
+                        <div key={d.id} className="flex items-center justify-between p-3 rounded-lg border">
+                            <div className="flex items-center gap-3">
+                                <span className="text-xl">{getDeviceIcon(d.device_type)}</span>
+                                <div>
+                                    <p className="text-sm font-medium">{d.device_name}</p>
+                                    <p className="text-[10px] text-muted-foreground">
+                                        마지막 활동: {new Date(d.last_active).toLocaleString('ko-KR')}
+                                    </p>
+                                </div>
+                            </div>
+                            <Button variant="ghost" size="sm" onClick={() => removeDevice(d.device_id)}
+                                className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50">
+                                제거
+                            </Button>
+                        </div>
+                    ))
+                )}
+                <p className="text-[10px] text-muted-foreground">
+                    {devices.length}/{maxDevices}대 사용 중. 새 기기에서 로그인하면 가장 오래된 기기가 자동으로 로그아웃됩니다.
+                </p>
             </CardContent>
         </Card>
     );

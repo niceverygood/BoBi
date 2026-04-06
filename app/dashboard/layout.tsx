@@ -27,6 +27,11 @@ export default function DashboardLayout({
                     || user.email?.split('@')[0]
                     || '';
                 setUserName(name);
+
+                // 기기 등록 (최대 2대 제한)
+                import('@/lib/device').then(({ registerDevice }) => {
+                    registerDevice();
+                });
             }
         };
         fetchUser();
