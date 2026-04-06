@@ -7,10 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { User, Building, Crown, CheckCircle2, X, Zap, Loader2, Sparkles, LogOut } from 'lucide-react';
+import { User, Building, Crown, CheckCircle2, X, Zap, Loader2, Sparkles, LogOut, Gift, Copy, Users } from 'lucide-react';
 import { PLAN_LIMITS, type PlanSlug } from '@/lib/utils/constants';
 import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 
@@ -272,6 +273,9 @@ export default function SettingsPage() {
                 </Card>
             )}
 
+            {/* 친구 초대 */}
+            <ReferralSection />
+
             {/* 로그아웃 */}
             <Card className="border-0 shadow-sm">
                 <CardContent className="pt-6">
@@ -288,5 +292,148 @@ export default function SettingsPage() {
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+// ── 친구 초대 섹션 ──
+function ReferralSection() {
+    const [data, setData] = useState<{
+        code: string;
+        usedCount: number;
+        rewardMonths: number;
+        remainingSlots: number;
+        maxReferrals: number;
+        invitees: Array<{ invitee_email: string; created_at: string }>;
+    } | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [copied, setCopied] = useState(false);
+    const [inputCode, setInputCode] = useState('');
+    const [applying, setApplying] = useState(false);
+    const [applyMsg, setApplyMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    useEffect(() => {
+        (async () => {
+            try {
+                const res = await fetch('/api/referral');
+                if (res.ok) setData(await res.json());
+            } catch { /* ignore */ }
+            finally { setLoading(false); }
+        })();
+    }, []);
+
+    const handleCopy = () => {
+        if (!data) return;
+        navigator.clipboard.writeText(data.code);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handleApply = async () => {
+        if (!inputCode.trim()) return;
+        setApplying(true);
+        setApplyMsg(null);
+        try {
+            const res = await fetch('/api/referral', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: inputCode.trim() }),
+            });
+            const result = await res.json();
+            if (res.ok) {
+                setApplyMsg({ type: 'success', text: result.message });
+                setInputCode('');
+            } else {
+                setApplyMsg({ type: 'error', text: result.error });
+            }
+        } catch {
+            setApplyMsg({ type: 'error', text: '코드 적용에 실패했습니다.' });
+        } finally {
+            setApplying(false);
+        }
+    };
+
+    return (
+        <Card className="border-0 shadow-sm overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-amber-400 to-orange-500" />
+            <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                    <Gift className="w-5 h-5 text-amber-500" />
+                    친구 초대
+                </CardTitle>
+                <CardDescription>
+                    친구를 초대하면 <strong>베이직 플랜 1개월 무료!</strong> 최대 3명 초대로 3개월 무료
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {loading ? (
+                    <Skeleton className="h-20 w-full" />
+                ) : data ? (
+                    <>
+                        {/* 내 초대 코드 */}
+                        <div className="bg-amber-50 rounded-xl p-4">
+                            <p className="text-xs text-amber-700 font-medium mb-2">내 초대 코드</p>
+                            <div className="flex items-center gap-2">
+                                <span className="text-2xl font-black text-amber-800 tracking-wider flex-1">{data.code}</span>
+                                <Button variant="outline" size="sm" onClick={handleCopy} className="shrink-0">
+                                    {copied ? <CheckCircle2 className="w-4 h-4 mr-1 text-green-500" /> : <Copy className="w-4 h-4 mr-1" />}
+                                    {copied ? '복사됨' : '복사'}
+                                </Button>
+                            </div>
+                            <p className="text-xs text-amber-600 mt-2">이 코드를 친구에게 공유하세요. 친구가 가입 후 코드를 입력하면 베이직 1개월이 무료로 제공됩니다.</p>
+                        </div>
+
+                        {/* 진행 현황 */}
+                        <div className="grid grid-cols-3 gap-3 text-center">
+                            <div className="p-3 rounded-lg bg-muted/50">
+                                <p className="text-2xl font-black text-primary">{data.usedCount}</p>
+                                <p className="text-[10px] text-muted-foreground">초대 완료</p>
+                            </div>
+                            <div className="p-3 rounded-lg bg-muted/50">
+                                <p className="text-2xl font-black text-amber-600">{data.rewardMonths}</p>
+                                <p className="text-[10px] text-muted-foreground">무료 개월</p>
+                            </div>
+                            <div className="p-3 rounded-lg bg-muted/50">
+                                <p className="text-2xl font-black text-muted-foreground">{data.remainingSlots}</p>
+                                <p className="text-[10px] text-muted-foreground">남은 초대</p>
+                            </div>
+                        </div>
+
+                        {/* 초대한 친구 목록 */}
+                        {data.invitees.length > 0 && (
+                            <div className="space-y-1">
+                                <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                                    <Users className="w-3 h-3" /> 초대한 친구
+                                </p>
+                                {data.invitees.map((inv, i) => (
+                                    <div key={i} className="flex items-center justify-between text-sm py-1.5 px-2 rounded-lg bg-muted/30">
+                                        <span>{inv.invitee_email}</span>
+                                        <span className="text-xs text-muted-foreground">{new Date(inv.created_at).toLocaleDateString('ko-KR')}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </>
+                ) : null}
+
+                <Separator />
+
+                {/* 초대 코드 입력 (받은 코드 사용) */}
+                <div>
+                    <p className="text-sm font-medium mb-2">초대 코드 입력</p>
+                    <p className="text-xs text-muted-foreground mb-2">친구에게 받은 초대 코드가 있나요?</p>
+                    <div className="flex gap-2">
+                        <Input value={inputCode} onChange={e => setInputCode(e.target.value.toUpperCase())} placeholder="BOBI-XXXX" className="flex-1 font-mono uppercase" />
+                        <Button onClick={handleApply} disabled={applying || !inputCode.trim()} size="sm">
+                            {applying ? <Loader2 className="w-4 h-4 animate-spin" /> : '적용'}
+                        </Button>
+                    </div>
+                    {applyMsg && (
+                        <p className={`text-xs mt-2 ${applyMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                            {applyMsg.text}
+                        </p>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
     );
 }
