@@ -18,9 +18,23 @@ export async function GET() {
         // 고객별 분석 건수
         const { data: analyses } = await supabase
             .from('analyses')
-            .select('customer_id, status, created_at, medical_history, product_eligibility, risk_report')
+            .select('customer_id, status, created_at, medical_history, product_eligibility')
             .eq('user_id', user.id)
             .not('customer_id', 'is', null);
+
+        // risk_report 별도 조회
+        let riskMap = new Map<string, boolean>();
+        try {
+            const { data: rr } = await supabase
+                .from('analyses')
+                .select('customer_id')
+                .eq('user_id', user.id)
+                .not('risk_report', 'is', null)
+                .not('customer_id', 'is', null);
+            if (rr) {
+                for (const r of rr) { if (r.customer_id) riskMap.set(r.customer_id, true); }
+            }
+        } catch { /* ignore */ }
 
         const analysisMap = new Map<string, { count: number; lastDate: string; hasStep2: boolean; hasRisk: boolean }>();
         for (const a of analyses || []) {
@@ -31,13 +45,13 @@ export async function GET() {
                     count: 1,
                     lastDate: a.created_at,
                     hasStep2: !!a.product_eligibility,
-                    hasRisk: !!a.risk_report,
+                    hasRisk: riskMap.has(a.customer_id),
                 });
             } else {
                 existing.count++;
                 if (a.created_at > existing.lastDate) existing.lastDate = a.created_at;
                 if (a.product_eligibility) existing.hasStep2 = true;
-                if (a.risk_report) existing.hasRisk = true;
+                if (!existing.hasRisk && riskMap.has(a.customer_id)) existing.hasRisk = true;
             }
         }
 

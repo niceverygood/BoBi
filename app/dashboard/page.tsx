@@ -43,12 +43,28 @@ export default function DashboardPage() {
                 // 최근 분석
                 const { data } = await supabase
                     .from('analyses')
-                    .select('id, status, created_at, customer_id, medical_history, product_eligibility, claim_assessment, risk_report')
+                    .select('id, status, created_at, customer_id, medical_history, product_eligibility, claim_assessment')
                     .eq('user_id', user.id)
                     .order('created_at', { ascending: false })
                     .limit(5);
 
-                if (data) setRecentAnalyses(data as unknown as RecentAnalysis[]);
+                if (data) {
+                    // risk_report 별도 조회 (컬럼 없을 수 있음)
+                    let enriched = data.map(d => ({ ...d, risk_report: null as Record<string, unknown> | null }));
+                    try {
+                        const { data: rr } = await supabase
+                            .from('analyses')
+                            .select('id, risk_report')
+                            .eq('user_id', user.id)
+                            .not('risk_report', 'is', null)
+                            .limit(5);
+                        if (rr) {
+                            const rrMap = new Map(rr.map((r: any) => [r.id, r.risk_report]));
+                            enriched = enriched.map(d => ({ ...d, risk_report: rrMap.get(d.id) || null }));
+                        }
+                    } catch { /* ignore */ }
+                    setRecentAnalyses(enriched as unknown as RecentAnalysis[]);
+                }
 
                 // 전체 분석 수
                 const { count } = await supabase
