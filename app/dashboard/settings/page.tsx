@@ -425,7 +425,7 @@ function ReferralSection() {
                     <p className="text-sm font-medium mb-2">초대 코드 입력</p>
                     <p className="text-xs text-muted-foreground mb-2">친구에게 받은 초대 코드가 있나요?</p>
                     <div className="flex gap-2">
-                        <Input value={inputCode} onChange={e => setInputCode(e.target.value.toUpperCase())} placeholder="BOBI-XXXX" className="flex-1 font-mono uppercase" />
+                        <Input value={inputCode} onChange={e => setInputCode(e.target.value.toUpperCase())} placeholder="예: A3K7B2N" className="flex-1 font-mono uppercase" />
                         <Button onClick={handleApply} disabled={applying || !inputCode.trim()} size="sm">
                             {applying ? <Loader2 className="w-4 h-4 animate-spin" /> : '적용'}
                         </Button>

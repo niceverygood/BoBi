@@ -20,8 +20,10 @@ export async function GET() {
             .single();
 
         if (!referral) {
-            // 초대 코드 생성: BOBI-XXXX 형태
-            const code = `BOBI-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+            // 초대 코드 생성: 영문+숫자 7자리
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let code = '';
+            for (let i = 0; i < 7; i++) code += chars[Math.floor(Math.random() * chars.length)];
             const { data: newReferral, error } = await supabase
                 .from('referrals')
                 .insert({ referrer_id: user.id, code })
