@@ -364,7 +364,7 @@ function ReferralSection() {
                     친구 초대
                 </CardTitle>
                 <CardDescription>
-                    친구를 초대하면 <strong>베이직 플랜 1개월 무료!</strong> 최대 3명 초대로 3개월 무료
+                    친구를 초대하면 <strong>베이직 플랜 1주일 무료!</strong> 최대 10명 초대로 10주 무료
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -382,7 +382,7 @@ function ReferralSection() {
                                     {copied ? '복사됨' : '복사'}
                                 </Button>
                             </div>
-                            <p className="text-xs text-amber-600 mt-2">이 코드를 친구에게 공유하세요. 친구가 가입 후 코드를 입력하면 베이직 1개월이 무료로 제공됩니다.</p>
+                            <p className="text-xs text-amber-600 mt-2">이 코드를 친구에게 공유하세요. 친구가 가입 후 코드를 입력하면 베이직 1주일이 무료로 제공됩니다.</p>
                         </div>
 
                         {/* 진행 현황 */}
@@ -448,7 +448,10 @@ function DeviceManagement() {
         device_type: string; last_active: string;
     }>>([]);
     const [maxDevices, setMaxDevices] = useState(2);
+    const [canChange, setCanChange] = useState(true);
+    const [nextChangeDate, setNextChangeDate] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [removeMsg, setRemoveMsg] = useState<string | null>(null);
 
     const fetchDevices = async () => {
         try {
@@ -457,6 +460,8 @@ function DeviceManagement() {
                 const data = await res.json();
                 setDevices(data.devices || []);
                 setMaxDevices(data.maxDevices || 2);
+                setCanChange(data.canChange !== false);
+                setNextChangeDate(data.nextChangeDate || null);
             }
         } catch { /* ignore */ }
         finally { setLoading(false); }
@@ -465,11 +470,22 @@ function DeviceManagement() {
     useEffect(() => { fetchDevices(); }, []);
 
     const removeDevice = async (deviceId: string) => {
-        if (!confirm('이 기기를 로그아웃시키겠습니까?')) return;
+        if (!canChange) {
+            setRemoveMsg(`기기 변경은 월 1회만 가능합니다. ${nextChangeDate ? new Date(nextChangeDate).toLocaleDateString('ko-KR') + ' 이후' : '30일 후'} 변경 가능합니다.`);
+            return;
+        }
+        if (!confirm('이 기기를 제거하시겠습니까?\n\n⚠️ 기기 변경은 한 달에 1번만 가능합니다.')) return;
+        setRemoveMsg(null);
         try {
-            await fetch(`/api/auth/device?deviceId=${deviceId}`, { method: 'DELETE' });
-            fetchDevices();
-        } catch { /* ignore */ }
+            const res = await fetch(`/api/auth/device?deviceId=${deviceId}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (res.ok) {
+                setRemoveMsg(data.message);
+                fetchDevices();
+            } else {
+                setRemoveMsg(data.error);
+            }
+        } catch { setRemoveMsg('기기 제거에 실패했습니다.'); }
     };
 
     const getDeviceIcon = (type: string) => {
@@ -486,7 +502,7 @@ function DeviceManagement() {
                     기기 관리
                 </CardTitle>
                 <CardDescription>
-                    최대 {maxDevices}대의 기기에서 동시 로그인할 수 있습니다.
+                    최대 {maxDevices}대의 기기에서 동시 로그인 가능. 기기 변경은 <strong>월 1회</strong>만 가능합니다.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -507,15 +523,25 @@ function DeviceManagement() {
                                 </div>
                             </div>
                             <Button variant="ghost" size="sm" onClick={() => removeDevice(d.device_id)}
-                                className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50">
-                                제거
+                                disabled={!canChange}
+                                className={`text-xs ${canChange ? 'text-red-500 hover:text-red-700 hover:bg-red-50' : 'text-muted-foreground'}`}>
+                                {canChange ? '제거' : '변경 불가'}
                             </Button>
                         </div>
                     ))
                 )}
-                <p className="text-[10px] text-muted-foreground">
-                    {devices.length}/{maxDevices}대 사용 중. 새 기기에서 로그인하면 가장 오래된 기기가 자동으로 로그아웃됩니다.
-                </p>
+                {removeMsg && (
+                    <p className={`text-xs ${removeMsg.includes('실패') || removeMsg.includes('불가') || removeMsg.includes('월 1회') ? 'text-red-500' : 'text-green-600'}`}>
+                        {removeMsg}
+                    </p>
+                )}
+                <div className="text-[10px] text-muted-foreground space-y-0.5">
+                    <p>{devices.length}/{maxDevices}대 사용 중</p>
+                    {!canChange && nextChangeDate && (
+                        <p>🔒 다음 변경 가능일: {new Date(nextChangeDate).toLocaleDateString('ko-KR')}</p>
+                    )}
+                    <p>3번째 기기에서 로그인하면 차단됩니다. 기존 기기를 먼저 제거해주세요.</p>
+                </div>
             </CardContent>
         </Card>
     );

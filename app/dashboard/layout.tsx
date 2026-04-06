@@ -30,7 +30,11 @@ export default function DashboardLayout({
 
                 // 기기 등록 (최대 2대 제한)
                 import('@/lib/device').then(({ registerDevice }) => {
-                    registerDevice();
+                    registerDevice().then(result => {
+                        if (!result.allowed) {
+                            alert(result.message || '기기 수 제한(2대)에 도달했습니다. 설정 > 기기 관리에서 기존 기기를 제거해주세요.');
+                        }
+                    });
                 });
             }
         };

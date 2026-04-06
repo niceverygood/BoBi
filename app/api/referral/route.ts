@@ -3,8 +3,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-const MAX_REFERRALS = 3; // 최대 초대 가능 수
-const REWARD_DAYS = 30;  // 초대 1건당 베이직 무료 일수
+const MAX_REFERRALS = 10; // 최대 초대 가능 수
+const REWARD_DAYS = 7;   // 초대 1건당 베이직 무료 일수
 
 export async function GET() {
     try {

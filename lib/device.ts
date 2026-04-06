@@ -70,8 +70,9 @@ export async function registerDevice(): Promise<{ allowed: boolean; message?: st
                 deviceType: getDeviceType(),
             }),
         });
-        if (!res.ok) return { allowed: false };
-        return await res.json();
+        const data = await res.json();
+        if (!res.ok) return { allowed: false, message: data.error };
+        return data;
     } catch {
         return { allowed: true }; // 에러 시 허용 (서비스 중단 방지)
     }
