@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import {
     ArrowLeft, Activity, HeartPulse, Pill, AlertTriangle,
     FileSearch, Receipt, Brain, Loader2, MessageSquare,
-    CheckCircle2, XCircle, Calendar, TrendingUp,
+    CheckCircle2, XCircle, Calendar, TrendingUp, Stethoscope, Link2,
 } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { apiFetch } from '@/lib/api/client';
@@ -239,17 +239,117 @@ function CustomerCardContent() {
 
             {/* 바로가기 */}
             <div className="flex flex-wrap gap-2">
-                <Link href={`/dashboard/analyze`}><Button variant="outline" size="sm"><FileSearch className="w-3.5 h-3.5 mr-1" />새 분석</Button></Link>
+                <Link href={`/dashboard/analyze?customerId=${c.id}`}><Button variant="outline" size="sm"><FileSearch className="w-3.5 h-3.5 mr-1" />PDF 분석</Button></Link>
+                <Link href={`/dashboard/medical?customerId=${c.id}&customerName=${encodeURIComponent(c.name)}`}>
+                    <Button variant="outline" size="sm"><Stethoscope className="w-3.5 h-3.5 mr-1" />심평원 조회</Button>
+                </Link>
                 {s.latestAnalysisDate && (
                     <Link href={`/dashboard/risk-report?analysisId=${data.analyses[0]?.id}`}>
                         <Button variant="outline" size="sm"><HeartPulse className="w-3.5 h-3.5 mr-1" />위험도 리포트</Button>
                     </Link>
                 )}
             </div>
+
+            {/* 기존 분석 연결 */}
+            <LinkAnalysisSection customerId={c.id} customerName={c.name} onLinked={() => window.location.reload()} />
         </div>
     );
 }
 
 export default function CustomerCardPage() {
     return <Suspense fallback={<div className="max-w-4xl mx-auto py-12"><LoadingSpinner text="로딩 중..." size="lg" /></div>}><CustomerCardContent /></Suspense>;
+}
+
+// ── 기존 분석 연결 섹션 ──
+function LinkAnalysisSection({ customerId, customerName, onLinked }: { customerId: string; customerName: string; onLinked: () => void }) {
+    const [showLink, setShowLink] = useState(false);
+    const [unlinked, setUnlinked] = useState<Array<{ id: string; created_at: string; overallSummary: string }>>([]);
+    const [loadingList, setLoadingList] = useState(false);
+    const [linking, setLinking] = useState<string | null>(null);
+
+    const fetchUnlinked = async () => {
+        setLoadingList(true);
+        try {
+            const supabase = (await import('@/lib/supabase/client')).createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { data } = await supabase
+                .from('analyses')
+                .select('id, created_at, medical_history, status')
+                .eq('user_id', user.id)
+                .is('customer_id', null)
+                .eq('status', 'completed')
+                .order('created_at', { ascending: false })
+                .limit(20);
+
+            setUnlinked((data || []).map(a => ({
+                id: a.id,
+                created_at: a.created_at,
+                overallSummary: (a.medical_history as any)?.overallSummary?.substring(0, 60) || '분석 결과',
+            })));
+        } catch { /* ignore */ }
+        finally { setLoadingList(false); }
+    };
+
+    const linkAnalysis = async (analysisId: string) => {
+        setLinking(analysisId);
+        try {
+            const supabase = (await import('@/lib/supabase/client')).createClient();
+            await supabase
+                .from('analyses')
+                .update({ customer_id: customerId })
+                .eq('id', analysisId);
+            onLinked();
+        } catch { /* ignore */ }
+        finally { setLinking(null); }
+    };
+
+    return (
+        <Card className="border-0 shadow-sm">
+            <CardContent className="p-4">
+                <button
+                    onClick={() => { setShowLink(!showLink); if (!showLink) fetchUnlinked(); }}
+                    className="flex items-center gap-2 text-sm font-medium text-primary hover:underline w-full"
+                >
+                    <Link2 className="w-4 h-4" />
+                    기존 분석을 이 고객에 연결하기
+                </button>
+
+                {showLink && (
+                    <div className="mt-3 space-y-2">
+                        {loadingList ? (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                                <Loader2 className="w-4 h-4 animate-spin" /> 미연결 분석 목록 로딩...
+                            </div>
+                        ) : unlinked.length === 0 ? (
+                            <p className="text-sm text-muted-foreground py-2">연결 가능한 분석이 없습니다.</p>
+                        ) : (
+                            <>
+                                <p className="text-xs text-muted-foreground">고객에 연결되지 않은 분석 목록입니다. 클릭하면 {customerName} 고객에 연결됩니다.</p>
+                                {unlinked.map(a => (
+                                    <button
+                                        key={a.id}
+                                        onClick={() => linkAnalysis(a.id)}
+                                        disabled={linking === a.id}
+                                        className="w-full flex items-center justify-between p-3 rounded-lg border hover:border-primary hover:bg-primary/5 transition-colors text-left"
+                                    >
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm truncate">{a.overallSummary}</p>
+                                            <p className="text-[10px] text-muted-foreground">{new Date(a.created_at).toLocaleDateString('ko-KR')}</p>
+                                        </div>
+                                        {linking === a.id ? (
+                                            <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
+                                        ) : (
+                                            <Badge variant="outline" className="text-[10px] shrink-0">연결</Badge>
+                                        )}
+                                    </button>
+                                ))}
+                            </>
+                        )}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
 }
