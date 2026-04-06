@@ -97,11 +97,12 @@ export default function ChatBot() {
                 content: data.reply,
                 timestamp: new Date(),
             }]);
-        } catch {
+        } catch (err) {
+            console.error('[ChatBot] AI error:', err);
             setMessages(prev => [...prev, {
                 id: (Date.now() + 1).toString(),
                 role: 'system',
-                content: '응답을 받지 못했습니다. 다시 시도해주세요.',
+                content: 'AI 응답에 실패했습니다. 상담사 연결을 눌러 직접 문의해주세요.',
                 timestamp: new Date(),
             }]);
         } finally {
@@ -127,11 +128,12 @@ export default function ChatBot() {
                 content: msg,
                 timestamp: new Date(data.chat.created_at),
             }]);
-        } catch {
+        } catch (err) {
+            console.error('[ChatBot] Support error:', err);
             setMessages(prev => [...prev, {
                 id: Date.now().toString(),
                 role: 'system',
-                content: '메시지 전송에 실패했습니다.',
+                content: '메시지 전송에 실패했습니다. 잠시 후 다시 시도해주세요.',
                 timestamp: new Date(),
             }]);
         } finally {

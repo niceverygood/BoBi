@@ -41,7 +41,7 @@ export async function callOpenAI({
     fast = false,
 }: OpenAIRequestOptions): Promise<string> {
     let lastError: Error | null = null;
-    const model = fast ? 'anthropic/claude-haiku-3.5' : 'anthropic/claude-sonnet-4.5';
+    const model = fast ? 'anthropic/claude-3.5-haiku' : 'anthropic/claude-sonnet-4.5';
     const timeout = fast ? 30000 : 60000;
 
     for (let attempt = 0; attempt <= retries; attempt++) {
