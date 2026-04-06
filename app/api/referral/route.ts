@@ -94,14 +94,33 @@ export async function GET() {
         let { data: referral } = await supabase
             .from('referrals').select('*').eq('referrer_id', user.id).single();
 
-        if (!referral) {
+        const generateCode = () => {
             const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
             let code = '';
             for (let i = 0; i < 7; i++) code += chars[Math.floor(Math.random() * chars.length)];
+            return code;
+        };
+
+        if (!referral) {
+            // 새로 생성
+            const code = generateCode();
             const { data: nr, error } = await supabase
                 .from('referrals').insert({ referrer_id: user.id, code }).select().single();
             if (error) return NextResponse.json({ error: '초대 코드 생성 실패' }, { status: 500 });
             referral = nr;
+        } else if (referral.code.includes('-') || referral.code.length !== 7) {
+            // 기존 형태(BOBI-XXXX 등) → 새 형태로 자동 변경
+            const newCode = generateCode();
+            await supabase
+                .from('referrals')
+                .update({ code: newCode })
+                .eq('id', referral.id);
+            // referral_uses에서도 코드 업데이트 (기존 초대 기록 유지)
+            await supabase
+                .from('referral_uses')
+                .update({ referral_code: newCode })
+                .eq('referral_code', referral.code);
+            referral.code = newCode;
         }
 
         // 초대한 친구 목록
