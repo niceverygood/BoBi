@@ -303,10 +303,13 @@ function ReferralSection() {
     const [data, setData] = useState<{
         code: string;
         usedCount: number;
-        rewardMonths: number;
+        totalFreeDays: number;
         remainingSlots: number;
         maxReferrals: number;
+        rewardPerInvite: number;
         invitees: Array<{ invitee_email: string; created_at: string }>;
+        freeUntil: string | null;
+        isReferralSub: boolean;
     } | null>(null);
     const [loading, setLoading] = useState(true);
     const [copied, setCopied] = useState(false);
@@ -345,6 +348,9 @@ function ReferralSection() {
             if (res.ok) {
                 setApplyMsg({ type: 'success', text: result.message });
                 setInputCode('');
+                // 데이터 새로고침
+                const refreshRes = await fetch('/api/referral');
+                if (refreshRes.ok) setData(await refreshRes.json());
             } else {
                 setApplyMsg({ type: 'error', text: result.error });
             }
@@ -357,14 +363,14 @@ function ReferralSection() {
 
     return (
         <Card className="border-0 shadow-sm overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-amber-400 to-orange-500" />
+            <div className="h-1 bg-gradient-to-r from-[#1a56db] to-[#60a5fa]" />
             <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
-                    <Gift className="w-5 h-5 text-amber-500" />
+                    <Gift className="w-5 h-5 text-[#1a56db]" />
                     친구 초대
                 </CardTitle>
                 <CardDescription>
-                    친구를 초대하면 <strong>베이직 플랜 1주일 무료!</strong> 최대 10명 초대로 10주 무료
+                    친구를 초대하면 나는 <strong>7일</strong>, 친구는 <strong>3일</strong> 베이직 무료! (최대 5명)
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -373,31 +379,58 @@ function ReferralSection() {
                 ) : data ? (
                     <>
                         {/* 내 초대 코드 */}
-                        <div className="bg-amber-50 rounded-xl p-4">
-                            <p className="text-xs text-amber-700 font-medium mb-2">내 초대 코드</p>
+                        <div className="bg-[#1a56db]/5 rounded-xl p-4 border border-[#1a56db]/10">
+                            <p className="text-xs text-[#1a56db] font-medium mb-2">내 초대 코드</p>
                             <div className="flex items-center gap-2">
-                                <span className="text-2xl font-black text-amber-800 tracking-wider flex-1">{data.code}</span>
+                                <span className="text-2xl font-black text-[#1a56db] tracking-[0.3em] flex-1">{data.code}</span>
                                 <Button variant="outline" size="sm" onClick={handleCopy} className="shrink-0">
                                     {copied ? <CheckCircle2 className="w-4 h-4 mr-1 text-green-500" /> : <Copy className="w-4 h-4 mr-1" />}
                                     {copied ? '복사됨' : '복사'}
                                 </Button>
                             </div>
-                            <p className="text-xs text-amber-600 mt-2">이 코드를 친구에게 공유하세요. 친구가 가입 후 코드를 입력하면 베이직 1주일이 무료로 제공됩니다.</p>
+                            <p className="text-xs text-slate-500 mt-2">
+                                이 코드를 친구에게 공유하세요. 친구가 코드를 입력하면 나에게 7일, 친구에게 3일 무료가 제공됩니다.
+                            </p>
                         </div>
+
+                        {/* 무료 이용기간 */}
+                        {data.freeUntil && data.isReferralSub && (
+                            <div className="bg-green-50 rounded-xl p-3 border border-green-100">
+                                <p className="text-xs text-green-700 font-medium">🎁 초대 보상 무료 이용기간</p>
+                                <p className="text-sm font-bold text-green-800 mt-1">
+                                    {new Date(data.freeUntil).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}까지
+                                </p>
+                                <p className="text-[10px] text-green-600 mt-0.5">
+                                    총 {data.totalFreeDays}일 적립 (초대 {data.usedCount}명 × {data.rewardPerInvite}일)
+                                </p>
+                            </div>
+                        )}
 
                         {/* 진행 현황 */}
                         <div className="grid grid-cols-3 gap-3 text-center">
                             <div className="p-3 rounded-lg bg-muted/50">
-                                <p className="text-2xl font-black text-primary">{data.usedCount}</p>
+                                <p className="text-2xl font-black text-[#1a56db]">{data.usedCount}</p>
                                 <p className="text-[10px] text-muted-foreground">초대 완료</p>
                             </div>
                             <div className="p-3 rounded-lg bg-muted/50">
-                                <p className="text-2xl font-black text-amber-600">{data.rewardMonths}</p>
-                                <p className="text-[10px] text-muted-foreground">무료 개월</p>
+                                <p className="text-2xl font-black text-[#1a56db]">{data.totalFreeDays}일</p>
+                                <p className="text-[10px] text-muted-foreground">무료 적립</p>
                             </div>
                             <div className="p-3 rounded-lg bg-muted/50">
-                                <p className="text-2xl font-black text-muted-foreground">{data.remainingSlots}</p>
+                                <p className="text-2xl font-black text-slate-400">{data.remainingSlots}</p>
                                 <p className="text-[10px] text-muted-foreground">남은 초대</p>
+                            </div>
+                        </div>
+
+                        {/* 프로그레스 */}
+                        <div>
+                            <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+                                <span>초대 진행률</span>
+                                <span>{data.usedCount}/{data.maxReferrals}명</span>
+                            </div>
+                            <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                <div className="h-full bg-[#1a56db] rounded-full transition-all"
+                                    style={{ width: `${(data.usedCount / data.maxReferrals) * 100}%` }} />
                             </div>
                         </div>
 
@@ -405,7 +438,7 @@ function ReferralSection() {
                         {data.invitees.length > 0 && (
                             <div className="space-y-1">
                                 <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                                    <Users className="w-3 h-3" /> 초대한 친구
+                                    <Users className="w-3 h-3" /> 초대한 친구 ({data.invitees.length}명)
                                 </p>
                                 {data.invitees.map((inv, i) => (
                                     <div key={i} className="flex items-center justify-between text-sm py-1.5 px-2 rounded-lg bg-muted/30">
@@ -420,12 +453,12 @@ function ReferralSection() {
 
                 <Separator />
 
-                {/* 초대 코드 입력 (받은 코드 사용) */}
+                {/* 초대 코드 입력 */}
                 <div>
                     <p className="text-sm font-medium mb-2">초대 코드 입력</p>
-                    <p className="text-xs text-muted-foreground mb-2">친구에게 받은 초대 코드가 있나요?</p>
+                    <p className="text-xs text-muted-foreground mb-2">친구에게 받은 초대 코드를 입력하면 <strong>3일 무료</strong>로 베이직 플랜을 이용할 수 있어요.</p>
                     <div className="flex gap-2">
-                        <Input value={inputCode} onChange={e => setInputCode(e.target.value.toUpperCase())} placeholder="예: A3K7B2N" className="flex-1 font-mono uppercase" />
+                        <Input value={inputCode} onChange={e => setInputCode(e.target.value.toUpperCase())} placeholder="예: A3K7B2N" className="flex-1 font-mono uppercase tracking-wider" />
                         <Button onClick={handleApply} disabled={applying || !inputCode.trim()} size="sm">
                             {applying ? <Loader2 className="w-4 h-4 animate-spin" /> : '적용'}
                         </Button>
