@@ -83,18 +83,6 @@ function MedicalInfoContent() {
     const [analyzing, setAnalyzing] = useState(false);
     const [privacyConsent, setPrivacyConsent] = useState(false);
 
-    // 간편인증 자동 폴링 — 5초마다 인증 완료 자동 시도
-    useEffect(() => {
-        if (step !== 'auth-waiting' || authMethod === 'sms' || loading) return;
-
-        const pollTimer = setTimeout(() => {
-            // handleAuthComplete를 직접 호출하지 않고 버튼 클릭 시뮬레이션
-            const btn = document.querySelector('[data-auth-confirm]') as HTMLButtonElement;
-            if (btn && !btn.disabled) btn.click();
-        }, 5000);
-
-        return () => clearTimeout(pollTimer);
-    }, [step, authMethod, loading]);
 
     // 전화번호 포맷팅
     const formatPhone = (value: string) => {
@@ -724,7 +712,6 @@ function MedicalInfoContent() {
 
                         <div className="space-y-3">
                             <Button
-                                data-auth-confirm
                                 onClick={handleAuthComplete}
                                 disabled={loading || (isSmsAuth && !smsCode)}
                                 className="w-full bg-gradient-primary hover:opacity-90 h-11"
