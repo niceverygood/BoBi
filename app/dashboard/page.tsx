@@ -12,6 +12,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSubscription } from '@/hooks/useSubscription';
 import { createClient } from '@/lib/supabase/client';
+import ReferralFloating from '@/components/common/ReferralFloating';
 
 interface RecentAnalysis {
     id: string;
@@ -291,6 +292,8 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            <ReferralFloating />
         </div>
     );
 }
