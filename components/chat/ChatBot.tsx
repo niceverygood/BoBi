@@ -157,7 +157,19 @@ export default function ChatBot() {
         <>
             {/* 플로팅 버튼 */}
             <button
-                onClick={() => setOpen(!open)}
+                onClick={() => {
+                    const willOpen = !open;
+                    setOpen(willOpen);
+                    // 처음 열 때 인사말
+                    if (willOpen && messages.length === 0 && isLoggedIn) {
+                        setMessages([{
+                            id: 'greeting',
+                            role: 'assistant',
+                            content: '안녕하세요! 보비 AI 상담 어시스턴트입니다 😊\n보비 서비스에 대해 궁금한 점이 있으면 편하게 물어보세요.\n\n💡 예시: "요금제 알려줘", "PDF 분석은 어떻게 해?", "가입가능 상품 판단이 뭐야?"',
+                            timestamp: new Date(),
+                        }]);
+                    }
+                }}
                 className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-primary hover:bg-primary/90 text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
                 aria-label="채팅"
             >
