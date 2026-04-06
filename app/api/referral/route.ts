@@ -15,39 +15,72 @@ async function getAdminSupabase() {
 }
 
 async function grantFreeDays(adminSupabase: any, userId: string, days: number) {
-    const { data: basicPlan } = await adminSupabase
-        .from('subscription_plans').select('id').eq('slug', 'basic').single();
-    if (!basicPlan) return;
+    try {
+        const { data: basicPlan } = await adminSupabase
+            .from('subscription_plans').select('id').eq('slug', 'basic').single();
 
-    const { data: existingSub } = await adminSupabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', userId).eq('status', 'active').maybeSingle();
+        if (!basicPlan) {
+            console.error('[Referral] basic 플랜을 찾을 수 없습니다');
+            return null;
+        }
 
-    const now = new Date();
-    const currentEnd = existingSub?.current_period_end ? new Date(existingSub.current_period_end) : now;
-    const startDate = currentEnd > now ? currentEnd : now;
-    const newEnd = new Date(startDate);
-    newEnd.setDate(newEnd.getDate() + days);
+        console.log('[Referral] basicPlan:', basicPlan.id, 'userId:', userId, 'days:', days);
 
-    if (existingSub) {
-        await adminSupabase.from('subscriptions').update({
-            plan_id: basicPlan.id,
-            current_period_end: newEnd.toISOString(),
-            payment_method: 'referral',
-        }).eq('id', existingSub.id);
-    } else {
-        await adminSupabase.from('subscriptions').insert({
-            user_id: userId,
-            plan_id: basicPlan.id,
-            status: 'active',
-            current_period_start: now.toISOString(),
-            current_period_end: newEnd.toISOString(),
-            billing_cycle: 'monthly',
-            payment_method: 'referral',
-        });
+        const { data: existingSub, error: subErr } = await adminSupabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('status', 'active')
+            .maybeSingle();
+
+        if (subErr) console.error('[Referral] 기존 구독 조회 에러:', subErr);
+
+        const now = new Date();
+        const currentEnd = existingSub?.current_period_end ? new Date(existingSub.current_period_end) : now;
+        const startDate = currentEnd > now ? currentEnd : now;
+        const newEnd = new Date(startDate);
+        newEnd.setDate(newEnd.getDate() + days);
+
+        if (existingSub) {
+            const { error: updateErr } = await adminSupabase.from('subscriptions').update({
+                plan_id: basicPlan.id,
+                current_period_end: newEnd.toISOString(),
+            }).eq('id', existingSub.id);
+
+            if (updateErr) console.error('[Referral] 구독 업데이트 에러:', updateErr);
+            else console.log('[Referral] 구독 연장 완료:', newEnd.toISOString());
+        } else {
+            // 테이블 컬럼에 맞게 최소 필드만
+            const insertData: Record<string, unknown> = {
+                user_id: userId,
+                plan_id: basicPlan.id,
+                status: 'active',
+                current_period_start: now.toISOString(),
+                current_period_end: newEnd.toISOString(),
+            };
+
+            // 선택적 필드 — 컬럼이 있을 때만
+            const { error: insertErr } = await adminSupabase
+                .from('subscriptions').insert(insertData);
+
+            if (insertErr) {
+                console.error('[Referral] 구독 생성 에러:', insertErr);
+                // billing_cycle 등 필수 컬럼 있으면 추가해서 재시도
+                insertData.billing_cycle = 'monthly';
+                insertData.payment_method = 'referral';
+                const { error: retryErr } = await adminSupabase
+                    .from('subscriptions').insert(insertData);
+                if (retryErr) console.error('[Referral] 구독 재생성 에러:', retryErr);
+                else console.log('[Referral] 구독 생성 완료 (재시도):', newEnd.toISOString());
+            } else {
+                console.log('[Referral] 구독 생성 완료:', newEnd.toISOString());
+            }
+        }
+        return newEnd;
+    } catch (err) {
+        console.error('[Referral] grantFreeDays 에러:', err);
+        return null;
     }
-    return newEnd;
 }
 
 // GET: 내 초대 현황 + 무료 이용기간
