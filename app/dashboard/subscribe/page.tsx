@@ -45,6 +45,7 @@ function SubscribeContent() {
     const [userEmail, setUserEmail] = useState('');
     const [userPhone, setUserPhone] = useState('');
     const [userName, setUserName] = useState('');
+    const [isMobile, setIsMobile] = useState(false);
     const [iapReady, setIapReady] = useState(false);
 
     // Coupon
@@ -74,6 +75,11 @@ function SubscribeContent() {
                 initializeStore().then(setIapReady);
             });
         }
+
+        // 모바일 감지 — 이니시스 빌링키가 모바일 웹 미지원
+        const mobile = /Mobile|Android|iPhone/i.test(navigator.userAgent);
+        setIsMobile(mobile);
+        if (mobile) setPaymentMethod('kakaopay'); // 모바일은 카카오페이 기본
 
         // 유저 이메일 가져오기 (이니시스 V2 빌링키 필수)
         import('@/lib/supabase/client').then(({ createClient }) => {
@@ -790,17 +796,23 @@ function SubscribeContent() {
                                                 카카오페이
                                             </button>
                                             <button
-                                                onClick={() => setPaymentMethod('card')}
+                                                onClick={() => !isMobile && setPaymentMethod('card')}
+                                                disabled={isMobile}
                                                 className={cn(
                                                     'p-3 rounded-lg border-2 text-center text-sm transition-all',
                                                     paymentMethod === 'card'
                                                         ? 'border-primary bg-primary/5 font-semibold'
-                                                        : 'border-muted hover:border-primary/30'
+                                                        : 'border-muted hover:border-primary/30',
+                                                    isMobile && 'opacity-40 cursor-not-allowed'
                                                 )}
                                             >
                                                 신용카드
+                                                {isMobile && <span className="block text-[10px] text-muted-foreground mt-0.5">PC에서만 가능</span>}
                                             </button>
                                         </div>
+                                        {isMobile && (
+                                            <p className="text-[11px] text-muted-foreground">모바일에서는 카카오페이로 결제해주세요. 신용카드 결제는 PC에서 가능합니다.</p>
+                                        )}
                                         {billingCycle === 'yearly' && (
                                             <p className="text-[11px] text-amber-600">연간 결제는 신용카드만 가능합니다.</p>
                                         )}
