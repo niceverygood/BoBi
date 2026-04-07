@@ -103,6 +103,41 @@ function SubscribeContent() {
     // 카카오페이 콜백 처리 (approve 후 리다이렉트)
     useEffect(() => {
         const status = searchParams.get('status');
+        const billingIssueId = searchParams.get('billingIssueId');
+
+        // PortOne V2 빌링키 리다이렉트 콜백
+        if (billingIssueId) {
+            // 리다이렉트로 돌아온 경우 — 빌링키 발급 완료
+            // PortOne이 billingKey를 쿼리에 포함하지 않으므로 서버에서 조회 필요
+            // issueId 기반으로 서버에서 빌링키를 가져와 결제 진행
+            (async () => {
+                setLoading(true);
+                try {
+                    const res = await fetch('/api/billing/issue', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            billingIssueId,
+                            planSlug: selectedPlan,
+                            billingCycle,
+                            paymentMethod: 'card',
+                        }),
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        setSuccess(true);
+                    } else {
+                        setError(data.error || '결제 처리에 실패했습니다.');
+                    }
+                } catch {
+                    setError('결제 처리 중 오류가 발생했습니다.');
+                } finally {
+                    setLoading(false);
+                }
+            })();
+            return;
+        }
+
         if (status === 'success') {
             setSuccess(true);
             const plan = searchParams.get('plan');
@@ -307,11 +342,12 @@ function SubscribeContent() {
                 return;
             }
 
+            const issueId = `billing-${Date.now()}`;
             const response = await PortOne.requestIssueBillingKey({
                 storeId,
                 channelKey,
                 billingKeyMethod: 'CARD',
-                issueId: `billing-${Date.now()}`,
+                issueId,
                 issueName: `보비 ${planInfo.name} 플랜 (${billingCycle === 'yearly' ? '연간' : '월간'})`,
                 customer: {
                     customerId: `bobi-${crypto.randomUUID()}`,
@@ -319,6 +355,7 @@ function SubscribeContent() {
                     email: userEmail,
                     phoneNumber: userPhone.replace(/-/g, ''),
                 },
+                redirectUrl: `${window.location.origin}/dashboard/subscribe?plan=${selectedPlan}&billingIssueId=${issueId}`,
             });
 
             if (response?.code) {
