@@ -273,6 +273,13 @@ function SubscribeContent() {
 
     // 웹 결제 — 신용카드 (PortOne)
     const handleCardSubscribe = async () => {
+        // 이메일 필수 확인 (이니시스 V2 빌링키 요구)
+        if (!userEmail) {
+            setError('결제를 위해 이메일이 필요합니다. 아래에 이메일을 입력해주세요.');
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         setError(null);
 
@@ -806,6 +813,23 @@ function SubscribeContent() {
                                         <p className="text-xs text-muted-foreground">
                                             {platform === 'ios' ? 'App Store' : 'Google Play'} 결제 시스템을 통해 안전하게 처리됩니다.
                                         </p>
+                                    </div>
+                                )}
+
+                                {/* 이메일 확인/입력 (이니시스 V2 빌링키 필수) */}
+                                {platform === 'web' && paymentMethod === 'card' && (
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-muted-foreground">결제자 이메일 (필수)</label>
+                                        <input
+                                            type="email"
+                                            value={userEmail}
+                                            onChange={(e) => setUserEmail(e.target.value)}
+                                            placeholder="이메일을 입력해주세요"
+                                            className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                        />
+                                        {!userEmail && (
+                                            <p className="text-[10px] text-red-500">신용카드 결제 시 이메일이 필요합니다.</p>
+                                        )}
                                     </div>
                                 )}
 
