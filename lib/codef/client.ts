@@ -1080,11 +1080,25 @@ async function callHealthCheckupApi(
 ): Promise<{ data: unknown; requires2Way?: boolean; twoWayData?: Record<string, unknown> }> {
     const token = await getDemoAccessToken();
     const isSmsLogin = params.loginType === '2';
+
+    // 건강보험공단(0002)은 identity를 생년월일(YYYYMMDD) 형식으로 요청
+    let identity = params.identity.replace(/\D/g, '');
+    if (identity.length === 13) {
+        // 주민번호 13자리 → 생년월일 YYYYMMDD 변환
+        const yy = identity.substring(0, 2);
+        const mm = identity.substring(2, 4);
+        const dd = identity.substring(4, 6);
+        const genderDigit = identity.charAt(6);
+        // 1,2: 1900년대 / 3,4: 2000년대
+        const century = ['1', '2', '5', '6'].includes(genderDigit) ? '19' : '20';
+        identity = `${century}${yy}${mm}${dd}`;
+    }
+
     const body: Record<string, unknown> = {
         organization: '0002',
         loginType: params.loginType,
         loginTypeLevel: isSmsLogin ? '1' : (params.loginTypeLevel || ''),
-        identity: params.identity,
+        identity,
         phoneNo: params.phoneNo,
         userName: params.userName,
         id: params.id || '',

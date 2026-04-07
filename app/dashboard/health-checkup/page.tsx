@@ -307,7 +307,7 @@ function HealthCheckupContent() {
                     </div>
                     <div>
                         <label className="text-sm font-medium">주민등록번호</label>
-                        <input value={identity} onChange={e => setIdentity(e.target.value)} placeholder="주민등록번호 13자리" type="password"
+                        <input value={identity} onChange={e => setIdentity(e.target.value)} placeholder="주민등록번호 13자리 또는 생년월일 8자리" type="password"
                             className="w-full mt-1 px-3 py-2.5 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
                     </div>
                     <div>
