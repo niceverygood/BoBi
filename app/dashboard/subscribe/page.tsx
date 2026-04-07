@@ -43,6 +43,7 @@ function SubscribeContent() {
     const [success, setSuccess] = useState(false);
     const [platform, setPlatform] = useState<AppPlatform>('web');
     const [userEmail, setUserEmail] = useState('');
+    const [userPhone, setUserPhone] = useState('');
     const [iapReady, setIapReady] = useState(false);
 
     // Coupon
@@ -78,6 +79,8 @@ function SubscribeContent() {
             const supabase = createClient();
             supabase.auth.getUser().then(({ data: { user } }) => {
                 if (user?.email) setUserEmail(user.email);
+                if (user?.phone) setUserPhone(user.phone);
+                else if (user?.user_metadata?.phone) setUserPhone(user.user_metadata.phone);
             });
         });
     }, []);
@@ -273,10 +276,9 @@ function SubscribeContent() {
 
     // 웹 결제 — 신용카드 (PortOne)
     const handleCardSubscribe = async () => {
-        // 이메일 필수 확인 (이니시스 V2 빌링키 요구)
-        if (!userEmail) {
-            setError('결제를 위해 이메일이 필요합니다. 아래에 이메일을 입력해주세요.');
-            setLoading(false);
+        // 이메일 + 전화번호 필수 확인 (이니시스 V2 빌링키 요구)
+        if (!userEmail || !userPhone) {
+            setError('결제를 위해 이메일과 휴대폰 번호가 필요합니다.');
             return;
         }
 
@@ -304,7 +306,8 @@ function SubscribeContent() {
                 issueName: `보비 ${planInfo.name} 플랜 (${billingCycle === 'yearly' ? '연간' : '월간'})`,
                 customer: {
                     customerId: `bobi-${crypto.randomUUID()}`,
-                    email: userEmail || undefined,
+                    email: userEmail,
+                    phoneNumber: userPhone.replace(/-/g, ''),
                 },
             });
 
@@ -816,19 +819,31 @@ function SubscribeContent() {
                                     </div>
                                 )}
 
-                                {/* 이메일 확인/입력 (이니시스 V2 빌링키 필수) */}
+                                {/* 이메일 + 전화번호 (이니시스 V2 빌링키 필수) */}
                                 {platform === 'web' && paymentMethod === 'card' && (
-                                    <div className="space-y-1">
-                                        <label className="text-xs text-muted-foreground">결제자 이메일 (필수)</label>
-                                        <input
-                                            type="email"
-                                            value={userEmail}
-                                            onChange={(e) => setUserEmail(e.target.value)}
-                                            placeholder="이메일을 입력해주세요"
-                                            className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                        />
-                                        {!userEmail && (
-                                            <p className="text-[10px] text-red-500">신용카드 결제 시 이메일이 필요합니다.</p>
+                                    <div className="space-y-3">
+                                        <div className="space-y-1">
+                                            <label className="text-xs text-muted-foreground">결제자 이메일 (필수)</label>
+                                            <input
+                                                type="email"
+                                                value={userEmail}
+                                                onChange={(e) => setUserEmail(e.target.value)}
+                                                placeholder="이메일을 입력해주세요"
+                                                className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs text-muted-foreground">휴대폰 번호 (필수)</label>
+                                            <input
+                                                type="tel"
+                                                value={userPhone}
+                                                onChange={(e) => setUserPhone(e.target.value)}
+                                                placeholder="010-1234-5678"
+                                                className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                            />
+                                        </div>
+                                        {(!userEmail || !userPhone) && (
+                                            <p className="text-[10px] text-red-500">신용카드 결제 시 이메일과 휴대폰 번호가 필요합니다.</p>
                                         )}
                                     </div>
                                 )}
