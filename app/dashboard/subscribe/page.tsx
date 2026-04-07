@@ -44,6 +44,7 @@ function SubscribeContent() {
     const [platform, setPlatform] = useState<AppPlatform>('web');
     const [userEmail, setUserEmail] = useState('');
     const [userPhone, setUserPhone] = useState('');
+    const [userName, setUserName] = useState('');
     const [iapReady, setIapReady] = useState(false);
 
     // Coupon
@@ -81,6 +82,8 @@ function SubscribeContent() {
                 if (user?.email) setUserEmail(user.email);
                 if (user?.phone) setUserPhone(user.phone);
                 else if (user?.user_metadata?.phone) setUserPhone(user.user_metadata.phone);
+                const name = user?.user_metadata?.full_name || user?.user_metadata?.name || '';
+                if (name) setUserName(name);
             });
         });
     }, []);
@@ -276,9 +279,9 @@ function SubscribeContent() {
 
     // 웹 결제 — 신용카드 (PortOne)
     const handleCardSubscribe = async () => {
-        // 이메일 + 전화번호 필수 확인 (이니시스 V2 빌링키 요구)
-        if (!userEmail || !userPhone) {
-            setError('결제를 위해 이메일과 휴대폰 번호가 필요합니다.');
+        // 이름 + 이메일 + 전화번호 필수 (이니시스 V2 빌링키)
+        if (!userName || !userEmail || !userPhone) {
+            setError('결제를 위해 이름, 이메일, 휴대폰 번호가 모두 필요합니다.');
             return;
         }
 
@@ -306,6 +309,7 @@ function SubscribeContent() {
                 issueName: `보비 ${planInfo.name} 플랜 (${billingCycle === 'yearly' ? '연간' : '월간'})`,
                 customer: {
                     customerId: `bobi-${crypto.randomUUID()}`,
+                    fullName: userName,
                     email: userEmail,
                     phoneNumber: userPhone.replace(/-/g, ''),
                 },
@@ -819,9 +823,19 @@ function SubscribeContent() {
                                     </div>
                                 )}
 
-                                {/* 이메일 + 전화번호 (이니시스 V2 빌링키 필수) */}
+                                {/* 이름 + 이메일 + 전화번호 (이니시스 V2 빌링키 필수) */}
                                 {platform === 'web' && paymentMethod === 'card' && (
                                     <div className="space-y-3">
+                                        <div className="space-y-1">
+                                            <label className="text-xs text-muted-foreground">구매자 이름 (필수)</label>
+                                            <input
+                                                type="text"
+                                                value={userName}
+                                                onChange={(e) => setUserName(e.target.value)}
+                                                placeholder="이름을 입력해주세요"
+                                                className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                            />
+                                        </div>
                                         <div className="space-y-1">
                                             <label className="text-xs text-muted-foreground">결제자 이메일 (필수)</label>
                                             <input
@@ -842,8 +856,8 @@ function SubscribeContent() {
                                                 className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                                             />
                                         </div>
-                                        {(!userEmail || !userPhone) && (
-                                            <p className="text-[10px] text-red-500">신용카드 결제 시 이메일과 휴대폰 번호가 필요합니다.</p>
+                                        {(!userName || !userEmail || !userPhone) && (
+                                            <p className="text-[10px] text-red-500">신용카드 결제 시 이름, 이메일, 휴대폰 번호가 모두 필요합니다.</p>
                                         )}
                                     </div>
                                 )}
