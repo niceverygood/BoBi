@@ -103,13 +103,10 @@ function SubscribeContent() {
     // 카카오페이 콜백 처리 (approve 후 리다이렉트)
     useEffect(() => {
         const status = searchParams.get('status');
-        const billingIssueId = searchParams.get('billingIssueId');
+        const cardPaymentId = searchParams.get('paymentId');
 
-        // PortOne V2 빌링키 리다이렉트 콜백
-        if (billingIssueId) {
-            // 리다이렉트로 돌아온 경우 — 빌링키 발급 완료
-            // PortOne이 billingKey를 쿼리에 포함하지 않으므로 서버에서 조회 필요
-            // issueId 기반으로 서버에서 빌링키를 가져와 결제 진행
+        // 카드 결제 리다이렉트 콜백 (모바일에서 리다이렉트 방식)
+        if (status === 'card_success' && cardPaymentId) {
             (async () => {
                 setLoading(true);
                 try {
@@ -117,7 +114,7 @@ function SubscribeContent() {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            billingIssueId,
+                            paymentId: cardPaymentId,
                             planSlug: selectedPlan,
                             billingCycle,
                             paymentMethod: 'card',
@@ -318,9 +315,8 @@ function SubscribeContent() {
         }
     };
 
-    // 웹 결제 — 신용카드 (PortOne)
+    // 웹 결제 — 신용카드 (PortOne requestPayment)
     const handleCardSubscribe = async () => {
-        // 이름 + 이메일 + 전화번호 필수 (이니시스 V2 빌링키)
         if (!userName || !userEmail || !userPhone) {
             setError('결제를 위해 이름, 이메일, 휴대폰 번호가 모두 필요합니다.');
             return;
@@ -336,48 +332,44 @@ function SubscribeContent() {
             const channelKey = process.env.NEXT_PUBLIC_PORTONE_INICIS_CHANNEL_KEY || process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY;
 
             if (!storeId || !channelKey) {
-                console.error('[PortOne] Missing env vars:', { storeId: !!storeId, channelKey: !!channelKey });
-                setError('결제 설정이 올바르지 않습니다. 관리자에게 문의해주세요. (PORTONE_KEY_MISSING)');
+                setError('결제 설정이 올바르지 않습니다. 관리자에게 문의해주세요.');
                 setLoading(false);
                 return;
             }
 
-            const issueId = `billing-${Date.now()}`;
-            const response = await PortOne.requestIssueBillingKey({
+            const paymentId = `card-${selectedPlan}-${Date.now()}`;
+            const response = await PortOne.requestPayment({
                 storeId,
                 channelKey,
-                billingKeyMethod: 'CARD',
-                issueId,
-                issueName: `보비 ${planInfo.name} 플랜 (${billingCycle === 'yearly' ? '연간' : '월간'})`,
+                paymentId,
+                orderName: `보비 ${planInfo.name} 플랜 (${billingCycle === 'yearly' ? '연간' : '월간'})`,
+                totalAmount: amount,
+                currency: 'CURRENCY_KRW',
+                payMethod: 'CARD',
                 customer: {
                     customerId: `bobi-${crypto.randomUUID()}`,
                     fullName: userName,
                     email: userEmail,
                     phoneNumber: userPhone.replace(/-/g, ''),
                 },
-                redirectUrl: `${window.location.origin}/dashboard/subscribe?plan=${selectedPlan}&billingIssueId=${issueId}`,
+                redirectUrl: `${window.location.origin}/dashboard/subscribe?plan=${selectedPlan}&paymentId=${paymentId}&status=card_success`,
             });
 
             if (response?.code) {
                 if (response.code === 'FAILURE_TYPE_PG') {
                     setError('결제가 취소되었습니다.');
                 } else {
-                    setError(response.message || '빌링키 발급에 실패했습니다.');
+                    setError(response.message || '결제에 실패했습니다.');
                 }
                 setLoading(false);
                 return;
             }
 
-            if (!response?.billingKey) {
-                setError('빌링키를 발급받지 못했습니다.');
-                setLoading(false);
-                return;
-            }
-
+            // 결제 완료 → 서버에서 구독 생성
             await apiFetch('/api/billing/issue', {
                 method: 'POST',
                 body: {
-                    billingKey: response.billingKey,
+                    paymentId,
                     planSlug: selectedPlan,
                     billingCycle,
                     paymentMethod: 'card',
