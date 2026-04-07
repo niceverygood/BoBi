@@ -42,6 +42,7 @@ function SubscribeContent() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
     const [platform, setPlatform] = useState<AppPlatform>('web');
+    const [userEmail, setUserEmail] = useState('');
     const [iapReady, setIapReady] = useState(false);
 
     // Coupon
@@ -71,6 +72,14 @@ function SubscribeContent() {
                 initializeStore().then(setIapReady);
             });
         }
+
+        // 유저 이메일 가져오기 (이니시스 V2 빌링키 필수)
+        import('@/lib/supabase/client').then(({ createClient }) => {
+            const supabase = createClient();
+            supabase.auth.getUser().then(({ data: { user } }) => {
+                if (user?.email) setUserEmail(user.email);
+            });
+        });
     }, []);
 
     useEffect(() => {
@@ -288,6 +297,7 @@ function SubscribeContent() {
                 issueName: `보비 ${planInfo.name} 플랜 (${billingCycle === 'yearly' ? '연간' : '월간'})`,
                 customer: {
                     customerId: `bobi-${crypto.randomUUID()}`,
+                    email: userEmail || undefined,
                 },
             });
 
