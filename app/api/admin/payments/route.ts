@@ -25,7 +25,6 @@ export async function POST(request: Request) {
         const serviceClient = await createServiceClient();
         let userId = targetUserId;
 
-        // email로 user_id 찾기
         if (!userId && targetEmail) {
             const { data: usersData } = await serviceClient.auth.admin.listUsers({ perPage: 100 });
             const found = usersData?.users?.find(u => u.email === targetEmail);
@@ -105,38 +104,73 @@ export async function GET() {
     try {
         const serviceClient = await createServiceClient();
 
-        // 결제내역 조회 (최근 100건)
-        const { data: payments, error: payError } = await serviceClient
-            .from('payment_history')
+        // 1. payments 테이블 조회 (실제 결제 기록)
+        let allPayments: Record<string, any>[] = [];
+
+        const { data: paymentsData } = await serviceClient
+            .from('payments')
             .select('*')
             .order('created_at', { ascending: false })
             .limit(100);
 
-        if (payError) {
-            return NextResponse.json({ payments: [], error: payError.message });
+        if (paymentsData && paymentsData.length > 0) {
+            allPayments = paymentsData;
+        } else {
+            // fallback: payment_history 테이블
+            const { data: historyData } = await serviceClient
+                .from('payment_history')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(100);
+            allPayments = historyData || [];
         }
 
-        // user_id → email 매핑
-        const userIds = [...new Set((payments || []).map(p => p.user_id))];
-        const { data: profiles } = await serviceClient
-            .from('profiles')
-            .select('id, email, name')
-            .in('id', userIds);
+        // 2. 모든 구독 이력 (active + cancelled)
+        const { data: subscriptions } = await serviceClient
+            .from('subscriptions')
+            .select('*, plan:subscription_plans(slug, display_name)')
+            .order('created_at', { ascending: false })
+            .limit(100);
 
-        const userMap = new Map((profiles || []).map(p => [p.id, { email: p.email, name: p.name }]));
+        // 3. user_id → email/name 매핑
+        const allUserIds = new Set<string>();
+        allPayments.forEach(p => { if (p.user_id) allUserIds.add(p.user_id); });
+        (subscriptions || []).forEach(s => { if (s.user_id) allUserIds.add(s.user_id); });
 
-        const enriched = (payments || []).map(p => ({
+        const userIds = [...allUserIds];
+        let userMap = new Map<string, { email: string; name: string }>();
+
+        if (userIds.length > 0) {
+            // profiles 테이블에서 조회
+            const { data: profiles } = await serviceClient
+                .from('profiles')
+                .select('id, email, name')
+                .in('id', userIds);
+
+            if (profiles) {
+                userMap = new Map(profiles.map(p => [p.id, { email: p.email || '-', name: p.name || '-' }]));
+            }
+
+            // profiles에 없는 유저는 auth에서 가져오기
+            const missingIds = userIds.filter(id => !userMap.has(id));
+            if (missingIds.length > 0) {
+                const { data: authData } = await serviceClient.auth.admin.listUsers({ perPage: 200 });
+                if (authData?.users) {
+                    for (const u of authData.users) {
+                        if (missingIds.includes(u.id)) {
+                            const name = u.user_metadata?.full_name || u.user_metadata?.name || u.email?.split('@')[0] || '-';
+                            userMap.set(u.id, { email: u.email || '-', name });
+                        }
+                    }
+                }
+            }
+        }
+
+        const enrichedPayments = allPayments.map(p => ({
             ...p,
             user_email: userMap.get(p.user_id)?.email || '-',
             user_name: userMap.get(p.user_id)?.name || '-',
         }));
-
-        // 구독 현황도 포함
-        const { data: subscriptions } = await serviceClient
-            .from('subscriptions')
-            .select('*, plan:subscription_plans(slug, display_name)')
-            .eq('status', 'active')
-            .order('created_at', { ascending: false });
 
         const enrichedSubs = (subscriptions || []).map(s => ({
             ...s,
@@ -144,8 +178,11 @@ export async function GET() {
             user_name: userMap.get(s.user_id)?.name || '-',
         }));
 
-        return NextResponse.json({ payments: enriched, subscriptions: enrichedSubs });
+        return NextResponse.json({
+            payments: enrichedPayments,
+            subscriptions: enrichedSubs,
+        });
     } catch (error) {
-        return NextResponse.json({ payments: [], error: (error as Error).message });
+        return NextResponse.json({ payments: [], subscriptions: [], error: (error as Error).message });
     }
 }

@@ -1409,60 +1409,113 @@ function PaymentHistory() {
     const [payments, setPayments] = useState<Record<string, unknown>[]>([]);
     const [subs, setSubs] = useState<Record<string, unknown>[]>([]);
     const [loading, setLoading] = useState(true);
-    const [tab, setTab] = useState<'payments' | 'subscriptions'>('payments');
+    const [tab, setTab] = useState<'payments' | 'active' | 'cancelled'>('payments');
+    const [cancelling, setCancelling] = useState<string | null>(null);
+    const [actionMsg, setActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-    useEffect(() => {
-        (async () => {
-            try {
-                const data = await apiFetch<{ payments: Record<string, unknown>[]; subscriptions: Record<string, unknown>[] }>('/api/admin/payments');
-                setPayments(data.payments || []);
-                setSubs(data.subscriptions || []);
-            } catch { /* */ }
-            setLoading(false);
-        })();
-    }, []);
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const data = await apiFetch<{ payments: Record<string, unknown>[]; subscriptions: Record<string, unknown>[] }>('/api/admin/payments');
+            setPayments(data.payments || []);
+            setSubs(data.subscriptions || []);
+        } catch { /* */ }
+        setLoading(false);
+    };
+
+    useEffect(() => { fetchData(); }, []);
+
+    const activeSubs = subs.filter(s => s.status === 'active');
+    const cancelledSubs = subs.filter(s => s.status === 'cancelled');
+    const paidPayments = payments.filter(p => p.status === 'paid' || p.status === 'success');
+    const cancelledPayments = payments.filter(p => p.status === 'cancelled' || p.status === 'refunded');
+
+    const handleForceCancel = async (userId: string, email: string) => {
+        if (!confirm(`${email}의 구독을 강제 취소하고 무료 플랜으로 전환하시겠습니까?`)) return;
+        setCancelling(userId);
+        setActionMsg(null);
+        try {
+            const res = await apiFetch<{ success?: boolean; message?: string; error?: string }>('/api/admin/payments', {
+                method: 'POST',
+                body: JSON.stringify({ targetUserId: userId }),
+            });
+            if (res.success) {
+                setActionMsg({ type: 'success', text: res.message || '취소 완료' });
+                fetchData();
+            } else {
+                setActionMsg({ type: 'error', text: res.error || '취소 실패' });
+            }
+        } catch (e) {
+            setActionMsg({ type: 'error', text: (e as Error).message });
+        }
+        setCancelling(null);
+    };
 
     const fmtDate = (d: string) => new Date(d).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+    const statusBadge = (status: unknown, cancelledBy?: unknown) => {
+        const s = String(status);
+        if (s === 'paid' || s === 'success') return <Badge className="bg-green-500 text-white text-[10px]">결제완료</Badge>;
+        if (s === 'cancelled') return <Badge className="bg-red-500 text-white text-[10px]">{cancelledBy === 'admin' ? '관리자 취소' : '본인 취소'}</Badge>;
+        if (s === 'refunded') return <Badge className="bg-orange-500 text-white text-[10px]">환불</Badge>;
+        return <Badge variant="outline" className="text-[10px]">{s}</Badge>;
+    };
 
     return (
         <Card className="border-0 shadow-md mb-8">
             <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center gap-2">
-                    <CreditCard className="w-5 h-5" />
-                    결제 관리
-                </CardTitle>
-                <div className="flex gap-2 mt-2">
-                    <Button size="sm" variant={tab === 'payments' ? 'default' : 'outline'} onClick={() => setTab('payments')}>결제내역 ({payments.length})</Button>
-                    <Button size="sm" variant={tab === 'subscriptions' ? 'default' : 'outline'} onClick={() => setTab('subscriptions')}>활성 구독 ({subs.length})</Button>
+                <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <CreditCard className="w-5 h-5" />
+                        결제 관리
+                    </CardTitle>
+                    <Button size="sm" variant="ghost" onClick={fetchData} className="text-xs">새로고침</Button>
+                </div>
+                {actionMsg && (
+                    <p className={`text-xs mt-1 ${actionMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>{actionMsg.text}</p>
+                )}
+                <div className="flex gap-2 mt-2 flex-wrap">
+                    <Button size="sm" variant={tab === 'payments' ? 'default' : 'outline'} onClick={() => setTab('payments')}>
+                        결제내역 ({payments.length})
+                    </Button>
+                    <Button size="sm" variant={tab === 'active' ? 'default' : 'outline'} onClick={() => setTab('active')}>
+                        활성 구독 ({activeSubs.length})
+                    </Button>
+                    <Button size="sm" variant={tab === 'cancelled' ? 'default' : 'outline'} onClick={() => setTab('cancelled')}>
+                        취소/해지 ({cancelledSubs.length + cancelledPayments.length})
+                    </Button>
                 </div>
             </CardHeader>
             <CardContent>
                 {loading ? <p className="text-sm text-muted-foreground text-center py-8">로딩 중...</p>
+
                 : tab === 'payments' ? (
                     payments.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">결제 내역이 없습니다.</p> : (
-                    <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b">
+                    <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b bg-muted/30">
                         <th className="text-left p-2">일시</th><th className="text-left p-2">이메일</th><th className="text-left p-2">이름</th>
                         <th className="text-left p-2">플랜</th><th className="text-left p-2">주기</th><th className="text-right p-2">금액</th>
                         <th className="text-left p-2">상태</th><th className="text-left p-2">결제ID</th>
                     </tr></thead><tbody>{payments.map((p, i) => (
-                        <tr key={i} className="border-b hover:bg-muted/30">
+                        <tr key={i} className={`border-b hover:bg-muted/30 ${p.status === 'cancelled' || p.status === 'refunded' ? 'bg-red-50/50' : ''}`}>
                             <td className="p-2 whitespace-nowrap">{fmtDate(String(p.created_at))}</td>
                             <td className="p-2">{String(p.user_email || '-')}</td>
                             <td className="p-2">{String(p.user_name || '-')}</td>
-                            <td className="p-2"><Badge variant="outline" className="text-[10px]">{String(p.plan_slug || '-')}</Badge></td>
+                            <td className="p-2"><Badge variant="outline" className="text-[10px]">{String(p.plan_slug || p.plan_id || '-')}</Badge></td>
                             <td className="p-2">{p.billing_cycle === 'yearly' ? '연간' : '월간'}</td>
-                            <td className="p-2 text-right font-mono">{(Number(p.amount) || 0).toLocaleString()}원</td>
-                            <td className="p-2"><Badge className={p.status === 'paid' ? 'bg-green-500 text-white text-[10px]' : 'text-[10px]'}>{String(p.status)}</Badge></td>
-                            <td className="p-2 text-muted-foreground truncate max-w-[120px]">{String(p.payment_id || '')}</td>
+                            <td className={`p-2 text-right font-mono ${p.status === 'cancelled' ? 'line-through text-red-500' : ''}`}>{(Number(p.amount) || 0).toLocaleString()}원</td>
+                            <td className="p-2">{statusBadge(p.status, p.cancelled_by)}</td>
+                            <td className="p-2 text-muted-foreground truncate max-w-[120px]">{String(p.payment_id || p.portone_payment_id || '')}</td>
                         </tr>
                     ))}</tbody></table></div>)
-                ) : (
-                    subs.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">활성 구독이 없습니다.</p> : (
-                    <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b">
+
+                ) : tab === 'active' ? (
+                    activeSubs.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">활성 구독이 없습니다.</p> : (
+                    <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b bg-muted/30">
                         <th className="text-left p-2">이메일</th><th className="text-left p-2">이름</th><th className="text-left p-2">플랜</th>
                         <th className="text-left p-2">주기</th><th className="text-left p-2">결제수단</th><th className="text-left p-2">만료일</th>
-                    </tr></thead><tbody>{subs.map((s, i) => {
-                        const plan = s.plan as { display_name?: string } | null;
+                        <th className="text-left p-2">관리</th>
+                    </tr></thead><tbody>{activeSubs.map((s, i) => {
+                        const plan = s.plan as { display_name?: string; slug?: string } | null;
                         return (
                         <tr key={i} className="border-b hover:bg-muted/30">
                             <td className="p-2">{String(s.user_email || '-')}</td>
@@ -1471,8 +1524,62 @@ function PaymentHistory() {
                             <td className="p-2">{s.billing_cycle === 'yearly' ? '연간' : '월간'}</td>
                             <td className="p-2">{String(s.payment_provider || '-')}</td>
                             <td className="p-2 whitespace-nowrap">{fmtDate(String(s.current_period_end))}</td>
+                            <td className="p-2">
+                                <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    className="h-6 text-[10px] px-2"
+                                    disabled={cancelling === String(s.user_id)}
+                                    onClick={() => handleForceCancel(String(s.user_id), String(s.user_email))}
+                                >
+                                    {cancelling === String(s.user_id) ? '처리중...' : '강제 취소'}
+                                </Button>
+                            </td>
                         </tr>);
                     })}</tbody></table></div>)
+
+                ) : (
+                    // 취소/해지 탭
+                    (cancelledSubs.length + cancelledPayments.length) === 0 ? <p className="text-sm text-muted-foreground text-center py-8">취소/해지 내역이 없습니다.</p> : (
+                    <div className="space-y-4">
+                        {cancelledPayments.length > 0 && (
+                        <div>
+                            <p className="text-xs font-semibold text-muted-foreground mb-2">결제 취소 ({cancelledPayments.length}건)</p>
+                            <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b bg-red-50/50">
+                                <th className="text-left p-2">일시</th><th className="text-left p-2">이메일</th><th className="text-left p-2">이름</th>
+                                <th className="text-left p-2">플랜</th><th className="text-right p-2">금액</th><th className="text-left p-2">취소주체</th>
+                            </tr></thead><tbody>{cancelledPayments.map((p, i) => (
+                                <tr key={i} className="border-b bg-red-50/30">
+                                    <td className="p-2 whitespace-nowrap">{fmtDate(String(p.cancelled_at || p.created_at))}</td>
+                                    <td className="p-2">{String(p.user_email || '-')}</td>
+                                    <td className="p-2">{String(p.user_name || '-')}</td>
+                                    <td className="p-2"><Badge variant="outline" className="text-[10px]">{String(p.plan_slug || p.plan_id || '-')}</Badge></td>
+                                    <td className="p-2 text-right font-mono line-through text-red-500">{(Number(p.amount) || 0).toLocaleString()}원</td>
+                                    <td className="p-2">{statusBadge(p.status, p.cancelled_by)}</td>
+                                </tr>
+                            ))}</tbody></table></div>
+                        </div>
+                        )}
+                        {cancelledSubs.length > 0 && (
+                        <div>
+                            <p className="text-xs font-semibold text-muted-foreground mb-2">구독 해지 ({cancelledSubs.length}건)</p>
+                            <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b bg-slate-50">
+                                <th className="text-left p-2">해지일</th><th className="text-left p-2">이메일</th><th className="text-left p-2">이름</th>
+                                <th className="text-left p-2">플랜</th><th className="text-left p-2">취소주체</th>
+                            </tr></thead><tbody>{cancelledSubs.map((s, i) => {
+                                const plan = s.plan as { display_name?: string } | null;
+                                return (
+                                <tr key={i} className="border-b hover:bg-muted/30">
+                                    <td className="p-2 whitespace-nowrap">{fmtDate(String(s.cancelled_at || s.updated_at || s.created_at))}</td>
+                                    <td className="p-2">{String(s.user_email || '-')}</td>
+                                    <td className="p-2">{String(s.user_name || '-')}</td>
+                                    <td className="p-2"><Badge variant="outline" className="text-[10px]">{plan?.display_name || '-'}</Badge></td>
+                                    <td className="p-2">{s.cancelled_by === 'admin' ? <Badge className="bg-red-500 text-white text-[10px]">관리자</Badge> : <Badge variant="outline" className="text-[10px]">본인</Badge>}</td>
+                                </tr>);
+                            })}</tbody></table></div>
+                        </div>
+                        )}
+                    </div>)
                 )}
             </CardContent>
         </Card>
