@@ -15,16 +15,28 @@ export async function POST(request: Request) {
     const serviceClient = await createServiceClient();
 
     if (immediate) {
-        // 즉시 해지 — 구독 삭제하고 무료 플랜으로 복귀
-        const { error } = await serviceClient
+        // 즉시 해지 — 구독 취소하고 무료 플랜으로 복귀
+        await serviceClient
             .from('subscriptions')
-            .delete()
+            .update({
+                status: 'cancelled',
+                cancelled_at: new Date().toISOString(),
+                cancelled_by: 'user',
+            })
             .eq('user_id', user.id)
             .eq('status', 'active');
 
-        if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 });
-        }
+        // usage_tracking을 무료 플랜 한도(5건)로 리셋
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const periodStart = `${year}-${month}-01`;
+
+        await serviceClient
+            .from('usage_tracking')
+            .update({ analyses_limit: 5 })
+            .eq('user_id', user.id)
+            .eq('period_start', periodStart);
 
         return NextResponse.json({
             success: true,
@@ -32,12 +44,13 @@ export async function POST(request: Request) {
         });
     }
 
-    // 기간 만료 후 해지 (기존 방식)
+    // 기간 만료 후 해지
     const { data: subscription, error } = await serviceClient
         .from('subscriptions')
         .update({
             status: 'cancelled',
             cancelled_at: new Date().toISOString(),
+            cancelled_by: 'user',
         })
         .eq('user_id', user.id)
         .eq('status', 'active')
@@ -52,8 +65,20 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: '활성 구독이 없습니다.' }, { status: 404 });
     }
 
+    // usage_tracking도 무료 한도로 리셋
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const periodStart = `${year}-${month}-01`;
+
+    await serviceClient
+        .from('usage_tracking')
+        .update({ analyses_limit: 5 })
+        .eq('user_id', user.id)
+        .eq('period_start', periodStart);
+
     return NextResponse.json({
         success: true,
-        message: '구독이 해지되었습니다. 현재 결제 기간이 끝나면 무료 플랜으로 전환됩니다.',
+        message: '구독이 해지되었습니다. 무료 플랜으로 전환됩니다.',
     });
 }
