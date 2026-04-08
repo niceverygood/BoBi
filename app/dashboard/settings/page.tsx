@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { User, Building, Crown, CheckCircle2, X, Zap, Loader2, Sparkles, Gift, Copy } from 'lucide-react';
+import { User, Users, Building, Crown, CheckCircle2, X, Zap, Loader2, Sparkles, Gift, Copy } from 'lucide-react';
 import { PLAN_LIMITS, type PlanSlug } from '@/lib/utils/constants';
 import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
