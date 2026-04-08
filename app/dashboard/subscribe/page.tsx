@@ -797,6 +797,11 @@ function SubscribeContent() {
                                         <p className="text-xs text-muted-foreground">
                                             {billingCycle === 'yearly' ? '연간' : '월간'} (VAT 포함)
                                         </p>
+                                        {currentPlan.slug !== 'free' && currentPlan.slug !== selectedPlan && (
+                                            <p className="text-[10px] text-blue-600 mt-1">
+                                                * 기존 플랜 잔여 금액이 차감됩니다
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
 

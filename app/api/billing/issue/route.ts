@@ -78,6 +78,50 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: '결제 금액이 0원입니다. 무료 쿠폰은 결제 없이 적용됩니다.' }, { status: 400 });
     }
 
+    // 업그레이드 차액 계산: 기존 구독이 있으면 남은 기간 비례 차감
+    const { data: existingSub } = await serviceClient
+        .from('subscriptions')
+        .select('*, plan:subscription_plans(*)')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .maybeSingle();
+
+    if (existingSub && existingSub.plan) {
+        const oldPlan = existingSub.plan as Record<string, any>;
+        const oldAmount = billingCycle === 'yearly' ? (oldPlan.price_yearly || 0) : (oldPlan.price_monthly || 0);
+
+        if (oldAmount > 0 && oldAmount < amount) {
+            // 남은 기간 비례 계산
+            const periodEnd = new Date(existingSub.current_period_end);
+            const periodStart = new Date(existingSub.current_period_start);
+            const now = new Date();
+            const totalDays = Math.max(1, (periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24));
+            const remainingDays = Math.max(0, (periodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            const usedRatio = 1 - (remainingDays / totalDays);
+
+            // 기존 결제에서 미사용 금액
+            const unusedCredit = Math.round(oldAmount * (1 - usedRatio));
+            const upgradeAmount = Math.max(0, amount - unusedCredit);
+
+            console.log(`[Billing] 업그레이드 차액 계산: 신규 ${amount}원 - 미사용 ${unusedCredit}원 = ${upgradeAmount}원`);
+            amount = upgradeAmount;
+
+            if (amount <= 0) {
+                // 차액이 0 이하면 결제 없이 플랜만 변경
+                await serviceClient.from('subscriptions').update({
+                    plan_id: plan.id,
+                    payment_method: paymentMethod || 'upgrade',
+                }).eq('id', existingSub.id);
+
+                return NextResponse.json({
+                    success: true,
+                    message: '기존 결제 잔여분으로 플랜이 업그레이드되었습니다.',
+                    amount: 0,
+                });
+            }
+        }
+    }
+
     // 결제 처리
     let finalPaymentId = paymentId; // requestPayment로 이미 결제된 경우
 
