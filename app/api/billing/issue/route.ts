@@ -259,22 +259,36 @@ export async function POST(request: Request) {
         // billing_keys table may not exist yet — non-critical
     }
 
-    // Record payment history
+    // Record payment history (both tables)
     try {
         await serviceClient
             .from('payment_history')
             .insert({
                 user_id: user.id,
                 subscription_id: subscription.id,
-                payment_id: paymentId,
+                payment_id: finalPaymentId,
                 amount,
                 status: 'paid',
                 billing_cycle: billingCycle,
                 plan_slug: planSlug,
             });
-    } catch {
-        // payment_history table may not exist yet — non-critical
-    }
+    } catch { /* non-critical */ }
+
+    try {
+        await serviceClient
+            .from('payments')
+            .insert({
+                user_id: user.id,
+                subscription_id: subscription.id,
+                payment_id: finalPaymentId,
+                portone_payment_id: finalPaymentId,
+                amount,
+                status: 'paid',
+                billing_cycle: billingCycle,
+                plan_slug: actualPlan.slug,
+                payment_method: paymentMethod || 'card',
+            });
+    } catch { /* non-critical */ }
 
     // 쿠폰 사용 기록
     if (validatedCouponId) {

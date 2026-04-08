@@ -135,6 +135,37 @@ function SubscribeContent() {
             return;
         }
 
+        // 빌링키 발급 콜백 (requestIssueBillingKey 리다이렉트)
+        const billingKeyParam = searchParams.get('billingKey');
+        const billingCallback = searchParams.get('billing_callback');
+        if (billingKeyParam && billingCallback === 'true') {
+            const callbackPlan = searchParams.get('plan') as PlanSlug || selectedPlan;
+            const callbackCycle = searchParams.get('cycle') || billingCycle;
+            const callbackCoupon = searchParams.get('coupon') || undefined;
+
+            (async () => {
+                setLoading(true);
+                try {
+                    await apiFetch('/api/billing/issue', {
+                        method: 'POST',
+                        body: {
+                            billingKey: billingKeyParam,
+                            planSlug: callbackPlan,
+                            billingCycle: callbackCycle,
+                            paymentMethod: 'card',
+                            ...(callbackCoupon ? { couponCode: callbackCoupon } : {}),
+                        },
+                    });
+                    setSuccess(true);
+                } catch (err) {
+                    setError((err as Error).message || '결제 처리에 실패했습니다.');
+                } finally {
+                    setLoading(false);
+                }
+            })();
+            return;
+        }
+
         if (status === 'success') {
             setSuccess(true);
             const plan = searchParams.get('plan');
@@ -315,7 +346,7 @@ function SubscribeContent() {
         }
     };
 
-    // 웹 결제 — 신용카드 (PortOne requestPayment)
+    // 웹 결제 — 신용카드 (PortOne 빌링키 발급 → 정기결제)
     const handleCardSubscribe = async () => {
         if (!userName || !userEmail || !userPhone) {
             setError('결제를 위해 이름, 이메일, 휴대폰 번호가 모두 필요합니다.');
@@ -337,48 +368,65 @@ function SubscribeContent() {
                 return;
             }
 
-            const paymentId = `card-${selectedPlan}-${Date.now()}`;
-            const response = await PortOne.requestPayment({
+            // 빌링키 발급 리다이렉트 URL (플랜/주기/쿠폰 정보 포함)
+            const redirectParams = new URLSearchParams({
+                plan: selectedPlan,
+                cycle: billingCycle,
+                method: 'card',
+                billing_callback: 'true',
+            });
+            if (appliedCoupon) {
+                redirectParams.set('coupon', appliedCoupon.code);
+            }
+            const redirectUrl = `${window.location.origin}/dashboard/subscribe?${redirectParams.toString()}`;
+
+            const response = await PortOne.requestIssueBillingKey({
                 storeId,
                 channelKey,
-                paymentId,
-                orderName: `보비 ${planInfo.name} 플랜 (${billingCycle === 'yearly' ? '연간' : '월간'})`,
-                totalAmount: amount,
-                currency: 'CURRENCY_KRW',
-                payMethod: 'CARD',
+                billingKeyMethod: 'CARD',
                 customer: {
                     customerId: `bobi-${crypto.randomUUID()}`,
                     fullName: userName,
                     email: userEmail,
                     phoneNumber: userPhone.replace(/-/g, ''),
                 },
-                redirectUrl: `${window.location.origin}/dashboard/subscribe?plan=${selectedPlan}&paymentId=${paymentId}&status=card_success`,
+                redirectUrl,
             });
 
+            // 에러 처리 (팝업/iframe 방식에서 직접 반환되는 경우)
             if (response?.code) {
                 if (response.code === 'FAILURE_TYPE_PG') {
-                    setError('결제가 취소되었습니다.');
+                    setError('빌링키 발급이 취소되었습니다.');
                 } else {
-                    setError(response.message || '결제에 실패했습니다.');
+                    setError(response.message || '빌링키 발급에 실패했습니다.');
                 }
                 setLoading(false);
                 return;
             }
 
-            // 결제 완료 → 서버에서 구독 생성
-            await apiFetch('/api/billing/issue', {
-                method: 'POST',
-                body: {
-                    paymentId,
-                    planSlug: selectedPlan,
-                    billingCycle,
-                    paymentMethod: 'card',
-                    ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
-                    ...(appliedCoupon?.upgradeToPlan ? { upgradePlanSlug: appliedCoupon.upgradeToPlan } : {}),
-                },
-            });
+            // 빌링키 발급 성공 (비-리다이렉트 흐름)
+            if (response?.billingKey) {
+                try {
+                    await apiFetch('/api/billing/issue', {
+                        method: 'POST',
+                        body: {
+                            billingKey: response.billingKey,
+                            planSlug: selectedPlan,
+                            billingCycle,
+                            paymentMethod: 'card',
+                            ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
+                            ...(appliedCoupon?.upgradeToPlan ? { upgradePlanSlug: appliedCoupon.upgradeToPlan } : {}),
+                        },
+                    });
+                    setSuccess(true);
+                } catch (err) {
+                    setError((err as Error).message || '첫 결제 처리에 실패했습니다.');
+                }
+                setLoading(false);
+                return;
+            }
 
-            setSuccess(true);
+            // 리다이렉트 방식이면 여기까지 오지 않음 (페이지 이동됨)
         } catch (err) {
             setError((err as Error).message || '결제 처리 중 오류가 발생했습니다.');
         } finally {
