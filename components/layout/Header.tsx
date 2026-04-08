@@ -12,9 +12,10 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Bell, BellRing, LogOut, Settings, User } from 'lucide-react';
+import { LogOut, Settings, User } from 'lucide-react';
 import Link from 'next/link';
 import { initPushNotifications } from '@/lib/push';
+import NotificationBell from '@/components/layout/NotificationBell';
 
 interface HeaderProps {
     title?: string;
@@ -99,18 +100,7 @@ export default function Header({ title }: HeaderProps) {
                     </span>
                 )}
 
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="relative h-9 w-9"
-                    onClick={() => {
-                        if (!pushEnabled) {
-                            alert('알림은 앱에서만 지원됩니다.');
-                        }
-                    }}
-                >
-                    {pushEnabled ? <BellRing className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
-                </Button>
+                <NotificationBell />
 
                 <DropdownMenu>
                     <DropdownMenuTrigger className="relative h-9 w-9 rounded-full flex items-center justify-center hover:bg-accent">
