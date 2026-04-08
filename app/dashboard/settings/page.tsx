@@ -307,7 +307,7 @@ function ReferralSection() {
             </CardHeader>
             <CardContent className="space-y-4">
                 {loading ? (
-                    <Skeleton className="h-20 w-full" />
+                    <div className="h-20 w-full bg-muted animate-pulse rounded-lg" />
                 ) : data ? (
                     <>
                         {/* 내 초대 코드 */}
@@ -472,7 +472,7 @@ function DeviceManagement() {
             </CardHeader>
             <CardContent className="space-y-2">
                 {loading ? (
-                    <Skeleton className="h-16 w-full" />
+                    <div className="h-16 w-full bg-muted animate-pulse rounded-lg" />
                 ) : devices.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">등록된 기기가 없습니다.</p>
                 ) : (
@@ -543,7 +543,7 @@ function PaymentHistory() {
             </CardHeader>
             <CardContent className="space-y-3">
                 {loading ? (
-                    <Skeleton className="h-16 w-full" />
+                    <div className="h-16 w-full bg-muted animate-pulse rounded-lg" />
                 ) : payments.length === 0 && subs.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">결제 내역이 없습니다.</p>
                 ) : (
