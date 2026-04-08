@@ -588,6 +588,8 @@ function PaymentHistory() {
     const [payments, setPayments] = useState<Array<Record<string, any>>>([]);
     const [subs, setSubs] = useState<Array<Record<string, any>>>([]);
     const [loading, setLoading] = useState(true);
+    const [showAll, setShowAll] = useState(false);
+    const INITIAL_COUNT = 5;
 
     useEffect(() => {
         (async () => {
@@ -603,6 +605,23 @@ function PaymentHistory() {
         })();
     }, []);
 
+    // 결제 + 구독을 시간순으로 합침
+    const allItems = [
+        ...payments.map(p => ({
+            kind: 'payment' as const,
+            data: p,
+            timestamp: new Date(p.created_at).getTime(),
+        })),
+        ...subs.map(s => ({
+            kind: 'subscription' as const,
+            data: s,
+            timestamp: new Date(s.created_at).getTime(),
+        })),
+    ].sort((a, b) => b.timestamp - a.timestamp);
+
+    const visibleItems = showAll ? allItems : allItems.slice(0, INITIAL_COUNT);
+    const hasMore = allItems.length > INITIAL_COUNT;
+
     return (
         <Card className="border-0 shadow-sm">
             <CardHeader>
@@ -610,58 +629,71 @@ function PaymentHistory() {
                     <Crown className="w-5 h-5 text-primary" />
                     결제 내역
                 </CardTitle>
-                <CardDescription>결제 및 취소 내역을 확인하세요.</CardDescription>
+                <CardDescription>결제 및 취소 내역을 확인하세요. (총 {allItems.length}건)</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
                 {loading ? (
                     <div className="h-16 w-full bg-muted animate-pulse rounded-lg" />
-                ) : payments.length === 0 && subs.length === 0 ? (
+                ) : allItems.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">결제 내역이 없습니다.</p>
                 ) : (
                     <>
-                        {payments.map((p, i) => {
-                            const isCancelled = p.status === 'cancelled' || p.status === 'refunded';
-                            const cancelledBy = p.cancelled_by === 'admin' ? '보비 관리자' : '본인';
-                            return (
-                                <div key={i} className={`flex items-center justify-between p-3 rounded-lg border ${isCancelled ? 'bg-red-50/50 border-red-100' : 'bg-muted/30'}`}>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xl">{isCancelled ? '💸' : '💳'}</span>
-                                        <div>
-                                            <p className="text-sm font-medium">
-                                                {isCancelled ? '결제 취소' : '결제 완료'}
-                                                {isCancelled && <span className="text-[10px] text-red-500 ml-1">({cancelledBy} 취소)</span>}
-                                            </p>
-                                            <p className="text-[10px] text-muted-foreground">
-                                                {p.plan_slug || '-'} · {p.payment_method || '-'} · {new Date(p.created_at).toLocaleDateString('ko-KR')}
-                                            </p>
+                        {visibleItems.map((item, i) => {
+                            if (item.kind === 'payment') {
+                                const p = item.data;
+                                const isCancelled = p.status === 'cancelled' || p.status === 'refunded';
+                                const cancelledBy = p.cancelled_by === 'admin' ? '보비 관리자' : '본인';
+                                return (
+                                    <div key={`p-${i}`} className={`flex items-center justify-between p-3 rounded-lg border ${isCancelled ? 'bg-red-50/50 border-red-100' : 'bg-muted/30'}`}>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xl">{isCancelled ? '💸' : '💳'}</span>
+                                            <div>
+                                                <p className="text-sm font-medium">
+                                                    {isCancelled ? '결제 취소' : '결제 완료'}
+                                                    {isCancelled && <span className="text-[10px] text-red-500 ml-1">({cancelledBy} 취소)</span>}
+                                                </p>
+                                                <p className="text-[10px] text-muted-foreground">
+                                                    {p.plan_slug || '-'} · {p.payment_method || '-'} · {new Date(p.created_at).toLocaleDateString('ko-KR')}
+                                                </p>
+                                            </div>
                                         </div>
+                                        <span className={`text-sm font-bold ${isCancelled ? 'text-red-500 line-through' : ''}`}>
+                                            {(p.amount || 0).toLocaleString()}원
+                                        </span>
                                     </div>
-                                    <span className={`text-sm font-bold ${isCancelled ? 'text-red-500 line-through' : ''}`}>
-                                        {(p.amount || 0).toLocaleString()}원
-                                    </span>
-                                </div>
-                            );
-                        })}
-                        {subs.map((s, i) => {
-                            const planName = (s.plan as any)?.display_name || '-';
-                            const isCancelled = s.status === 'cancelled';
-                            return (
-                                <div key={`sub-${i}`} className={`flex items-center justify-between p-3 rounded-lg border ${isCancelled ? 'bg-slate-50' : 'bg-blue-50/30 border-blue-100'}`}>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xl">{isCancelled ? '🚫' : '⭐'}</span>
-                                        <div>
-                                            <p className="text-sm font-medium">{isCancelled ? '구독 해지' : '구독 활성'}</p>
-                                            <p className="text-[10px] text-muted-foreground">
-                                                {planName} · {s.billing_cycle || '-'} · {new Date(s.created_at).toLocaleDateString('ko-KR')}
-                                            </p>
+                                );
+                            } else {
+                                const s = item.data;
+                                const planName = (s.plan as any)?.display_name || '-';
+                                const isCancelled = s.status === 'cancelled';
+                                return (
+                                    <div key={`s-${i}`} className={`flex items-center justify-between p-3 rounded-lg border ${isCancelled ? 'bg-slate-50' : 'bg-blue-50/30 border-blue-100'}`}>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xl">{isCancelled ? '🚫' : '⭐'}</span>
+                                            <div>
+                                                <p className="text-sm font-medium">{isCancelled ? '구독 해지' : '구독 활성'}</p>
+                                                <p className="text-[10px] text-muted-foreground">
+                                                    {planName} · {s.billing_cycle || '-'} · {new Date(s.created_at).toLocaleDateString('ko-KR')}
+                                                </p>
+                                            </div>
                                         </div>
+                                        <Badge variant={isCancelled ? 'outline' : 'default'} className="text-[10px]">
+                                            {isCancelled ? '해지됨' : '활성'}
+                                        </Badge>
                                     </div>
-                                    <Badge variant={isCancelled ? 'outline' : 'default'} className="text-[10px]">
-                                        {isCancelled ? '해지됨' : '활성'}
-                                    </Badge>
-                                </div>
-                            );
+                                );
+                            }
                         })}
+                        {hasMore && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="w-full text-xs text-muted-foreground hover:text-foreground"
+                                onClick={() => setShowAll(!showAll)}
+                            >
+                                {showAll ? '접기' : `더보기 (${allItems.length - INITIAL_COUNT}건 더)`}
+                            </Button>
+                        )}
                     </>
                 )}
             </CardContent>
