@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, FileSearch, History, Settings, Menu, ShieldCheck, ShieldPlus, Stethoscope, Receipt, HeartPulse, Users } from 'lucide-react';
+import { LayoutDashboard, FileSearch, History, Settings, Menu, ShieldCheck, ShieldPlus, Stethoscope, Receipt, HeartPulse, Users, MessageCircle } from 'lucide-react';
 import BobiLogo from '@/components/common/BobiLogo';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ const navItems = [
     { title: '건강검진', href: '/dashboard/health-checkup', icon: HeartPulse },
     { title: '가상 영수증', href: '/dashboard/accident-receipt', icon: Receipt },
     { title: '분석 이력', href: '/dashboard/history', icon: History },
+    { title: '1:1 문의', href: '/dashboard/inquiries', icon: MessageCircle },
     { title: '설정', href: '/dashboard/settings', icon: Settings },
 ];
 

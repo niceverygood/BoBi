@@ -510,6 +510,26 @@ export default function AdminPage() {
                         </CardContent>
                     </Card>
 
+                    {/* 고객 문의 관리 */}
+                    <Card className="border-0 shadow-md mb-8">
+                        <CardContent className="p-5">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                                        <Activity className="w-5 h-5 text-emerald-600" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-sm">1:1 문의 관리</p>
+                                        <p className="text-xs text-muted-foreground">고객 문의 확인 및 답변</p>
+                                    </div>
+                                </div>
+                                <Link href="/admin/inquiries">
+                                    <Button size="sm">문의 관리</Button>
+                                </Link>
+                            </div>
+                        </CardContent>
+                    </Card>
+
                     {/* 약관 관리 */}
                     <Card className="border-0 shadow-md mb-8">
                         <CardContent className="p-5">
