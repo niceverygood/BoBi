@@ -10,9 +10,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
     }
 
-    const { billingKey, planSlug, billingCycle, paymentMethod, upgradePlanSlug, couponCode } = await request.json();
+    const { billingKey, paymentId, planSlug, billingCycle, paymentMethod, upgradePlanSlug, couponCode } = await request.json();
 
-    if (!billingKey || !planSlug || !billingCycle) {
+    if ((!billingKey && !paymentId) || !planSlug || !billingCycle) {
         return NextResponse.json({ error: '필수 파라미터가 누락되었습니다.' }, { status: 400 });
     }
 
@@ -78,24 +78,30 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: '결제 금액이 0원입니다. 무료 쿠폰은 결제 없이 적용됩니다.' }, { status: 400 });
     }
 
-    // 첫 결제 실행 (빌링키로 실제 결제)
-    const emailPrefix = (user.email || '').split('@')[0].slice(0, 20);
-    const paymentId = `sub-${emailPrefix}-${planSlug}-${Date.now()}`;
-    const cycleLabel = billingCycle === 'yearly' ? '연간' : '월간';
+    // 결제 처리
+    let finalPaymentId = paymentId; // requestPayment로 이미 결제된 경우
 
-    const payResult = await payWithBillingKey({
-        billingKey,
-        paymentId,
-        orderName: `보비 ${plan.display_name} 플랜 (${cycleLabel})`,
-        amount,
-    });
+    if (billingKey) {
+        // 빌링키 기반 결제 (기존 방식)
+        const emailPrefix = (user.email || '').split('@')[0].slice(0, 20);
+        finalPaymentId = `sub-${emailPrefix}-${planSlug}-${Date.now()}`;
+        const cycleLabel = billingCycle === 'yearly' ? '연간' : '월간';
 
-    if (!payResult.success) {
-        return NextResponse.json(
-            { error: payResult.error || '첫 결제에 실패했습니다. 다시 시도해주세요.' },
-            { status: 402 }
-        );
+        const payResult = await payWithBillingKey({
+            billingKey,
+            paymentId: finalPaymentId,
+            orderName: `보비 ${plan.display_name} 플랜 (${cycleLabel})`,
+            amount,
+        });
+
+        if (!payResult.success) {
+            return NextResponse.json(
+                { error: payResult.error || '첫 결제에 실패했습니다. 다시 시도해주세요.' },
+                { status: 402 }
+            );
+        }
     }
+    // paymentId로 온 경우: requestPayment로 이미 결제 완료 → 구독만 생성
 
     // 업그레이드 플랜 처리: 쿠폰코드로 검증 후 실제 구독 플랜 결정
     let actualPlan = plan;
@@ -148,7 +154,7 @@ export async function POST(request: Request) {
             current_period_start: now.toISOString(),
             current_period_end: periodEnd.toISOString(),
             payment_provider: paymentMethod === 'card' ? 'portone_inicis' : 'portone_kakaopay',
-            payment_key: billingKey,
+            payment_key: billingKey || finalPaymentId,
         })
         .select()
         .single();
@@ -201,7 +207,7 @@ export async function POST(request: Request) {
             .from('billing_keys')
             .upsert({
                 user_id: user.id,
-                billing_key: billingKey,
+                billing_key: billingKey || finalPaymentId,
                 provider: paymentMethod === 'card' ? 'portone_inicis' : 'portone_kakaopay',
                 created_at: now.toISOString(),
             }, { onConflict: 'user_id' });
