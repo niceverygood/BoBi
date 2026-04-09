@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>보비(BoBi) 서비스 소개서 - 네이버페이 입점심사용</title>
+<style>
+  @page { margin: 20mm; size: A4; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif; color: #1a1a2e; line-height: 1.7; font-size: 13px; padding: 40px; max-width: 800px; margin: 0 auto; }
+
+  .header { text-align: center; margin-bottom: 40px; padding-bottom: 30px; border-bottom: 3px solid #1a56db; }
+  .header h1 { font-size: 28px; color: #1a56db; margin-bottom: 8px; }
+  .header p.sub { font-size: 16px; color: #555; }
+  .header p.info { font-size: 12px; color: #888; margin-top: 12px; }
+
+  h2 { font-size: 18px; color: #1a56db; margin: 30px 0 15px; padding-left: 12px; border-left: 4px solid #1a56db; }
+  h3 { font-size: 15px; color: #333; margin: 20px 0 10px; }
+
+  p { margin-bottom: 10px; }
+
+  .highlight { background: #f0f4ff; border-radius: 8px; padding: 20px; margin: 15px 0; }
+  .highlight strong { color: #1a56db; }
+
+  table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 12px; }
+  th, td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; }
+  th { background: #1a56db; color: white; font-weight: 600; }
+  tr:nth-child(even) { background: #f8f9fa; }
+
+  .plan-card { border: 1px solid #e0e0e0; border-radius: 10px; padding: 20px; margin: 10px 0; page-break-inside: avoid; }
+  .plan-card.recommended { border-color: #1a56db; border-width: 2px; }
+  .plan-card h3 { margin-top: 0; }
+  .plan-card .price { font-size: 22px; font-weight: 800; color: #1a56db; }
+  .plan-card .price span { font-size: 13px; font-weight: 400; color: #888; }
+  .plan-card ul { padding-left: 20px; margin-top: 10px; }
+  .plan-card ul li { margin-bottom: 4px; font-size: 12px; }
+
+  .flow { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 20px 0; flex-wrap: wrap; }
+  .flow .step { background: #f0f4ff; border-radius: 8px; padding: 12px 16px; text-align: center; min-width: 120px; }
+  .flow .step .num { font-size: 20px; font-weight: 800; color: #1a56db; }
+  .flow .step .desc { font-size: 11px; color: #555; margin-top: 4px; }
+  .flow .arrow { font-size: 20px; color: #1a56db; }
+
+  .footer { margin-top: 40px; padding-top: 20px; border-top: 2px solid #eee; text-align: center; font-size: 11px; color: #888; }
+
+  .badge { display: inline-block; background: #1a56db; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-left: 6px; }
+
+  @media print {
+    body { padding: 0; }
+    .page-break { page-break-before: always; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 1페이지: 서비스 개요 -->
+<div class="header">
+  <h1>보비 BoBi</h1>
+  <p class="sub">AI 보험 분석 SaaS 서비스 소개서</p>
+  <p class="info">네이버페이 입점심사용 | 2026.04 | 주식회사 바틀코퍼레이션</p>
+</div>
+
+<h2>1. 서비스 개요</h2>
+
+<div class="highlight">
+  <strong>보비(BoBi)</strong>는 보험 설계사(GA/보험사 소속)를 위한 <strong>AI 기반 보험 분석 SaaS</strong> 서비스입니다.<br>
+  고객의 진료기록 PDF를 업로드하면, AI가 자동으로 질병 위험도를 분석하고 고지사항을 생성하여<br>
+  보험 설계사의 상담 업무 효율을 획기적으로 높여줍니다.
+</div>
+
+<table>
+  <tr><th width="150">항목</th><th>내용</th></tr>
+  <tr><td>서비스명</td><td>보비 BoBi (AI 보험 분석 서비스)</td></tr>
+  <tr><td>서비스 URL</td><td>https://bobi.co.kr</td></tr>
+  <tr><td>운영사</td><td>주식회사 바틀코퍼레이션</td></tr>
+  <tr><td>서비스 유형</td><td>B2B SaaS (월간/연간 구독형)</td></tr>
+  <tr><td>대상 고객</td><td>보험 설계사 (GA, 보험사 소속 개인/팀)</td></tr>
+  <tr><td>결제 방식</td><td>월간 자동 결제 / 연간 결제 (구독형)</td></tr>
+  <tr><td>결제 수단</td><td>카카오페이, 신용카드 (추가 예정)</td></tr>
+  <tr><td>iOS 앱</td><td>App Store 등록 (v1.0.5)</td></tr>
+</table>
+
+<h2>2. 주요 기능</h2>
+
+<table>
+  <tr><th width="40">#</th><th width="180">기능</th><th>설명</th></tr>
+  <tr><td>1</td><td>AI 고지사항 자동 분석</td><td>심평원 진료기록 PDF를 업로드하면 AI가 자동으로 질병 위험도를 분석하고 보험 고지사항을 생성합니다.</td></tr>
+  <tr><td>2</td><td>보장 분석 리포트</td><td>기존 보험 계약 대비 부족한 보장 항목을 분석하여 리포트를 제공합니다.</td></tr>
+  <tr><td>3</td><td>고객 카드 관리</td><td>고객별 분석 이력, 건강 점수, 상담 메모를 통합 관리합니다.</td></tr>
+  <tr><td>4</td><td>진료정보 조회 (CODEF)</td><td>건강보험공단 연동으로 고객 진료기록을 자동 조회합니다.</td></tr>
+  <tr><td>5</td><td>건강검진 조회</td><td>국민건강보험 건강검진 결과를 조회하여 분석에 활용합니다.</td></tr>
+  <tr><td>6</td><td>가상 영수증 생성</td><td>AI가 질병별 예상 치료비 영수증을 생성하여 상담 자료로 활용합니다.</td></tr>
+  <tr><td>7</td><td>분석 이력 관리</td><td>과거 분석 결과를 보관하고 고객별로 추적 관리합니다.</td></tr>
+  <tr><td>8</td><td>실시간 보험 트렌드</td><td>네이버 검색 트렌드 기반 연령/성별 급상승 보험 키워드를 제공합니다.</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- 2페이지: 상품 구성 -->
+<h2>3. 상품 구성 및 가격</h2>
+
+<h3>개인 플랜</h3>
+
+<div class="plan-card">
+  <h3>무료 체험 플랜</h3>
+  <div class="price">0원</div>
+  <ul>
+    <li>AI 고지사항 분석 월 5건</li>
+    <li>고객 카드 5명 관리</li>
+    <li>분석 이력 7일 보관</li>
+    <li>PDF 업로드 무제한 용량</li>
+  </ul>
+</div>
+
+<div class="plan-card recommended">
+  <h3>베이직 플랜 <span class="badge">추천</span></h3>
+  <div class="price">월 19,900원 <span>/ 연 190,000원 (연간 20% 할인)</span></div>
+  <ul>
+    <li>AI 고지사항 분석 월 50건</li>
+    <li>보장 분석 리포트</li>
+    <li>고객 카드 50명 관리</li>
+    <li>결과 PDF 다운로드</li>
+    <li>보험 자동 조회 (CODEF 연동)</li>
+    <li>분석 이력 6개월 보관</li>
+    <li>초과 시 크레딧 추가 구매 가능</li>
+  </ul>
+</div>
+
+<div class="plan-card">
+  <h3>프로 플랜</h3>
+  <div class="price">월 39,900원 <span>/ 연 380,000원 (연간 21% 할인)</span></div>
+  <ul>
+    <li>AI 분석 <strong>무제한</strong></li>
+    <li>베이직 플랜의 모든 기능</li>
+    <li>리모델링 제안서</li>
+    <li>맞춤 보험사 상품DB</li>
+    <li>고객 카드 무제한</li>
+    <li>분석 이력 무제한 보관</li>
+    <li>카카오톡 채널 우선 지원</li>
+  </ul>
+</div>
+
+<h3>팀/조직 플랜</h3>
+
+<table>
+  <tr><th>플랜</th><th>월 가격</th><th>포함 인원</th><th>인당 가격</th><th>추가 1인당</th><th>분석 한도</th></tr>
+  <tr><td>팀 베이직</td><td>79,000원/월</td><td>5명</td><td>15,800원</td><td>12,000원</td><td>인당 50건/월</td></tr>
+  <tr><td>팀 프로</td><td>149,000원/월</td><td>5명</td><td>29,800원</td><td>25,000원</td><td>무제한</td></tr>
+</table>
+
+<h2>4. 결제 후 서비스 제공 방식</h2>
+
+<div class="flow">
+  <div class="step"><div class="num">①</div><div class="desc">플랜 선택 및<br>결제 진행</div></div>
+  <div class="arrow">→</div>
+  <div class="step"><div class="num">②</div><div class="desc">결제 즉시<br>플랜 활성화</div></div>
+  <div class="arrow">→</div>
+  <div class="step"><div class="num">③</div><div class="desc">웹/앱에서<br>AI 분석 이용</div></div>
+  <div class="arrow">→</div>
+  <div class="step"><div class="num">④</div><div class="desc">매월 자동 갱신<br>(해지 가능)</div></div>
+</div>
+
+<div class="highlight">
+  <strong>결제 완료 즉시</strong> 해당 플랜이 활성화되며, 웹(bobi.co.kr) 및 iOS 앱에서 AI 분석 기능을 바로 이용할 수 있습니다.<br><br>
+  • 구독은 <strong>자동 갱신</strong>되며, 설정 페이지에서 <strong>언제든 해지</strong> 가능합니다.<br>
+  • 7일 이내 미사용 시 <strong>전액 환불</strong> 가능합니다.<br>
+  • 디지털 콘텐츠(AI 분석 서비스) 특성상 분석 사용 후에는 환불이 제한됩니다.
+</div>
+
+<h2>5. 고객 지원</h2>
+<table>
+  <tr><th width="150">항목</th><th>내용</th></tr>
+  <tr><td>고객 문의</td><td>서비스 내 1:1 문의 게시판 (24시간 접수, 영업일 기준 1일 이내 답변)</td></tr>
+  <tr><td>카카오톡 채널</td><td>보비 BoBi 카카오톡 채널 상담</td></tr>
+  <tr><td>이메일</td><td>dev@bottlecorp.kr</td></tr>
+  <tr><td>환불 정책</td><td>7일 이내 미사용 시 전액 환불 / 이용약관 및 개인정보처리방침 게시</td></tr>
+</table>
+
+<div class="footer">
+  <p><strong>주식회사 바틀코퍼레이션</strong></p>
+  <p>서비스 URL: https://bobi.co.kr | 이메일: dev@bottlecorp.kr</p>
+  <p>본 문서는 네이버페이 입점심사 제출용으로 작성되었습니다. | 2026년 4월</p>
+</div>
+
+</body>
+</html>
