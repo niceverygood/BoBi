@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useSubscription } from '@/hooks/useSubscription';
 import { createClient } from '@/lib/supabase/client';
 import ReferralFloating from '@/components/common/ReferralFloating';
+import SearchTrendWidget from '@/components/dashboard/SearchTrendWidget';
 
 interface RecentAnalysis {
     id: string;
@@ -149,6 +150,9 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* 실시간 보험 검색 트렌드 */}
+            <SearchTrendWidget />
 
             {/* 주요 기능 4개 카드 */}
             <div>

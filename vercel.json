@@ -3,6 +3,10 @@
         {
             "path": "/api/cron/renew-subscriptions",
             "schedule": "0 0 * * *"
+        },
+        {
+            "path": "/api/cron/search-trends",
+            "schedule": "0 22 * * *"
         }
     ]
 }
