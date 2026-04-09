@@ -16,9 +16,8 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: '필수 파라미터가 누락되었습니다.' }, { status: 400 });
     }
 
-    if (billingCycle === 'yearly' && paymentMethod === 'kakaopay') {
-        return NextResponse.json({ error: '연간 결제는 카카오페이를 지원하지 않습니다.' }, { status: 400 });
-    }
+    // 신용카드 빌링키 발급 전까지 카카오페이만 지원
+    // if (billingCycle === 'yearly' && paymentMethod === 'kakaopay') { ... }
 
     const serviceClient = await createServiceClient();
 

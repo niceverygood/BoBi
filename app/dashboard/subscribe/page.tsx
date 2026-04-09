@@ -37,7 +37,7 @@ function SubscribeContent() {
 
     const [selectedPlan, setSelectedPlan] = useState<PlanSlug>(planParam || 'basic');
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
-    const [paymentMethod, setPaymentMethod] = useState<'kakaopay' | 'card'>('card');
+    const [paymentMethod, setPaymentMethod] = useState<'kakaopay' | 'card'>('kakaopay');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
@@ -549,17 +549,13 @@ function SubscribeContent() {
             ? 'Apple로 결제하기'
             : platform === 'android'
                 ? 'Google Play로 결제하기'
-                : paymentMethod === 'kakaopay'
-                    ? '카카오페이로 결제하기'
-                    : '신용카드로 결제하기';
+                : '카카오페이로 결제하기';
 
     const paymentProviderLabel = platform === 'ios'
         ? 'Apple App Store'
         : platform === 'android'
             ? 'Google Play'
-            : paymentMethod === 'kakaopay'
-                ? '카카오페이'
-                : 'KG이니시스';
+            : '카카오페이';
 
     return (
         <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
@@ -891,45 +887,14 @@ function SubscribeContent() {
                                     </div>
                                 )}
 
-                                {/* 결제 수단 */}
+                                {/* 결제 수단 — 현재 카카오페이만 지원 (신용카드 빌링키 발급 후 추가 예정) */}
                                 {platform === 'web' && (
                                     <div className="space-y-2">
                                         <p className="text-sm font-medium">결제 수단</p>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <button
-                                                onClick={() => setPaymentMethod('kakaopay')}
-                                                disabled={billingCycle === 'yearly'}
-                                                className={cn(
-                                                    'p-3 rounded-lg border-2 text-center text-sm transition-all',
-                                                    paymentMethod === 'kakaopay'
-                                                        ? 'border-primary bg-primary/5 font-semibold'
-                                                        : 'border-muted hover:border-primary/30',
-                                                    billingCycle === 'yearly' && 'opacity-40 cursor-not-allowed'
-                                                )}
-                                            >
-                                                카카오페이
-                                            </button>
-                                            <button
-                                                onClick={() => !isMobile && setPaymentMethod('card')}
-                                                disabled={isMobile}
-                                                className={cn(
-                                                    'p-3 rounded-lg border-2 text-center text-sm transition-all',
-                                                    paymentMethod === 'card'
-                                                        ? 'border-primary bg-primary/5 font-semibold'
-                                                        : 'border-muted hover:border-primary/30',
-                                                    isMobile && 'opacity-40 cursor-not-allowed'
-                                                )}
-                                            >
-                                                신용카드
-                                                {isMobile && <span className="block text-[10px] text-muted-foreground mt-0.5">PC에서만 가능</span>}
-                                            </button>
+                                        <div className="p-3 rounded-lg border-2 border-primary bg-primary/5 text-center text-sm font-semibold">
+                                            카카오페이
                                         </div>
-                                        {isMobile && (
-                                            <p className="text-[11px] text-muted-foreground">모바일에서는 카카오페이로 결제해주세요. 신용카드 결제는 PC에서 가능합니다.</p>
-                                        )}
-                                        {billingCycle === 'yearly' && (
-                                            <p className="text-[11px] text-amber-600">연간 결제는 신용카드만 가능합니다.</p>
-                                        )}
+                                        <p className="text-[11px] text-muted-foreground">카카오페이에 등록된 카드 또는 카카오머니로 결제됩니다.</p>
                                     </div>
                                 )}
 
@@ -949,44 +914,7 @@ function SubscribeContent() {
                                     </div>
                                 )}
 
-                                {/* 이름 + 이메일 + 전화번호 (이니시스 V2 빌링키 필수) */}
-                                {platform === 'web' && paymentMethod === 'card' && (
-                                    <div className="space-y-3">
-                                        <div className="space-y-1">
-                                            <label className="text-xs text-muted-foreground">구매자 이름 (필수)</label>
-                                            <input
-                                                type="text"
-                                                value={userName}
-                                                onChange={(e) => setUserName(e.target.value)}
-                                                placeholder="이름을 입력해주세요"
-                                                className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs text-muted-foreground">결제자 이메일 (필수)</label>
-                                            <input
-                                                type="email"
-                                                value={userEmail}
-                                                onChange={(e) => setUserEmail(e.target.value)}
-                                                placeholder="이메일을 입력해주세요"
-                                                className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs text-muted-foreground">휴대폰 번호 (필수)</label>
-                                            <input
-                                                type="tel"
-                                                value={userPhone}
-                                                onChange={(e) => setUserPhone(e.target.value)}
-                                                placeholder="010-1234-5678"
-                                                className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                            />
-                                        </div>
-                                        {(!userName || !userEmail || !userPhone) && (
-                                            <p className="text-[10px] text-red-500">신용카드 결제 시 이름, 이메일, 휴대폰 번호가 모두 필요합니다.</p>
-                                        )}
-                                    </div>
-                                )}
+                                {/* 신용카드 입력 폼 — 빌링키 발급 후 활성화 예정 */}
 
                                 {/* 네이티브에서 쿠폰 적용 시 IAP 버튼 숨김 (웹 결제 링크 사용) */}
                                 {!(platform !== 'web' && appliedCoupon) && (
