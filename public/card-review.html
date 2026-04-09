@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>KG이니시스 카드 심사자료 - 보비 BoBi</title>
+<style>
+  @page { margin: 15mm; size: A4 landscape; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif; color: #222; background: white; }
+
+  .slide { width: 100%; min-height: 680px; padding: 40px; page-break-after: always; position: relative; border-bottom: 2px solid #eee; }
+  .slide:last-child { page-break-after: avoid; }
+
+  .slide-number { position: absolute; top: 20px; right: 30px; background: #1a56db; color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; }
+
+  h1 { font-size: 28px; color: #1a56db; margin-bottom: 5px; }
+  h2 { font-size: 22px; color: #333; margin-bottom: 15px; border-bottom: 3px solid #1a56db; padding-bottom: 8px; display: inline-block; }
+  h3 { font-size: 16px; color: #1a56db; margin: 15px 0 8px; }
+
+  .subtitle { font-size: 14px; color: #666; margin-bottom: 30px; }
+
+  .img-placeholder {
+    border: 3px dashed #1a56db;
+    border-radius: 12px;
+    min-height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8faff;
+    margin: 15px 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .img-placeholder img { max-width: 100%; max-height: 500px; object-fit: contain; }
+  .img-placeholder .label { color: #1a56db; font-size: 16px; font-weight: 600; text-align: center; padding: 20px; }
+
+  .annotation {
+    background: #fff3f3;
+    border: 2px solid #ff4444;
+    border-radius: 8px;
+    padding: 10px 15px;
+    margin: 10px 0;
+    font-size: 13px;
+    color: #cc0000;
+    font-weight: 600;
+  }
+
+  .info-box {
+    background: #f0f4ff;
+    border-radius: 8px;
+    padding: 15px 20px;
+    margin: 15px 0;
+    font-size: 13px;
+    line-height: 1.8;
+  }
+  .info-box strong { color: #1a56db; }
+
+  table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 13px; }
+  th, td { border: 1px solid #ddd; padding: 10px 14px; text-align: left; }
+  th { background: #1a56db; color: white; }
+
+  .cover-info { margin-top: 30px; }
+  .cover-info p { font-size: 14px; line-height: 2; }
+
+  .two-col { display: flex; gap: 20px; }
+  .two-col > div { flex: 1; }
+
+  .red { color: #cc0000; }
+  .blue { color: #1a56db; }
+  .arrow { font-size: 24px; color: #1a56db; text-align: center; margin: 5px 0; }
+</style>
+</head>
+<body>
+
+<!-- 슬라이드 1: 표지 -->
+<div class="slide">
+  <div class="slide-number">1</div>
+  <div style="text-align:center; padding-top: 80px;">
+    <h1 style="font-size:36px;">보비 BoBi</h1>
+    <p style="font-size:20px; color:#666; margin-top:10px;">정기결제 카드 심사자료</p>
+    <div style="width:80px; height:4px; background:#1a56db; margin: 30px auto;"></div>
+    <div class="cover-info" style="text-align:left; max-width:500px; margin: 40px auto;">
+      <table>
+        <tr><th width="160">항목</th><th>내용</th></tr>
+        <tr><td>상호명</td><td>주식회사 바틀</td></tr>
+        <tr><td>대표자</td><td>한승수</td></tr>
+        <tr><td>사업자등록번호</td><td>376-87-01076</td></tr>
+        <tr><td>통신판매업신고번호</td><td>제2019-성남분당B-0177호</td></tr>
+        <tr><td>사업장 주소</td><td>경기도 성남시 분당구 판교로289번길 20, 2동 8층</td></tr>
+        <tr><td>연락처</td><td>010-2309-7443</td></tr>
+        <tr><td>이메일</td><td>dev@bottlecorp.kr</td></tr>
+        <tr><td>서비스 URL</td><td>https://bobi.co.kr</td></tr>
+        <tr><td>서비스 유형</td><td>AI 보험 분석 SaaS (월간/연간 구독)</td></tr>
+      </table>
+    </div>
+    <div class="info-box" style="max-width:500px; margin: 20px auto;">
+      <strong>테스트 계정 정보</strong><br>
+      ID: test@bottlecorp.kr<br>
+      PW: Test1234!
+    </div>
+  </div>
+</div>
+
+<!-- 슬라이드 2: 사이트 메인 + Footer 상점정보 -->
+<div class="slide">
+  <div class="slide-number">2</div>
+  <h2>1. 사이트 메인 및 하단 상점정보</h2>
+  <p class="subtitle">URL: https://bobi.co.kr</p>
+
+  <div class="img-placeholder">
+    <div class="label">
+      [캡쳐 이미지 삽입]<br>
+      bobi.co.kr 메인 페이지 하단 Footer<br><br>
+      <small>← 5번째 스크린샷 (메인+Footer) 여기에 붙여넣기</small>
+    </div>
+  </div>
+
+  <div class="annotation">
+    ✅ 사업자정보 5가지 필수 기재: 사업자번호(376-87-01076), 상호명(주식회사 바틀), 대표자(한승수), 연락처(010-2309-7443), 주소<br>
+    ✅ 통신판매업신고번호: 제2019-성남분당B-0177호<br>
+    ✅ 이용약관, 개인정보처리방침 링크 표시<br>
+    ✅ 판매 책임 문구: "주식회사 바틀에서 운영하는 보비(BoBi)에서 판매되는 모든 상품은 주식회사 바틀에서 책임지고 있습니다."
+  </div>
+</div>
+
+<!-- 슬라이드 3: 상품 목록 (요금제 페이지) -->
+<div class="slide">
+  <div class="slide-number">3</div>
+  <h2>2. 상품 목록 (요금제 페이지)</h2>
+  <p class="subtitle">URL: https://bobi.co.kr/pricing</p>
+
+  <div class="img-placeholder">
+    <div class="label">
+      [캡쳐 이미지 삽입]<br>
+      요금제 페이지 - 무료/베이직/프로 플랜 노출<br><br>
+      <small>← 4번째 스크린샷 (pricing 페이지) 여기에 붙여넣기</small>
+    </div>
+  </div>
+
+  <div class="annotation">
+    ✅ 상품 3개 노출: 무료 체험(0원), 베이직(19,900원/월), 프로(39,900원/월)<br>
+    ✅ 각 상품별 가격 및 서비스 내용 명시
+  </div>
+</div>
+
+<!-- 슬라이드 4: 상품 상세 + 결제 정보 -->
+<div class="slide">
+  <div class="slide-number">4</div>
+  <h2>3. 상품 상세 및 결제 정보</h2>
+  <p class="subtitle">URL: https://bobi.co.kr/dashboard/subscribe?plan=pro</p>
+
+  <div class="img-placeholder">
+    <div class="label">
+      [캡쳐 이미지 삽입]<br>
+      구독 신청 페이지 - 프로 플랜 선택 + 결제 금액 + 신용카드 선택<br><br>
+      <small>← 3번째 스크린샷 (구독 신청 페이지) 여기에 붙여넣기</small>
+    </div>
+  </div>
+
+  <div class="annotation">
+    ✅ 플랜: 프로 | 결제 주기: 월간 | 결제 금액: 39,900원 (원화 표시)<br>
+    ✅ 결제 수단: 신용카드 선택<br>
+    ✅ 구매자 이름, 이메일, 휴대폰 번호 입력 필드 표시
+  </div>
+</div>
+
+<!-- 슬라이드 5: KG이니시스 결제창 (카드사 목록) -->
+<div class="slide">
+  <div class="slide-number">5</div>
+  <h2>4. KG이니시스 결제창 (카드사 목록)</h2>
+  <p class="subtitle">URL: https://bobi.co.kr/dashboard/subscribe?plan=pro (결제창 팝업)</p>
+
+  <div class="img-placeholder">
+    <div class="label">
+      [캡쳐 이미지 삽입]<br>
+      KG이니시스 결제창 - 전체 카드사 목록 노출<br><br>
+      <small>← 2번째 스크린샷 (KG이니시스 결제창) 여기에 붙여넣기</small>
+    </div>
+  </div>
+
+  <div class="annotation">
+    ✅ KG이니시스 결제창 정상 노출<br>
+    ✅ 상품가격 39,900원 = 결제금액 39,900원 동일하게 표시<br>
+    ✅ 카드사 목록: 삼성카드, KB국민, 현대카드, 비씨(페이북), 신한카드, NH농협, 하나카드, 롯데카드 등
+  </div>
+</div>
+
+<!-- 슬라이드 6: 하나카드 안심클릭 인증 -->
+<div class="slide">
+  <div class="slide-number">6</div>
+  <h2>5. 하나카드 안심클릭 인증 화면</h2>
+  <p class="subtitle">KG이니시스 결제창 → 하나카드 선택</p>
+
+  <div class="img-placeholder">
+    <div class="label">
+      [캡쳐 이미지 삽입]<br>
+      하나카드 1Q Pay 안심클릭 인증 화면<br><br>
+      <small>← 1번째 스크린샷 (하나카드 인증) 여기에 붙여넣기</small>
+    </div>
+  </div>
+
+  <div class="annotation">
+    ✅ 하나카드 안심클릭 인증 창 정상 표시<br>
+    ✅ 결제금액 동일 확인
+  </div>
+</div>
+
+<!-- 슬라이드 7: BC카드 페이북 -->
+<div class="slide">
+  <div class="slide-number">7</div>
+  <h2>6. BC카드 페이북 결제 화면</h2>
+  <p class="subtitle">KG이니시스 결제창 → BC카드(페이북) 선택</p>
+
+  <div class="img-placeholder">
+    <div class="label">
+      [캡쳐 이미지 삽입 — 추가 캡쳐 필요]<br>
+      BC카드 페이북 결제 화면<br><br>
+      <small>KG이니시스 결제창에서 "비씨(페이북)" 선택 후 나오는 화면을 캡쳐해주세요</small>
+    </div>
+  </div>
+
+  <div class="annotation">
+    ✅ BC카드 페이북 결제 창 정상 표시<br>
+    ✅ 결제금액 동일 확인
+  </div>
+</div>
+
+<!-- 슬라이드 8: 서비스 설명 -->
+<div class="slide" style="min-height: auto;">
+  <div class="slide-number">8</div>
+  <h2>7. 서비스 상세 설명</h2>
+
+  <div class="info-box">
+    <strong>보비(BoBi)</strong>는 보험 설계사(GA/보험사 소속)를 위한 <strong>AI 기반 보험 분석 SaaS</strong> 서비스입니다.<br>
+    고객의 진료기록 PDF를 업로드하면 AI가 자동으로 질병 위험도를 분석하고 고지사항을 생성합니다.<br>
+    디지털 콘텐츠(AI 분석) 서비스로, 결제 즉시 플랜이 활성화되어 이용 가능합니다.
+  </div>
+
+  <h3>상품(플랜) 구성</h3>
+  <table>
+    <tr><th>플랜</th><th>월간 가격</th><th>연간 가격</th><th>AI 분석 건수</th><th>주요 기능</th></tr>
+    <tr><td>무료 체험</td><td>0원</td><td>-</td><td>월 5건</td><td>AI 고지사항 분석</td></tr>
+    <tr><td>베이직</td><td>19,900원</td><td>190,000원</td><td>월 50건</td><td>보장 분석 리포트, CODEF 연동, PDF 다운로드</td></tr>
+    <tr><td>프로</td><td>39,900원</td><td>380,000원</td><td>무제한</td><td>베이직 전체 + 리모델링 제안서, 우선 지원</td></tr>
+    <tr><td>팀 베이직</td><td>79,000원</td><td>758,400원</td><td>인당 50건</td><td>5명 포함, 팀 관리 대시보드</td></tr>
+    <tr><td>팀 프로</td><td>149,000원</td><td>1,430,400원</td><td>무제한</td><td>5명 포함, 전담 매니저</td></tr>
+  </table>
+
+  <h3>환불 정책</h3>
+  <div class="info-box">
+    • 7일 이내 미사용 시 전액 환불 가능<br>
+    • 디지털 콘텐츠 특성상 AI 분석 사용 후에는 환불 제한<br>
+    • 구독은 자동 갱신되며, 설정 페이지에서 언제든 해지 가능<br>
+    • 이용약관: https://bobi.co.kr/terms<br>
+    • 개인정보처리방침: https://bobi.co.kr/privacy
+  </div>
+</div>
+
+</body>
+</html>
