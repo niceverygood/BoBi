@@ -151,8 +151,8 @@ export default function DashboardPage() {
                 </Card>
             </div>
 
-            {/* 실시간 보험 검색 트렌드 — 네이버 API 연동 후 활성화 */}
-            {/* <SearchTrendWidget /> */}
+            {/* 실시간 보험 검색 트렌드 */}
+            <SearchTrendWidget />
 
             {/* 주요 기능 4개 카드 */}
             <div>
