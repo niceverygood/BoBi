@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import MobileNav from '@/components/layout/MobileNav';
+import BusinessFooter from '@/components/layout/BusinessFooter';
 import { User } from 'lucide-react';
 
 export default function DashboardLayout({
@@ -66,6 +67,7 @@ export default function DashboardLayout({
                 <main className="flex-1 p-4 sm:p-6 lg:p-8">
                     {children}
                 </main>
+                <BusinessFooter />
             </div>
         </div>
     );
