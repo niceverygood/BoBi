@@ -25,7 +25,7 @@ export async function POST(request: Request) {
         const {
             userName, identity, phoneNo,
             loginType = '5', loginTypeLevel, authMethod, telecom,
-            queryType = 'all', // 'checkup' | 'age' | 'stroke' | 'cardio' | 'all'
+            queryType = 'all',
             is2Way, twoWayInfo, simpleAuth, smsAuthNo, sessionId,
         } = body;
 
@@ -48,12 +48,12 @@ export async function POST(request: Request) {
             id: sessionId || `bobi-hc-${user.id.substring(0, 8)}-${Date.now()}`,
         };
 
-        console.log('[HealthCheckup] Request:', { userName: userName.substring(0, 1) + '**', queryType, loginType });
+        console.log('[HealthCheckup] Request:', { userName: userName.substring(0, 1) + '**', queryType, loginType, is2Way: !!is2Way });
 
         const results: Record<string, unknown> = {};
         const errors: string[] = [];
 
-        // 건강검진결과
+        // 1단계: 건강검진결과 먼저 조회 (간편인증 트리거)
         if (queryType === 'all' || queryType === 'checkup') {
             try {
                 const { data, requires2Way, twoWayData } = await fetchHealthCheckupResult(params);
@@ -66,40 +66,43 @@ export async function POST(request: Request) {
                 }
                 results.checkup = data;
             } catch (err) {
-                errors.push(`건강검진결과: ${(err as Error).message}`);
+                const msg = (err as Error).message;
+                console.error('[HealthCheckup] 건강검진결과 에러:', msg);
+                errors.push(`건강검진결과: ${msg}`);
             }
         }
 
-        // 건강나이
-        if (queryType === 'all' || queryType === 'age') {
-            try {
-                const { data, requires2Way, twoWayData } = await fetchHealthAge(params);
-                if (requires2Way && !results.checkup) {
-                    return NextResponse.json({ requires2Way: true, twoWayData, sessionId: params.id });
+        // 2단계: 건강검진결과 성공한 경우에만 나머지 조회
+        // (같은 간편인증 세션이므로 추가 인증 불필요)
+        if (results.checkup || is2Way) {
+            // 건강나이
+            if (queryType === 'all' || queryType === 'age') {
+                try {
+                    const { data } = await fetchHealthAge(params);
+                    results.healthAge = data;
+                } catch (err) {
+                    errors.push(`건강나이: ${(err as Error).message}`);
                 }
-                results.healthAge = data;
-            } catch (err) {
-                errors.push(`건강나이: ${(err as Error).message}`);
             }
-        }
 
-        // 뇌졸중 예측
-        if (queryType === 'all' || queryType === 'stroke') {
-            try {
-                const { data } = await fetchStrokePrediction(params);
-                results.stroke = data;
-            } catch (err) {
-                errors.push(`뇌졸중예측: ${(err as Error).message}`);
+            // 뇌졸중 예측
+            if (queryType === 'all' || queryType === 'stroke') {
+                try {
+                    const { data } = await fetchStrokePrediction(params);
+                    results.stroke = data;
+                } catch (err) {
+                    errors.push(`뇌졸중예측: ${(err as Error).message}`);
+                }
             }
-        }
 
-        // 심뇌혈관 예측
-        if (queryType === 'all' || queryType === 'cardio') {
-            try {
-                const { data } = await fetchCardioPrediction(params);
-                results.cardio = data;
-            } catch (err) {
-                errors.push(`심뇌혈관예측: ${(err as Error).message}`);
+            // 심뇌혈관 예측
+            if (queryType === 'all' || queryType === 'cardio') {
+                try {
+                    const { data } = await fetchCardioPrediction(params);
+                    results.cardio = data;
+                } catch (err) {
+                    errors.push(`심뇌혈관예측: ${(err as Error).message}`);
+                }
             }
         }
 

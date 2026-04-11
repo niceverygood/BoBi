@@ -1109,7 +1109,9 @@ async function callHealthCheckupApi(
         body.timeout = '170';
         body.secureNoYN = '1';
     } else {
+        // 간편인증 (loginType: '5')도 timeout 필요 — 인증 대기 시간
         body.telecom = params.telecom || '';
+        body.timeout = '170';
     }
     if (params.is2Way && params.twoWayInfo) {
         Object.assign(body, params.twoWayInfo);
