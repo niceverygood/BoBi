@@ -47,7 +47,9 @@ function HealthCheckupContent() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [results, setResults] = useState<HealthCheckupResults | null>(null);
-    const [step, setStep] = useState<'form' | 'results'>('form');
+    const [step, setStep] = useState<'form' | 'auth-waiting' | 'results'>('form');
+    const [twoWayData, setTwoWayData] = useState<Record<string, unknown> | null>(null);
+    const [sessionId, setSessionId] = useState<string | null>(null);
 
     const selectedProvider = AUTH_PROVIDERS.find(a => a.id === authProvider);
     const needsTelecom = (selectedProvider as { needsTelecom?: boolean })?.needsTelecom === true;
@@ -61,7 +63,13 @@ function HealthCheckupContent() {
         setError(null);
 
         try {
-            const data = await apiFetch<{ results: HealthCheckupResults; errors?: string[] }>('/api/codef/health-checkup', {
+            const data = await apiFetch<{
+                results?: HealthCheckupResults;
+                errors?: string[];
+                requires2Way?: boolean;
+                twoWayData?: Record<string, unknown>;
+                sessionId?: string;
+            }>('/api/codef/health-checkup', {
                 method: 'POST',
                 body: {
                     userName: userName.trim(),
@@ -74,14 +82,69 @@ function HealthCheckupContent() {
                 },
             });
 
-            setResults(data.results);
-            setStep('results');
+            // 2-way 인증 필요 (카카오/토스 등 간편인증 대기)
+            if (data.requires2Way) {
+                setTwoWayData(data.twoWayData || null);
+                setSessionId(data.sessionId || null);
+                setStep('auth-waiting');
+                setLoading(false);
+                return;
+            }
+
+            if (data.results) {
+                setResults(data.results);
+                setStep('results');
+            }
 
             if (data.errors && data.errors.length > 0) {
                 setError(`일부 조회 실패: ${data.errors.join(', ')}`);
             }
         } catch (err) {
             setError((err as Error).message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 2-way 인증 완료 후 재요청
+    const handleAuthComplete = async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const data = await apiFetch<{
+                results?: HealthCheckupResults;
+                errors?: string[];
+            }>('/api/codef/health-checkup', {
+                method: 'POST',
+                body: {
+                    userName: userName.trim(),
+                    identity: identity.replace(/\D/g, ''),
+                    phoneNo: phoneNo.replace(/-/g, ''),
+                    loginType: '5',
+                    loginTypeLevel: authProvider,
+                    telecom: needsTelecom ? telecom : '',
+                    queryType: 'all',
+                    is2Way: true,
+                    twoWayInfo: twoWayData,
+                    sessionId,
+                },
+            });
+
+            if (data.results) {
+                setResults(data.results);
+                setStep('results');
+            } else {
+                setError('건강검진 데이터를 가져오지 못했습니다. 다시 시도해주세요.');
+                setStep('form');
+            }
+
+            if (data.errors && data.errors.length > 0) {
+                setError(`일부 조회 실패: ${data.errors.join(', ')}`);
+            }
+        } catch (err) {
+            setError((err as Error).message);
+            setStep('form');
         } finally {
             setLoading(false);
         }
@@ -99,6 +162,63 @@ function HealthCheckupContent() {
         if (grade.includes('보통') || grade.includes('주의') || grade.includes('2')) return 'text-amber-600 bg-amber-50';
         return 'text-green-600 bg-green-50';
     };
+
+    // 인증 대기 화면
+    if (step === 'auth-waiting') {
+        const providerName = AUTH_PROVIDERS.find(a => a.id === authProvider)?.name || '간편인증';
+        return (
+            <div className="max-w-md mx-auto space-y-6 animate-fade-in text-center py-12">
+                <div className="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center mx-auto">
+                    <HeartPulse className="w-10 h-10 text-blue-500 animate-pulse" />
+                </div>
+                <div>
+                    <h2 className="text-xl font-bold mb-2">{providerName} 인증 요청됨</h2>
+                    <p className="text-muted-foreground">
+                        {providerName} 앱에서 인증을 완료해주세요.
+                    </p>
+                </div>
+
+                <Card className="border-0 shadow-sm">
+                    <CardContent className="p-6 space-y-4">
+                        <div className="flex items-center gap-3 p-4 rounded-lg bg-amber-50 border border-amber-200">
+                            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                            <p className="text-sm text-amber-700">
+                                {providerName} 앱에서 인증 알림을 확인하고 승인해주세요.
+                            </p>
+                        </div>
+
+                        <Button
+                            onClick={handleAuthComplete}
+                            disabled={loading}
+                            className="w-full"
+                            size="lg"
+                        >
+                            {loading ? (
+                                <><Loader2 className="w-5 h-5 mr-2 animate-spin" />조회 중...</>
+                            ) : (
+                                <><HeartPulse className="w-5 h-5 mr-2" />인증 완료 · 결과 조회하기</>
+                            )}
+                        </Button>
+
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => { setStep('form'); setTwoWayData(null); setSessionId(null); }}
+                            className="w-full text-muted-foreground"
+                        >
+                            처음부터 다시 하기
+                        </Button>
+                    </CardContent>
+                </Card>
+
+                {error && (
+                    <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+                        {error}
+                    </div>
+                )}
+            </div>
+        );
+    }
 
     if (step === 'results' && results) {
         return (
