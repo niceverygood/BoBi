@@ -1,11 +1,12 @@
 // app/api/risk-report/route.ts
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { callOpenAI } from '@/lib/ai/openai';
 import { RISK_REPORT_PROMPT } from '@/lib/ai/prompts';
 import { parseAIResponse } from '@/lib/ai/parser';
 import { matchRisks, extractMedications, extractPatientProfile } from '@/lib/risk/risk-matcher';
 import { extractCheckupSnapshots, analyzeAllTrends, sortTrendsByPriority } from '@/lib/health/trend-analyzer';
+import { anonymizeAnalysis, saveAnonymizedRecord, isOptedOut } from '@/lib/privacy/anonymizer';
 import type { AnalysisResult } from '@/types/analysis';
 import type { RiskReport } from '@/types/risk-report';
 
@@ -255,6 +256,56 @@ export async function POST(request: Request) {
             console.error('[RiskReport] DB 저장 실패:', updateError);
         } else {
             console.log('[RiskReport] DB 저장 성공, riskItems:', report.riskItems.length, '건');
+        }
+
+        // Step 6: 익명화 파이프라인 (백그라운드, 실패해도 본 API는 성공 반환)
+        try {
+            const svc = await createServiceClient();
+            const optedOut = await isOptedOut(svc, user.id);
+            if (!optedOut) {
+                // 고객 식별 정보 조회 (customer_id가 있으면)
+                let customerIdentity: string | undefined;
+                let customerAddress: string | undefined;
+                let customerGender: string | undefined;
+                let customerBirthDate: string | undefined;
+                if (analysis.customer_id) {
+                    const { data: customer } = await svc
+                        .from('customers')
+                        .select('identity, address, gender, birth_date')
+                        .eq('id', analysis.customer_id)
+                        .maybeSingle();
+                    if (customer) {
+                        customerIdentity = customer.identity || undefined;
+                        customerAddress = customer.address || undefined;
+                        customerGender = customer.gender || undefined;
+                        customerBirthDate = customer.birth_date || undefined;
+                    }
+                }
+
+                const anonRecord = anonymizeAnalysis({
+                    analysisId,
+                    userId: user.id,
+                    customerIdentity,
+                    customerAddress,
+                    customerGender,
+                    customerBirthDate,
+                    medicalHistory: analysis.medical_history,
+                    riskReport: report,
+                    healthCheckupData,
+                });
+
+                const result = await saveAnonymizedRecord(svc, anonRecord);
+                if (result.success) {
+                    console.log('[RiskReport] 익명화 데이터 저장 완료');
+                } else {
+                    console.warn('[RiskReport] 익명화 데이터 저장 실패 (non-critical):', result.error);
+                }
+            } else {
+                console.log('[RiskReport] 이용자 opt-out 상태 — 익명화 저장 생략');
+            }
+        } catch (anonErr) {
+            // 익명화는 절대로 본 API를 실패시키지 않음
+            console.warn('[RiskReport] 익명화 파이프라인 에러 (무시):', (anonErr as Error).message);
         }
 
         return NextResponse.json({ report });

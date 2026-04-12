@@ -282,6 +282,9 @@ export default function SettingsPage() {
             {/* 친구 초대 */}
             <ReferralSection />
 
+            {/* 통계 활용 동의 관리 */}
+            <StatisticsOptOutSection />
+
             {/* 로그아웃 */}
             <Card className="border-0 shadow-sm">
                 <CardContent className="pt-6">
@@ -696,6 +699,110 @@ function PaymentHistory() {
                         )}
                     </>
                 )}
+            </CardContent>
+        </Card>
+    );
+}
+
+// ── 통계 활용 opt-out 섹션 ──
+function StatisticsOptOutSection() {
+    const [loading, setLoading] = useState(true);
+    const [optedOut, setOptedOut] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    useEffect(() => {
+        (async () => {
+            try {
+                const res = await fetch('/api/privacy/opt-out');
+                if (res.ok) {
+                    const data = await res.json();
+                    setOptedOut(!!data.optedOut);
+                }
+            } catch { /* */ }
+            setLoading(false);
+        })();
+    }, []);
+
+    const handleToggle = async () => {
+        setSubmitting(true);
+        setMsg(null);
+        try {
+            if (optedOut) {
+                const res = await fetch('/api/privacy/opt-out', { method: 'DELETE' });
+                if (res.ok) {
+                    setOptedOut(false);
+                    setMsg({ type: 'success', text: '통계 활용 동의가 복구되었습니다.' });
+                }
+            } else {
+                const res = await fetch('/api/privacy/opt-out', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason: '' }),
+                });
+                if (res.ok) {
+                    setOptedOut(true);
+                    setMsg({ type: 'success', text: '통계 활용 거부가 등록되었습니다.' });
+                }
+            }
+        } catch (err) {
+            setMsg({ type: 'error', text: (err as Error).message || '처리 실패' });
+        }
+        setSubmitting(false);
+    };
+
+    return (
+        <Card className="border-0 shadow-sm">
+            <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                    📊 통계·연구 활용 동의
+                </CardTitle>
+                <CardDescription className="text-xs">
+                    개인정보처리방침 제5조의4에 따른 가명·익명 처리 정보의 활용 여부를 설정합니다.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+                <div className="bg-muted/30 rounded-lg p-3 text-xs text-muted-foreground leading-relaxed">
+                    회사는 개인을 식별할 수 없도록 <strong>가명·익명 처리된 정보</strong>를 통계 작성,
+                    학술 연구, AI 모델 고도화, 보험 상품 개발 등에 활용할 수 있습니다.
+                    <br /><br />
+                    활용되는 정보: 연령대, 성별, 지역(시·도), 질병 분류 코드, 복용 약물 성분명, 건강검진 수치 등<br />
+                    제외되는 정보: 이름, 주민등록번호, 연락처, 이메일, 정확한 주소 등
+                    <br /><br />
+                    거부하시더라도 서비스 이용에는 제한이 없습니다.
+                </div>
+
+                {msg && (
+                    <p className={`text-xs px-3 py-2 rounded-lg ${msg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                        {msg.text}
+                    </p>
+                )}
+
+                <div className="flex items-center justify-between p-3 rounded-lg border">
+                    <div>
+                        <p className="text-sm font-medium">
+                            {optedOut ? '🚫 통계 활용 거부됨' : '✅ 통계 활용 동의'}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                            {optedOut
+                                ? '나의 데이터는 통계·연구에 사용되지 않습니다.'
+                                : '가명·익명 처리 후 통계·연구 목적으로 활용됩니다.'}
+                        </p>
+                    </div>
+                    <Button
+                        size="sm"
+                        variant={optedOut ? 'outline' : 'destructive'}
+                        disabled={loading || submitting}
+                        onClick={handleToggle}
+                    >
+                        {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : (optedOut ? '동의하기' : '거부하기')}
+                    </Button>
+                </div>
+
+                <p className="text-[10px] text-muted-foreground">
+                    ※ 거부 시점 이전에 이미 익명화된 데이터는 복원할 수 없어 그대로 유지됩니다.
+                    이후 생성되는 데이터부터 통계 활용에서 제외됩니다.
+                </p>
             </CardContent>
         </Card>
     );
