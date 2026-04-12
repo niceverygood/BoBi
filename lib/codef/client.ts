@@ -1109,14 +1109,19 @@ async function callHealthCheckupApi(
         body.timeout = '170';
         body.secureNoYN = '1';
     } else {
-        // 간편인증 (loginType: '5')도 timeout 필요 — 인증 대기 시간
+        // 간편인증 (loginType: '5'): timeout 설정하지 않음
+        // timeout이 있으면 CODEF가 동기 long-polling으로 기다리다 CF-12001 타임아웃
+        // timeout 없으면 CODEF가 CF-03002를 즉시 반환 → 2-way 흐름으로 처리
         body.telecom = params.telecom || '';
-        body.timeout = '170';
     }
     if (params.is2Way && params.twoWayInfo) {
         Object.assign(body, params.twoWayInfo);
-        if (params.simpleAuth) body.simpleAuth = params.simpleAuth;
-        if (isSmsLogin && params.smsAuthNo) body.smsAuthNo = params.smsAuthNo;
+        // 간편인증 2-way 재요청 시 simpleAuth='1' 필수
+        if (!isSmsLogin) {
+            body.simpleAuth = params.simpleAuth || '1';
+        } else if (params.smsAuthNo) {
+            body.smsAuthNo = params.smsAuthNo;
+        }
     }
     console.log(`[CODEF] ${apiName} request:`, JSON.stringify(body, null, 2));
     const res = await fetch(`${CODEF_DEMO_API_URL}${endpoint}`, {
