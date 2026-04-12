@@ -1104,6 +1104,10 @@ async function callHealthCheckupApi(
         id: params.id || '',
     };
     if (isSmsLogin) {
+        body.certType = '';
+        body.certFile = '';
+        body.keyFile = '';
+        body.certPassword = '';
         body.authMethod = params.authMethod || '0';
         body.telecom = params.telecom || '';
         body.timeout = '170';
@@ -1114,13 +1118,24 @@ async function callHealthCheckupApi(
         // timeout 없으면 CODEF가 CF-03002를 즉시 반환 → 2-way 흐름으로 처리
         body.telecom = params.telecom || '';
     }
+
+    // 2-Way 추가인증 (HIRA 패턴과 동일)
     if (params.is2Way && params.twoWayInfo) {
-        Object.assign(body, params.twoWayInfo);
-        // 간편인증 2-way 재요청 시 simpleAuth='1' 필수
-        if (!isSmsLogin) {
+        body.is2Way = true;
+        body.twoWayInfo = {
+            jobIndex: Number(params.twoWayInfo.jobIndex),
+            threadIndex: Number(params.twoWayInfo.threadIndex),
+            jti: String(params.twoWayInfo.jti),
+            twoWayTimestamp: Number(params.twoWayInfo.twoWayTimestamp),
+        };
+        if (isSmsLogin) {
+            body.secureNo = params.secureNo || '';
+            body.secureNoRefresh = params.secureNoRefresh || '0';
+            if (params.smsAuthNo) body.smsAuthNo = params.smsAuthNo;
+        } else {
             body.simpleAuth = params.simpleAuth || '1';
-        } else if (params.smsAuthNo) {
-            body.smsAuthNo = params.smsAuthNo;
+            body.secureNo = params.secureNo || '';
+            body.secureNoRefresh = params.secureNoRefresh || '0';
         }
     }
     console.log(`[CODEF] ${apiName} request:`, JSON.stringify(body, null, 2));
