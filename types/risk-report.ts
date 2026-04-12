@@ -15,6 +15,8 @@ export interface RiskReportItem {
     explanation: string;
     evidence: string;
     evidenceLevel: EvidenceLevel;
+    timeframeYears?: number;
+    goldenTime?: string;
 }
 
 /** 복합 위험 요인 */

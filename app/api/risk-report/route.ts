@@ -5,6 +5,7 @@ import { callOpenAI } from '@/lib/ai/openai';
 import { RISK_REPORT_PROMPT } from '@/lib/ai/prompts';
 import { parseAIResponse } from '@/lib/ai/parser';
 import { matchRisks, extractMedications, extractPatientProfile } from '@/lib/risk/risk-matcher';
+import { extractCheckupSnapshots, analyzeAllTrends, sortTrendsByPriority } from '@/lib/health/trend-analyzer';
 import type { AnalysisResult } from '@/types/analysis';
 import type { RiskReport } from '@/types/risk-report';
 
@@ -148,6 +149,27 @@ export async function POST(request: Request) {
             // 심뇌혈관 예측
             if (healthCheckupData.cardio?.resRiskGrade) {
                 summaryParts.push(`- 심뇌혈관 질환예측: ${healthCheckupData.cardio.resRiskGrade} (${healthCheckupData.cardio.resRatio || ''})`);
+            }
+
+            // 연도별 추이 분석 (2년 이상 데이터가 있을 때)
+            if (healthCheckupData.checkup) {
+                const snapshots = extractCheckupSnapshots(healthCheckupData.checkup);
+                if (snapshots.length >= 2) {
+                    const trends = sortTrendsByPriority(analyzeAllTrends(snapshots));
+                    const criticalTrends = trends.filter(t =>
+                        t.currentStatus !== 'normal' || t.direction === 'worsening'
+                    );
+                    if (criticalTrends.length > 0) {
+                        summaryParts.push('\n[연도별 추이 분석 (중요 지표)]');
+                        for (const t of criticalTrends.slice(0, 8)) {
+                            const pointsStr = t.points.map(p => `${p.year}년 ${p.value}${t.unit}`).join(' → ');
+                            const statusKr = t.currentStatus === 'abnormal' ? '이상' : t.currentStatus === 'borderline' ? '경계' : '정상';
+                            const dirKr = t.direction === 'worsening' ? '악화' : t.direction === 'improving' ? '개선' : '유지';
+                            summaryParts.push(`- ${t.label}: ${pointsStr} (${statusKr}, ${dirKr} ${t.changeRate > 0 ? '+' : ''}${t.changeRate}%/년)`);
+                            if (t.alert) summaryParts.push(`  · ${t.alert}`);
+                        }
+                    }
+                }
             }
         }
 

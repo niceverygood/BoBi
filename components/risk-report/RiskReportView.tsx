@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { AlertTriangle, Activity, Pill, HeartPulse, Shield, Info, Receipt } from 'lucide-react';
 import Link from 'next/link';
 import RiskGauge from './RiskGauge';
+import TrendChart from './TrendChart';
+import { extractCheckupSnapshots, analyzeAllTrends, sortTrendsByPriority } from '@/lib/health/trend-analyzer';
 import type { RiskReport, RiskCategory } from '@/types/risk-report';
 
 interface RiskReportViewProps {
@@ -34,8 +36,16 @@ export default function RiskReportView({ report }: RiskReportViewProps) {
     const stroke = healthCheckupData?.stroke as { resRiskGrade?: string; resRatio?: string; resNote?: string } | undefined;
     const cardio = healthCheckupData?.cardio as { resRiskGrade?: string; resRatio?: string; resNote?: string } | undefined;
 
+    // 연도별 추이 분석
+    const checkupSnapshots = healthCheckupData?.checkup ? extractCheckupSnapshots(healthCheckupData.checkup) : [];
+    const trends = checkupSnapshots.length > 0 ? sortTrendsByPriority(analyzeAllTrends(checkupSnapshots)) : [];
+    const hasMultiYearData = checkupSnapshots.length >= 2;
+
     return (
         <div className="space-y-6">
+            {/* 건강 지표 연도별 추이 (2년 이상 데이터가 있을 때만) */}
+            {hasMultiYearData && trends.length > 0 && <TrendChart trends={trends} />}
+
             {/* 건강검진 데이터 섹션 (건보공단) */}
             {healthCheckupData && (
                 <Card className="border-0 shadow-md border-t-4 border-t-[#1a56db]">
@@ -191,6 +201,21 @@ export default function RiskReportView({ report }: RiskReportViewProps) {
                             <RiskGauge relativeRisk={item.relativeRisk} riskLevel={item.riskLevel} />
 
                             <p className="text-sm leading-relaxed">{item.explanation}</p>
+
+                            {/* 골든타임 경고 */}
+                            {item.goldenTime && (
+                                <div className="flex items-start gap-1.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded p-2">
+                                    <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
+                                    <span className="font-semibold">⏰ {item.goldenTime}</span>
+                                </div>
+                            )}
+
+                            {/* 예상 기간 */}
+                            {item.timeframeYears && (
+                                <p className="text-xs text-muted-foreground">
+                                    📅 예상 발병 기간: 향후 <strong className="text-foreground">{item.timeframeYears}년 이내</strong>
+                                </p>
+                            )}
 
                             <div className="flex items-start gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded p-2">
                                 <Info className="w-3 h-3 mt-0.5 shrink-0" />
