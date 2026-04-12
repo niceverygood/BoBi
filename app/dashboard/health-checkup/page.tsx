@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
     ArrowLeft, Loader2, HeartPulse, Activity, Brain, Stethoscope,
-    AlertCircle, TrendingUp, TrendingDown, Shield, Minus,
+    AlertCircle, TrendingUp, TrendingDown, Shield, Minus, Sparkles,
 } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { apiFetch } from '@/lib/api/client';
@@ -50,6 +51,43 @@ function HealthCheckupContent() {
     const [step, setStep] = useState<'form' | 'auth-waiting' | 'results'>('form');
     const [twoWayData, setTwoWayData] = useState<Record<string, unknown> | null>(null);
     const [sessionId, setSessionId] = useState<string | null>(null);
+    const [recentAnalyses, setRecentAnalyses] = useState<Array<{ id: string; created_at: string; customer_name?: string }>>([]);
+    const [integrating, setIntegrating] = useState<string | null>(null);
+    const [integrateMsg, setIntegrateMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const router = useRouter();
+
+    // 결과 화면 진입 시 최근 분석 목록 로드
+    useEffect(() => {
+        if (step !== 'results') return;
+        (async () => {
+            try {
+                const data = await apiFetch<{ analyses: Array<{ id: string; created_at: string; customer_name?: string }> }>('/api/analyses/recent?limit=5');
+                setRecentAnalyses(data.analyses || []);
+            } catch { /* ignore */ }
+        })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [step]);
+
+    // 건강검진 데이터를 분석 리포트에 통합
+    const handleIntegrateToReport = async (analysisId: string) => {
+        setIntegrating(analysisId);
+        setIntegrateMsg(null);
+        try {
+            await apiFetch('/api/risk-report', {
+                method: 'POST',
+                body: {
+                    analysisId,
+                    regenerate: true,
+                    healthCheckupData: results,
+                },
+            });
+            setIntegrateMsg({ type: 'success', text: '건강검진 데이터가 질병위험리포트에 반영되었습니다.' });
+            setTimeout(() => router.push(`/dashboard/risk-report?analysisId=${analysisId}`), 1200);
+        } catch (err) {
+            setIntegrateMsg({ type: 'error', text: (err as Error).message || '통합 실패' });
+        }
+        setIntegrating(null);
+    };
 
     const selectedProvider = AUTH_PROVIDERS.find(a => a.id === authProvider);
     const needsTelecom = (selectedProvider as { needsTelecom?: boolean })?.needsTelecom === true;
@@ -240,6 +278,50 @@ function HealthCheckupContent() {
                     <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 px-4 py-2 rounded-lg">
                         <AlertCircle className="w-4 h-4" /> {error}
                     </div>
+                )}
+
+                {/* 분석 리포트 통합 */}
+                {recentAnalyses.length > 0 && (
+                    <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-violet-50 border-blue-100">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <Sparkles className="w-5 h-5 text-[#1a56db]" />
+                                질병위험리포트에 반영하기
+                            </CardTitle>
+                            <CardDescription className="text-xs">
+                                건강검진 데이터를 기존 분석 리포트와 통합해 정확도를 높일 수 있습니다.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                            {integrateMsg && (
+                                <p className={`text-xs px-3 py-2 rounded-lg ${integrateMsg.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                    {integrateMsg.text}
+                                </p>
+                            )}
+                            {recentAnalyses.map(a => (
+                                <div key={a.id} className="flex items-center justify-between bg-white rounded-lg p-3 border">
+                                    <div>
+                                        <p className="text-sm font-medium">{a.customer_name || '이름 없음'}</p>
+                                        <p className="text-[10px] text-muted-foreground">
+                                            {new Date(a.created_at).toLocaleDateString('ko-KR')} 분석
+                                        </p>
+                                    </div>
+                                    <Button
+                                        size="sm"
+                                        disabled={integrating === a.id}
+                                        onClick={() => handleIntegrateToReport(a.id)}
+                                        className="bg-[#1a56db] hover:bg-[#1a56db]/90 gap-1"
+                                    >
+                                        {integrating === a.id ? (
+                                            <><Loader2 className="w-3 h-3 animate-spin" /> 통합 중...</>
+                                        ) : (
+                                            <><Sparkles className="w-3 h-3" /> 리포트에 반영</>
+                                        )}
+                                    </Button>
+                                </div>
+                            ))}
+                        </CardContent>
+                    </Card>
                 )}
 
                 {/* 건강나이 */}

@@ -215,6 +215,11 @@ export async function POST(request: Request) {
             if (!item.evidenceLevel) item.evidenceLevel = 'B';
         }
 
+        // 건강검진 데이터가 있으면 리포트에 포함시켜 UI에서 표시 가능하게
+        if (healthCheckupData) {
+            (report as unknown as Record<string, unknown>).healthCheckupData = healthCheckupData;
+        }
+
         // Step 5: DB 저장
         const { error: updateError } = await supabase
             .from('analyses')
