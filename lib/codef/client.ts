@@ -1005,6 +1005,8 @@ export interface HealthCheckupRequest {
     twoWayInfo?: Record<string, unknown>;
     simpleAuth?: string;
     smsAuthNo?: string;
+    secureNo?: string;
+    secureNoRefresh?: string;
     id?: string;
 }
 
