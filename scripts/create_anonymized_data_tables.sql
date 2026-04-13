@@ -117,25 +117,27 @@ CREATE POLICY "Service role only" ON anonymized_access_log
 -- 5. 통계 뷰 (자주 쓰는 집계 쿼리를 미리 정의)
 CREATE OR REPLACE VIEW stats_disease_by_age_gender AS
 SELECT
-    age_group,
-    gender,
-    jsonb_array_elements(disease_codes)->>'code' AS disease_code,
-    jsonb_array_elements(disease_codes)->>'name' AS disease_name,
+    a.age_group,
+    a.gender,
+    d.value->>'code' AS disease_code,
+    d.value->>'name' AS disease_name,
     COUNT(*) AS patient_count
-FROM anonymized_analyses
-GROUP BY age_group, gender, disease_code, disease_name
+FROM anonymized_analyses a
+CROSS JOIN LATERAL jsonb_array_elements(a.disease_codes) AS d
+GROUP BY a.age_group, a.gender, disease_code, disease_name
 ORDER BY patient_count DESC;
 
 CREATE OR REPLACE VIEW stats_risk_distribution AS
 SELECT
-    age_group,
-    gender,
-    jsonb_array_elements(risk_items)->>'riskCategory' AS risk_category,
-    jsonb_array_elements(risk_items)->>'riskLevel' AS risk_level,
+    a.age_group,
+    a.gender,
+    r.value->>'riskCategory' AS risk_category,
+    r.value->>'riskLevel' AS risk_level,
     COUNT(*) AS count,
-    AVG((jsonb_array_elements(risk_items)->>'relativeRisk')::numeric) AS avg_relative_risk
-FROM anonymized_analyses
-GROUP BY age_group, gender, risk_category, risk_level;
+    AVG((r.value->>'relativeRisk')::numeric) AS avg_relative_risk
+FROM anonymized_analyses a
+CROSS JOIN LATERAL jsonb_array_elements(a.risk_items) AS r
+GROUP BY a.age_group, a.gender, risk_category, risk_level;
 
 CREATE OR REPLACE VIEW stats_checkup_averages AS
 SELECT
