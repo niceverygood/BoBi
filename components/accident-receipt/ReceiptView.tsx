@@ -170,6 +170,62 @@ export default function ReceiptView({ receipt }: ReceiptViewProps) {
                             <p className="text-sm text-muted-foreground leading-relaxed">{receipt.aiAnalysis.treatmentProcess}</p>
                         </div>
 
+                        {/* 추가 치료법 (심평원에 안 잡히는 항목) */}
+                        {receipt.aiAnalysis.additionalTreatments && receipt.aiAnalysis.additionalTreatments.length > 0 && (
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-1.5 text-sm font-semibold">
+                                    <HeartPulse className="w-3.5 h-3.5 text-violet-600" />
+                                    추가 치료법 및 비용
+                                    <Badge variant="outline" className="text-[9px]">심평원 외</Badge>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground">
+                                    심평원 평균 통계에 잡히지 않는 실제 환자가 받는 치료법입니다.
+                                </p>
+                                <div className="space-y-2">
+                                    {receipt.aiAnalysis.additionalTreatments.map((t, i) => (
+                                        <div key={i} className="border rounded-lg p-3 bg-violet-50/30 border-violet-100">
+                                            <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+                                                <p className="text-sm font-bold text-violet-900">{t.name}</p>
+                                                <Badge className={`text-[10px] ${t.isCovered === '비급여' ? 'bg-red-500 text-white' : t.isCovered === '급여' ? 'bg-green-500 text-white' : 'bg-amber-500 text-white'}`}>
+                                                    {t.isCovered}
+                                                </Badge>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground leading-relaxed mb-1.5">{t.description}</p>
+                                            <div className="flex items-center justify-between text-xs">
+                                                <span className="text-muted-foreground">💰 예상 비용</span>
+                                                <span className="font-bold text-violet-700">{t.estimatedCost}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between text-xs mt-0.5">
+                                                <span className="text-muted-foreground">📅 치료 주기</span>
+                                                <span className="text-foreground">{t.frequency}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 숨은 비용 */}
+                        {receipt.aiAnalysis.hiddenCosts && receipt.aiAnalysis.hiddenCosts.length > 0 && (
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-1.5 text-sm font-semibold">
+                                    <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+                                    숨은 비용 (영수증에 안 잡히는 부담)
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {receipt.aiAnalysis.hiddenCosts.map((h, i) => (
+                                        <div key={i} className="border border-red-100 bg-red-50/30 rounded-lg p-3">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <p className="text-sm font-bold text-red-900">{h.item}</p>
+                                                <span className="text-xs font-bold text-red-700">{h.estimatedCost}</span>
+                                            </div>
+                                            <p className="text-[11px] text-muted-foreground">{h.explanation}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="space-y-1">
                             <div className="flex items-center gap-1.5 text-sm font-semibold">
                                 <Wallet className="w-3.5 h-3.5 text-amber-600" />

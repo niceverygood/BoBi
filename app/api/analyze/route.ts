@@ -34,33 +34,37 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
         }
 
-        // Check rate limit
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('plan, analysis_count')
-            .eq('id', user.id)
-            .single();
-
+        // Check rate limit (usage_tracking 기반)
         let useCredit = false;
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const periodStart = `${year}-${month}-01`;
 
-        if (profile) {
-            const limits: Record<string, number> = { basic: 50, pro: 200, enterprise: Infinity };
-            const limit = limits[profile.plan] || 50;
-            if (profile.analysis_count >= limit) {
-                // 플랜 한도 초과 → 크레딧 확인
-                const { data: creditData } = await supabase
-                    .from('credit_balances')
-                    .select('credits_remaining')
-                    .eq('user_id', user.id)
-                    .maybeSingle();
+        const { data: usageData } = await supabase
+            .from('usage_tracking')
+            .select('analyses_used, analyses_limit')
+            .eq('user_id', user.id)
+            .eq('period_start', periodStart)
+            .maybeSingle();
 
-                if (creditData && creditData.credits_remaining > 0) {
-                    useCredit = true; // 크레딧으로 분석 진행
-                } else {
-                    return NextResponse.json({
-                        error: '이번 달 분석 한도를 초과했습니다. 크레딧을 구매하거나 플랜을 업그레이드해주세요.',
-                    }, { status: 429 });
-                }
+        const used = usageData?.analyses_used || 0;
+        const limit = usageData?.analyses_limit || 5; // 기본 무료 플랜 5건
+
+        if (used >= limit) {
+            // 한도 초과 → 크레딧 확인
+            const { data: creditData } = await supabase
+                .from('credit_balances')
+                .select('credits_remaining')
+                .eq('user_id', user.id)
+                .maybeSingle();
+
+            if (creditData && creditData.credits_remaining > 0) {
+                useCredit = true;
+            } else {
+                return NextResponse.json({
+                    error: '이번 달 분석 한도를 초과했습니다. 크레딧을 구매하거나 플랜을 업그레이드해주세요.',
+                }, { status: 429 });
             }
         }
 
@@ -189,11 +193,53 @@ export async function POST(request: Request) {
             console.error('Update error:', updateError);
         }
 
-        // Increment analysis count
+        // Increment analysis count (legacy profile counter)
         try {
             await supabase.rpc('increment_analysis_count', { user_id: user.id });
         } catch {
             // Non-critical, ignore if RPC doesn't exist
+        }
+
+        // usage_tracking 테이블의 analyses_used 증가 (현재 시스템)
+        if (!useCredit) {
+            try {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const periodStart = `${year}-${month}-01`;
+                const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+                const periodEnd = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+
+                const { data: existingUsage } = await supabase
+                    .from('usage_tracking')
+                    .select('id, analyses_used, analyses_limit')
+                    .eq('user_id', user.id)
+                    .eq('period_start', periodStart)
+                    .maybeSingle();
+
+                if (existingUsage) {
+                    await supabase
+                        .from('usage_tracking')
+                        .update({
+                            analyses_used: (existingUsage.analyses_used || 0) + 1,
+                            updated_at: now.toISOString(),
+                        })
+                        .eq('id', existingUsage.id);
+                } else {
+                    // 신규 row 생성 (무료 플랜 기본 5건)
+                    await supabase
+                        .from('usage_tracking')
+                        .insert({
+                            user_id: user.id,
+                            period_start: periodStart,
+                            period_end: periodEnd,
+                            analyses_used: 1,
+                            analyses_limit: 5,
+                        });
+                }
+            } catch (err) {
+                console.error('[Analyze] usage_tracking 증가 실패:', err);
+            }
         }
 
         // 크레딧으로 분석한 경우 차감

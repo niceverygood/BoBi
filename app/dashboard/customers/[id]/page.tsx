@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import {
     ArrowLeft, Activity, HeartPulse, Pill, AlertTriangle,
     FileSearch, Receipt, Brain, Loader2, MessageSquare,
-    CheckCircle2, XCircle, Calendar, TrendingUp, Stethoscope, Link2,
+    CheckCircle2, XCircle, Calendar, TrendingUp, Stethoscope, Link2, Trash2,
 } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { apiFetch } from '@/lib/api/client';
@@ -45,10 +45,27 @@ interface CustomerCard {
 
 function CustomerCardContent() {
     const params = useParams<{ id: string }>();
+    const router = useRouter();
     const [data, setData] = useState<CustomerCard | null>(null);
     const [loading, setLoading] = useState(true);
     const [script, setScript] = useState<string | null>(null);
     const [scriptLoading, setScriptLoading] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+
+    const handleDelete = async () => {
+        if (!data?.customer.name) return;
+        const confirmText = `정말 ${data.customer.name} 고객을 삭제하시겠습니까?\n\n관련 분석 이력 ${data.summary.totalAnalyses}건도 함께 삭제되며, 복구할 수 없습니다.`;
+        if (!confirm(confirmText)) return;
+
+        setDeleting(true);
+        try {
+            await apiFetch(`/api/customers/${params.id}`, { method: 'DELETE' });
+            router.push('/dashboard/customers');
+        } catch (err) {
+            alert('삭제 실패: ' + (err as Error).message);
+            setDeleting(false);
+        }
+    };
 
     useEffect(() => {
         if (!params.id) return;
@@ -97,6 +114,16 @@ function CustomerCardContent() {
                         분석 {s.totalAnalyses}건
                     </p>
                 </div>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 gap-1"
+                >
+                    {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                    삭제
+                </Button>
             </div>
 
             {/* 건강 점수 카드 */}

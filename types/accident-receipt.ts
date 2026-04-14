@@ -57,5 +57,17 @@ export interface AccidentReceipt {
         costBreakdown: string;
         lifeImpact: string;
         consultingPoints: string[];
+        additionalTreatments?: Array<{
+            name: string;
+            description: string;
+            estimatedCost: string;
+            isCovered: string;
+            frequency: string;
+        }>;
+        hiddenCosts?: Array<{
+            item: string;
+            estimatedCost: string;
+            explanation: string;
+        }>;
     };
 }

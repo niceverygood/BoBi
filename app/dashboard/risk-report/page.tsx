@@ -173,7 +173,13 @@ function RiskReportContent() {
             {/* 리포트 */}
             {report && !loading && (
                 <>
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-2 flex-wrap">
+                        <Link href="/dashboard/health-checkup">
+                            <Button variant="outline" size="sm" className="border-[#1a56db] text-[#1a56db] hover:bg-[#1a56db]/5">
+                                <HeartPulse className="w-4 h-4 mr-2" />
+                                건강검진 조회하기
+                            </Button>
+                        </Link>
                         <Button
                             variant="outline"
                             size="sm"

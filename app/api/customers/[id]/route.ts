@@ -247,3 +247,43 @@ function extractMedications(mh: Record<string, any>): string[] {
     }
     return [...meds];
 }
+
+// 고객 삭제 (관련 분석 이력도 cascade 삭제)
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+    try {
+        const { id } = await params;
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return NextResponse.json({ error: '인증 필요' }, { status: 401 });
+
+        // 고객 소유권 확인
+        const { data: customer } = await supabase
+            .from('customers')
+            .select('id')
+            .eq('id', id)
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+        if (!customer) {
+            return NextResponse.json({ error: '고객을 찾을 수 없습니다.' }, { status: 404 });
+        }
+
+        // 분석 이력 삭제
+        await supabase.from('analyses').delete().eq('customer_id', id).eq('user_id', user.id);
+
+        // 고객 삭제
+        const { error: delError } = await supabase
+            .from('customers')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', user.id);
+
+        if (delError) {
+            return NextResponse.json({ error: delError.message }, { status: 500 });
+        }
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+    }
+}
