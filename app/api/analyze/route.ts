@@ -1,6 +1,6 @@
 // app/api/analyze/route.ts
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { callOpenAI } from '@/lib/ai/openai';
 import { STEP1_ANALYSIS_PROMPT } from '@/lib/ai/prompts';
 import { parseAIResponse, validateAnalysisResult } from '@/lib/ai/parser';
@@ -34,14 +34,15 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
         }
 
-        // Check rate limit (usage_tracking 기반)
+        // Check rate limit (usage_tracking 기반, service role로 RLS 우회)
         let useCredit = false;
+        const svcClientForCheck = await createServiceClient();
         const now = new Date();
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, '0');
         const periodStart = `${year}-${month}-01`;
 
-        const { data: usageData } = await supabase
+        const { data: usageData } = await svcClientForCheck
             .from('usage_tracking')
             .select('analyses_used, analyses_limit')
             .eq('user_id', user.id)
@@ -51,9 +52,11 @@ export async function POST(request: Request) {
         const used = usageData?.analyses_used || 0;
         const limit = usageData?.analyses_limit || 5; // 기본 무료 플랜 5건
 
+        console.log(`[Analyze] 한도 체크: ${used}/${limit} (user: ${user.id.substring(0, 8)})`);
+
         if (used >= limit) {
             // 한도 초과 → 크레딧 확인
-            const { data: creditData } = await supabase
+            const { data: creditData } = await svcClientForCheck
                 .from('credit_balances')
                 .select('credits_remaining')
                 .eq('user_id', user.id)
@@ -201,8 +204,10 @@ export async function POST(request: Request) {
         }
 
         // usage_tracking 테이블의 analyses_used 증가 (현재 시스템)
+        // ⚠️ Service Role 사용 — RLS 우회 필수 (client anon으로는 update 안 됨)
         if (!useCredit) {
             try {
+                const svcClient = await createServiceClient();
                 const now = new Date();
                 const year = now.getFullYear();
                 const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -210,7 +215,7 @@ export async function POST(request: Request) {
                 const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
                 const periodEnd = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
 
-                const { data: existingUsage } = await supabase
+                const { data: existingUsage } = await svcClient
                     .from('usage_tracking')
                     .select('id, analyses_used, analyses_limit')
                     .eq('user_id', user.id)
@@ -218,24 +223,39 @@ export async function POST(request: Request) {
                     .maybeSingle();
 
                 if (existingUsage) {
-                    await supabase
+                    const { error: updErr } = await svcClient
                         .from('usage_tracking')
                         .update({
                             analyses_used: (existingUsage.analyses_used || 0) + 1,
                             updated_at: now.toISOString(),
                         })
                         .eq('id', existingUsage.id);
+                    if (updErr) console.error('[Analyze] usage_tracking 업데이트 실패:', updErr);
+                    else console.log(`[Analyze] usage 증가: ${existingUsage.analyses_used} → ${(existingUsage.analyses_used || 0) + 1} / ${existingUsage.analyses_limit}`);
                 } else {
-                    // 신규 row 생성 (무료 플랜 기본 5건)
-                    await supabase
+                    // 신규 row 생성 — 활성 구독 확인 후 한도 결정
+                    const { data: sub } = await svcClient
+                        .from('subscriptions')
+                        .select('plan:subscription_plans(max_analyses)')
+                        .eq('user_id', user.id)
+                        .eq('status', 'active')
+                        .maybeSingle();
+
+                    const subPlan = (sub?.plan as { max_analyses?: number } | null);
+                    const maxAnalyses = subPlan?.max_analyses ?? 5;
+                    const limitValue = maxAnalyses === -1 ? 999999 : maxAnalyses;
+
+                    const { error: insErr } = await svcClient
                         .from('usage_tracking')
                         .insert({
                             user_id: user.id,
                             period_start: periodStart,
                             period_end: periodEnd,
                             analyses_used: 1,
-                            analyses_limit: 5,
+                            analyses_limit: limitValue,
                         });
+                    if (insErr) console.error('[Analyze] usage_tracking 생성 실패:', insErr);
+                    else console.log(`[Analyze] 신규 usage row 생성: limit ${limitValue}`);
                 }
             } catch (err) {
                 console.error('[Analyze] usage_tracking 증가 실패:', err);
