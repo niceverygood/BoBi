@@ -167,12 +167,12 @@ export default function PricingPage() {
                     <Card className="border-0 shadow-lg overflow-hidden">
                         <CardContent className="p-0">
                             <div className="overflow-x-auto">
-                                <table className="w-full">
+                                <table className="w-full min-w-[620px]">
                                     <thead>
                                         <tr className="border-b bg-muted/30">
-                                            <th className="text-left p-4 font-medium text-sm min-w-[200px]">기능</th>
+                                            <th className="text-left p-4 font-medium text-sm min-w-[220px] whitespace-nowrap">기능</th>
                                             {individualSlugs.map((slug) => (
-                                                <th key={slug} className="p-4 text-center font-medium text-sm min-w-[120px]">
+                                                <th key={slug} className="p-4 text-center font-medium text-sm min-w-[120px] whitespace-nowrap">
                                                     {PLAN_LIMITS[slug].name}
                                                 </th>
                                             ))}
@@ -180,24 +180,24 @@ export default function PricingPage() {
                                     </thead>
                                     <tbody>
                                         <tr className="border-b">
-                                            <td className="p-4 text-sm font-medium">월간 분석 건수</td>
+                                            <td className="p-4 text-sm font-medium whitespace-nowrap">월간 분석 건수</td>
                                             {individualSlugs.map((slug) => (
-                                                <td key={slug} className="p-4 text-center text-sm font-semibold">
+                                                <td key={slug} className="p-4 text-center text-sm font-semibold whitespace-nowrap">
                                                     {PLAN_LIMITS[slug].analysisLimit === -1 ? '무제한' : `${PLAN_LIMITS[slug].analysisLimit}건`}
                                                 </td>
                                             ))}
                                         </tr>
                                         <tr className="border-b bg-muted/10">
-                                            <td className="p-4 text-sm font-medium">분석 이력 보관</td>
+                                            <td className="p-4 text-sm font-medium whitespace-nowrap">분석 이력 보관</td>
                                             {individualSlugs.map((slug) => (
-                                                <td key={slug} className="p-4 text-center text-sm">
+                                                <td key={slug} className="p-4 text-center text-sm whitespace-nowrap">
                                                     {PLAN_LIMITS[slug].historyDays === -1 ? '무제한' : `${PLAN_LIMITS[slug].historyDays}일`}
                                                 </td>
                                             ))}
                                         </tr>
                                         {INDIVIDUAL_FEATURES.map((feature, idx) => (
                                             <tr key={feature.label} className={`border-b ${idx % 2 === 0 ? 'bg-muted/10' : ''}`}>
-                                                <td className="p-4 text-sm">{feature.label}</td>
+                                                <td className="p-4 text-sm whitespace-nowrap">{feature.label}</td>
                                                 {individualSlugs.map((slug) => (
                                                     <td key={slug} className="p-4 text-center">
                                                         {feature[slug] ? (
@@ -212,6 +212,7 @@ export default function PricingPage() {
                                     </tbody>
                                 </table>
                             </div>
+                            <p className="text-[11px] text-muted-foreground text-center py-2 sm:hidden">← 좌우로 스크롤해서 확인하세요 →</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -320,48 +321,49 @@ export default function PricingPage() {
                     <Card className="border-0 shadow-lg overflow-hidden">
                         <CardContent className="p-0">
                             <div className="overflow-x-auto">
-                                <table className="w-full">
+                                <table className="w-full min-w-[720px]">
                                     <thead>
                                         <tr className="border-b bg-muted/30">
-                                            <th className="text-left p-4 font-medium text-sm">GA 규모</th>
-                                            <th className="p-4 text-center font-medium text-sm">추천 플랜</th>
-                                            <th className="p-4 text-center font-medium text-sm">월 비용</th>
-                                            <th className="p-4 text-center font-medium text-sm">인당 단가</th>
-                                            <th className="p-4 text-center font-medium text-sm">연간 비용</th>
+                                            <th className="text-left p-4 font-medium text-sm whitespace-nowrap min-w-[180px]">GA 규모</th>
+                                            <th className="p-4 text-center font-medium text-sm whitespace-nowrap min-w-[110px]">추천 플랜</th>
+                                            <th className="p-4 text-center font-medium text-sm whitespace-nowrap min-w-[110px]">월 비용</th>
+                                            <th className="p-4 text-center font-medium text-sm whitespace-nowrap min-w-[110px]">인당 단가</th>
+                                            <th className="p-4 text-center font-medium text-sm whitespace-nowrap min-w-[130px]">연간 비용</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <tr className="border-b">
-                                            <td className="p-4 text-sm font-medium">소규모 팀 (5명)</td>
-                                            <td className="p-4 text-center text-sm"><Badge variant="outline">팀 베이직</Badge></td>
-                                            <td className="p-4 text-center text-sm font-semibold">79,000원</td>
-                                            <td className="p-4 text-center text-sm">15,800원</td>
-                                            <td className="p-4 text-center text-sm text-muted-foreground">758,400원</td>
+                                            <td className="p-4 text-sm font-medium whitespace-nowrap">소규모 팀 (5명)</td>
+                                            <td className="p-4 text-center text-sm whitespace-nowrap"><Badge variant="outline">팀 베이직</Badge></td>
+                                            <td className="p-4 text-center text-sm font-semibold whitespace-nowrap">79,000원</td>
+                                            <td className="p-4 text-center text-sm whitespace-nowrap">15,800원</td>
+                                            <td className="p-4 text-center text-sm text-muted-foreground whitespace-nowrap">758,400원</td>
                                         </tr>
                                         <tr className="border-b bg-muted/10">
-                                            <td className="p-4 text-sm font-medium">중소 GA (10명)</td>
-                                            <td className="p-4 text-center text-sm"><Badge variant="outline">팀 베이직</Badge></td>
-                                            <td className="p-4 text-center text-sm font-semibold">139,000원</td>
-                                            <td className="p-4 text-center text-sm">13,900원</td>
-                                            <td className="p-4 text-center text-sm text-muted-foreground">1,334,400원</td>
+                                            <td className="p-4 text-sm font-medium whitespace-nowrap">중소 GA (10명)</td>
+                                            <td className="p-4 text-center text-sm whitespace-nowrap"><Badge variant="outline">팀 베이직</Badge></td>
+                                            <td className="p-4 text-center text-sm font-semibold whitespace-nowrap">139,000원</td>
+                                            <td className="p-4 text-center text-sm whitespace-nowrap">13,900원</td>
+                                            <td className="p-4 text-center text-sm text-muted-foreground whitespace-nowrap">1,334,400원</td>
                                         </tr>
                                         <tr className="border-b">
-                                            <td className="p-4 text-sm font-medium">중형 GA (10명, 무제한)</td>
-                                            <td className="p-4 text-center text-sm"><Badge className="bg-amber-100 text-amber-700">팀 프로</Badge></td>
-                                            <td className="p-4 text-center text-sm font-semibold">274,000원</td>
-                                            <td className="p-4 text-center text-sm">27,400원</td>
-                                            <td className="p-4 text-center text-sm text-muted-foreground">2,630,400원</td>
+                                            <td className="p-4 text-sm font-medium whitespace-nowrap">중형 GA (10명, 무제한)</td>
+                                            <td className="p-4 text-center text-sm whitespace-nowrap"><Badge className="bg-amber-100 text-amber-700">팀 프로</Badge></td>
+                                            <td className="p-4 text-center text-sm font-semibold whitespace-nowrap">274,000원</td>
+                                            <td className="p-4 text-center text-sm whitespace-nowrap">27,400원</td>
+                                            <td className="p-4 text-center text-sm text-muted-foreground whitespace-nowrap">2,630,400원</td>
                                         </tr>
                                         <tr className="border-b bg-primary/5">
-                                            <td className="p-4 text-sm font-bold">대형 GA (20명, 무제한)</td>
-                                            <td className="p-4 text-center text-sm"><Badge className="bg-amber-100 text-amber-700">팀 프로</Badge></td>
-                                            <td className="p-4 text-center text-sm font-bold text-primary">524,000원</td>
-                                            <td className="p-4 text-center text-sm font-bold text-primary">26,200원</td>
-                                            <td className="p-4 text-center text-sm text-muted-foreground">5,030,400원</td>
+                                            <td className="p-4 text-sm font-bold whitespace-nowrap">대형 GA (20명, 무제한)</td>
+                                            <td className="p-4 text-center text-sm whitespace-nowrap"><Badge className="bg-amber-100 text-amber-700">팀 프로</Badge></td>
+                                            <td className="p-4 text-center text-sm font-bold text-primary whitespace-nowrap">524,000원</td>
+                                            <td className="p-4 text-center text-sm font-bold text-primary whitespace-nowrap">26,200원</td>
+                                            <td className="p-4 text-center text-sm text-muted-foreground whitespace-nowrap">5,030,400원</td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
+                            <p className="text-[11px] text-muted-foreground text-center py-2 sm:hidden">← 좌우로 스크롤해서 확인하세요 →</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -372,12 +374,12 @@ export default function PricingPage() {
                     <Card className="border-0 shadow-lg overflow-hidden">
                         <CardContent className="p-0">
                             <div className="overflow-x-auto">
-                                <table className="w-full">
+                                <table className="w-full min-w-[560px]">
                                     <thead>
                                         <tr className="border-b bg-muted/30">
-                                            <th className="text-left p-4 font-medium text-sm min-w-[200px]">기능</th>
+                                            <th className="text-left p-4 font-medium text-sm min-w-[220px] whitespace-nowrap">기능</th>
                                             {teamSlugs.map((slug) => (
-                                                <th key={slug} className="p-4 text-center font-medium text-sm min-w-[120px]">
+                                                <th key={slug} className="p-4 text-center font-medium text-sm min-w-[140px] whitespace-nowrap">
                                                     {PLAN_LIMITS[slug].name}
                                                 </th>
                                             ))}
@@ -385,40 +387,40 @@ export default function PricingPage() {
                                     </thead>
                                     <tbody>
                                         <tr className="border-b">
-                                            <td className="p-4 text-sm font-medium">월간 분석 건수</td>
+                                            <td className="p-4 text-sm font-medium whitespace-nowrap">월간 분석 건수</td>
                                             {teamSlugs.map((slug) => (
-                                                <td key={slug} className="p-4 text-center text-sm font-semibold">
+                                                <td key={slug} className="p-4 text-center text-sm font-semibold whitespace-nowrap">
                                                     {PLAN_LIMITS[slug].analysisLimit === -1 ? '무제한' : `${PLAN_LIMITS[slug].analysisLimit}건/인`}
                                                 </td>
                                             ))}
                                         </tr>
                                         <tr className="border-b bg-muted/10">
-                                            <td className="p-4 text-sm font-medium">포함 인원</td>
+                                            <td className="p-4 text-sm font-medium whitespace-nowrap">포함 인원</td>
                                             {teamSlugs.map((slug) => (
-                                                <td key={slug} className="p-4 text-center text-sm">
+                                                <td key={slug} className="p-4 text-center text-sm whitespace-nowrap">
                                                     {PLAN_LIMITS[slug].includedSeats}명
                                                 </td>
                                             ))}
                                         </tr>
                                         <tr className="border-b">
-                                            <td className="p-4 text-sm font-medium">최대 인원</td>
+                                            <td className="p-4 text-sm font-medium whitespace-nowrap">최대 인원</td>
                                             {teamSlugs.map((slug) => (
-                                                <td key={slug} className="p-4 text-center text-sm">
+                                                <td key={slug} className="p-4 text-center text-sm whitespace-nowrap">
                                                     {PLAN_LIMITS[slug].maxSeats === -1 ? '무제한' : `${PLAN_LIMITS[slug].maxSeats}명`}
                                                 </td>
                                             ))}
                                         </tr>
                                         <tr className="border-b bg-muted/10">
-                                            <td className="p-4 text-sm font-medium">추가 인당 비용</td>
+                                            <td className="p-4 text-sm font-medium whitespace-nowrap">추가 인당 비용</td>
                                             {teamSlugs.map((slug) => (
-                                                <td key={slug} className="p-4 text-center text-sm">
+                                                <td key={slug} className="p-4 text-center text-sm whitespace-nowrap">
                                                     {PLAN_LIMITS[slug].extraSeatPrice?.toLocaleString()}원/월
                                                 </td>
                                             ))}
                                         </tr>
                                         {TEAM_FEATURES.map((feature, idx) => (
                                             <tr key={feature.label} className={`border-b ${idx % 2 === 0 ? 'bg-muted/10' : ''}`}>
-                                                <td className="p-4 text-sm">{feature.label}</td>
+                                                <td className="p-4 text-sm whitespace-nowrap">{feature.label}</td>
                                                 {teamSlugs.map((slug) => (
                                                     <td key={slug} className="p-4 text-center">
                                                         {feature[slug] ? (
