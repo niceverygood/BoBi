@@ -890,34 +890,15 @@ function SubscribeContent() {
                                     </div>
                                 )}
 
-                                {/* 결제 수단 */}
+                                {/* 결제 수단 — 카드사 심사 통과 전까지 카카오페이만 노출 */}
                                 {platform === 'web' && (
                                     <div className="space-y-2">
                                         <p className="text-sm font-medium">결제 수단</p>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <button
-                                                onClick={() => setPaymentMethod('kakaopay')}
-                                                className={cn(
-                                                    'p-3 rounded-lg border-2 text-center text-sm transition-all',
-                                                    paymentMethod === 'kakaopay'
-                                                        ? 'border-primary bg-primary/5 font-semibold'
-                                                        : 'border-muted hover:border-primary/30'
-                                                )}
-                                            >
-                                                카카오페이
-                                            </button>
-                                            <button
-                                                onClick={() => setPaymentMethod('card')}
-                                                className={cn(
-                                                    'p-3 rounded-lg border-2 text-center text-sm transition-all',
-                                                    paymentMethod === 'card'
-                                                        ? 'border-primary bg-primary/5 font-semibold'
-                                                        : 'border-muted hover:border-primary/30'
-                                                )}
-                                            >
-                                                신용카드
-                                            </button>
+                                        <div className="p-3 rounded-lg border-2 border-primary bg-primary/5 text-center text-sm font-semibold">
+                                            카카오페이
                                         </div>
+                                        <p className="text-[11px] text-muted-foreground">카카오페이에 등록된 카드 또는 카카오머니로 결제됩니다.</p>
+                                        <p className="text-[10px] text-muted-foreground">💳 신용카드 직접 결제는 카드사 심사 후 추가 예정입니다.</p>
                                     </div>
                                 )}
 
