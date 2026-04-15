@@ -102,10 +102,20 @@ export default function CustomersPage() {
             {/* 고객 목록 */}
             {loading ? (
                 <div className="space-y-3">
-                    {[1, 2, 3].map(i => (
-                        <Card key={i} className="border-0 shadow-sm"><CardContent className="p-4">
-                            <div className="flex gap-3"><Skeleton className="w-12 h-12 rounded-full" /><div className="flex-1 space-y-2"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-3 w-1/2" /></div></div>
-                        </CardContent></Card>
+                    {[1, 2, 3, 4, 5].map(i => (
+                        <Card key={i} className="border-0 shadow-sm">
+                            <CardContent className="p-4 min-h-[88px]">
+                                <div className="flex gap-3 items-center">
+                                    <Skeleton className="w-12 h-12 rounded-full shrink-0" />
+                                    <div className="flex-1 space-y-2.5 min-w-0">
+                                        <Skeleton className="h-4 w-32" />
+                                        <Skeleton className="h-3 w-48" />
+                                        <Skeleton className="h-3 w-24" />
+                                    </div>
+                                    <Skeleton className="w-16 h-6 shrink-0" />
+                                </div>
+                            </CardContent>
+                        </Card>
                     ))}
                 </div>
             ) : filtered.length === 0 ? (

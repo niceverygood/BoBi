@@ -400,7 +400,7 @@ function HealthCheckupContent() {
                                             { label: 'y-GTP', value: preview.resyGPT, unit: 'U/L' },
                                             { label: '혈색소', value: preview.resHemoglobin, unit: 'g/dL' },
                                         ].filter(item => item.value).map((item, i) => (
-                                            <div key={i} className="p-2 rounded-lg bg-muted/50 text-center">
+                                            <div key={i} className="p-2 rounded-lg bg-muted/50 text-center min-h-[72px] flex flex-col justify-center">
                                                 <p className="text-[10px] text-muted-foreground">{item.label}</p>
                                                 <p className="text-sm font-bold">{item.value}</p>
                                                 {item.unit && <p className="text-[10px] text-muted-foreground">{item.unit}</p>}

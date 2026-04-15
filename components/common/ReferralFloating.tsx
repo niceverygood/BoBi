@@ -66,7 +66,7 @@ export default function ReferralFloating() {
 
             {/* 팝업 카드 */}
             {open && (
-                <div className="fixed bottom-24 right-6 z-40 w-[320px] animate-fade-in">
+                <div className="fixed bottom-24 right-6 z-[60] w-[min(320px,calc(100vw-3rem))] animate-fade-in">
                     <Card className="border-0 shadow-2xl overflow-hidden">
                         {/* 헤더 */}
                         <div className="bg-gradient-to-r from-amber-400 to-orange-500 p-4 text-white relative">

@@ -129,7 +129,7 @@ export default function SearchTrendWidget() {
                         <p className="text-xs text-muted-foreground">매일 오전 7시에 자동 업데이트됩니다.</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 overflow-hidden">
                         {renderKeywords(maleData, `${selectedAge} 남성 🔵`)}
                         {renderKeywords(femaleData, `${selectedAge} 여성 🔴`)}
                     </div>

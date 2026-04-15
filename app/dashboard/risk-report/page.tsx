@@ -129,7 +129,7 @@ function RiskReportContent() {
             {/* 헤더 */}
             <div className="flex items-center gap-3">
                 <Link href={`/dashboard/analyze?analysisId=${analysisId}`}>
-                    <Button variant="ghost" size="icon" className="h-9 w-9">
+                    <Button variant="ghost" size="icon" className="h-11 w-11" title="분석 결과로 돌아가기" aria-label="분석 결과로 돌아가기">
                         <ArrowLeft className="w-4 h-4" />
                     </Button>
                 </Link>

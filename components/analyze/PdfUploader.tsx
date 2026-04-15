@@ -341,7 +341,7 @@ export default function PdfUploader({ onFilesUploaded, customerId }: PdfUploader
                 <div className="space-y-3">
                     <h3 className="text-sm font-semibold text-muted-foreground">업로드된 파일</h3>
                     {files.map((f, index) => (
-                        <Card key={index} className="p-4">
+                        <Card key={index} className="p-4 min-h-[80px]">
                             <div className="flex items-center gap-3">
                                 <div className={cn(
                                     'w-10 h-10 rounded-lg flex items-center justify-center shrink-0',
