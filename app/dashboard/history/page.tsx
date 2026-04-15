@@ -194,15 +194,15 @@ export default function HistoryPage() {
                         />
                     ) : (
                         <div className="overflow-x-auto">
-                            <Table>
+                            <Table className="min-w-[900px]">
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="text-xs">분석일시</TableHead>
-                                        <TableHead className="text-xs">소스</TableHead>
-                                        <TableHead className="text-xs">상태</TableHead>
-                                        <TableHead className="text-xs">진행단계</TableHead>
-                                        <TableHead className="text-xs">요약</TableHead>
-                                        <TableHead className="text-xs text-right">작업</TableHead>
+                                        <TableHead className="text-xs whitespace-nowrap min-w-[140px]">분석일시</TableHead>
+                                        <TableHead className="text-xs whitespace-nowrap min-w-[80px]">소스</TableHead>
+                                        <TableHead className="text-xs whitespace-nowrap min-w-[80px]">상태</TableHead>
+                                        <TableHead className="text-xs whitespace-nowrap min-w-[140px]">진행단계</TableHead>
+                                        <TableHead className="text-xs min-w-[200px]">요약</TableHead>
+                                        <TableHead className="text-xs text-right whitespace-nowrap min-w-[260px]">작업</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -211,16 +211,16 @@ export default function HistoryPage() {
                                             <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                                                 {formatDate(analysis.created_at)}
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell className="whitespace-nowrap">
                                                 {getSourceBadge(analysis)}
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell className="whitespace-nowrap">
                                                 {getStatusBadge(analysis.status)}
                                             </TableCell>
                                             <TableCell>
-                                                <div className="flex gap-1">
+                                                <div className="flex gap-1 flex-wrap">
                                                     {getSteps(analysis).map((step) => (
-                                                        <Badge key={step.label} className={`text-[10px] ${step.color} text-white`}>
+                                                        <Badge key={step.label} className={`text-[10px] ${step.color} text-white whitespace-nowrap`}>
                                                             {step.label}
                                                         </Badge>
                                                     ))}
@@ -229,11 +229,11 @@ export default function HistoryPage() {
                                                     )}
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="text-xs text-muted-foreground max-w-[300px] truncate">
-                                                {getOverallSummary(analysis)}
+                                            <TableCell className="text-xs text-muted-foreground max-w-[300px]">
+                                                <span className="line-clamp-2 break-keep">{getOverallSummary(analysis)}</span>
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <div className="flex gap-1 justify-end">
+                                                <div className="flex gap-1.5 justify-end flex-nowrap">
                                                     {analysis.status === 'completed' && (
                                                         <>
                                                             {/* STEP 1 결과 보기 */}

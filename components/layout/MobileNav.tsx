@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, FileSearch, History, Settings, Menu, ShieldCheck, ShieldPlus, Stethoscope, Receipt, HeartPulse, Users, MessageCircle } from 'lucide-react';
+import { LayoutDashboard, FileSearch, History, Settings, Menu, X as XIcon, ShieldCheck, ShieldPlus, Stethoscope, Receipt, HeartPulse, Users, MessageCircle } from 'lucide-react';
 import BobiLogo from '@/components/common/BobiLogo';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -38,8 +38,11 @@ export default function MobileNav() {
     return (
         <div className="lg:hidden">
             <Sheet open={open} onOpenChange={setOpen}>
-                <SheetTrigger className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 w-9 hover:bg-accent hover:text-accent-foreground">
-                    <Menu className="w-5 h-5" />
+                <SheetTrigger
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-11 w-11 hover:bg-accent hover:text-accent-foreground"
+                    aria-label={open ? '메뉴 닫기' : '메뉴 열기'}
+                >
+                    {open ? <XIcon className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
                 </SheetTrigger>
                 <SheetContent side="left" className="w-[280px] p-0">
                     <SheetTitle className="sr-only">내비게이션 메뉴</SheetTitle>

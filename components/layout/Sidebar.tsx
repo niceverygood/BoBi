@@ -138,17 +138,17 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                                 </span>
                             )}
                         </div>
-                        <p className="text-xs text-muted-foreground mb-3">
+                        <p className="text-sm text-foreground/70 mb-3">
                             이번 달 남은 분석: {loading ? (
                                 <Skeleton className="h-3 w-10 inline-block align-middle" />
                             ) : (
-                                <span className="font-semibold text-foreground">
+                                <span className="font-bold text-primary">
                                     {displayRemaining}
                                 </span>
                             )}
                         </p>
                         <Link href="/pricing">
-                            <Button variant="outline" size="sm" className="w-full text-xs">
+                            <Button variant="outline" size="sm" className="w-full text-xs h-9">
                                 {plan.slug === 'free' ? '플랜 업그레이드' : '플랜 관리'}
                             </Button>
                         </Link>

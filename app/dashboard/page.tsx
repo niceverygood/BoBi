@@ -113,35 +113,35 @@ export default function DashboardPage() {
             </div>
 
             {/* 통계 3개 */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <Card className="border-0 shadow-sm">
-                    <CardContent className="p-5">
+                    <CardContent className="p-4 sm:p-5">
                         <p className="text-xs text-muted-foreground">이번 달 분석</p>
                         {loading ? <Skeleton className="h-9 w-16 mt-1" /> : (
                             <>
-                                <p className="text-3xl font-black mt-1">{usage.analyses_used}<span className="text-base font-normal text-muted-foreground ml-1">건</span></p>
+                                <p className="text-2xl sm:text-3xl font-black mt-1">{usage.analyses_used}<span className="text-sm sm:text-base font-normal text-muted-foreground ml-1">건</span></p>
                                 <p className="text-[11px] text-muted-foreground mt-1">잔여 {displayRemaining}건</p>
                             </>
                         )}
                     </CardContent>
                 </Card>
                 <Card className="border-0 shadow-sm">
-                    <CardContent className="p-5">
+                    <CardContent className="p-4 sm:p-5">
                         <p className="text-xs text-muted-foreground">총 고객 분석</p>
                         {recentLoading ? <Skeleton className="h-9 w-16 mt-1" /> : (
                             <>
-                                <p className="text-3xl font-black mt-1">{totalAnalyses}<span className="text-base font-normal text-muted-foreground ml-1">건</span></p>
+                                <p className="text-2xl sm:text-3xl font-black mt-1">{totalAnalyses}<span className="text-sm sm:text-base font-normal text-muted-foreground ml-1">건</span></p>
                                 <p className="text-[11px] text-muted-foreground mt-1">누적 분석 건수</p>
                             </>
                         )}
                     </CardContent>
                 </Card>
                 <Card className="border-0 shadow-sm">
-                    <CardContent className="p-5">
+                    <CardContent className="p-4 sm:p-5">
                         <p className="text-xs text-muted-foreground">이번 달 남은 분석</p>
                         {loading ? <Skeleton className="h-9 w-16 mt-1" /> : (
                             <>
-                                <p className="text-3xl font-black mt-1">{displayRemaining}<span className="text-base font-normal text-muted-foreground ml-1">{remainingAnalyses !== -1 ? '건' : ''}</span></p>
+                                <p className="text-2xl sm:text-3xl font-black mt-1">{displayRemaining}<span className="text-sm sm:text-base font-normal text-muted-foreground ml-1">{remainingAnalyses !== -1 ? '건' : ''}</span></p>
                                 <p className="text-[11px] text-[#1a56db] mt-1 cursor-pointer hover:underline">
                                     <Link href="/dashboard/settings">잔여 횟수 확인</Link>
                                 </p>
@@ -157,7 +157,7 @@ export default function DashboardPage() {
             {/* 주요 기능 4개 카드 */}
             <div>
                 <h2 className="text-sm font-semibold text-muted-foreground mb-3">주요 기능</h2>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                     {/* 새 분석 시작 */}
                     <Link href="/dashboard/analyze">
                         <Card className="border-0 shadow-sm bg-[#1a56db] text-white hover:bg-[#1a56db]/90 transition-colors cursor-pointer h-full relative overflow-hidden">

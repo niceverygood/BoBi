@@ -63,10 +63,9 @@ export default function NewInquiryPage() {
                                     <Button
                                         key={cat}
                                         type="button"
-                                        size="sm"
                                         variant={category === cat ? 'default' : 'outline'}
                                         onClick={() => setCategory(cat)}
-                                        className="text-xs"
+                                        className="text-sm h-10 px-4"
                                     >
                                         {cat}
                                     </Button>
@@ -82,6 +81,7 @@ export default function NewInquiryPage() {
                                 value={title}
                                 onChange={e => setTitle(e.target.value)}
                                 maxLength={100}
+                                className="h-11"
                             />
                         </div>
 
@@ -100,10 +100,13 @@ export default function NewInquiryPage() {
                         </div>
 
                         {error && (
-                            <p className="text-sm text-red-500 bg-red-50 p-3 rounded-lg">{error}</p>
+                            <div role="alert" className="text-sm text-red-900 bg-red-100 border border-red-200 p-3 rounded-lg flex items-start gap-2">
+                                <span aria-hidden="true">⚠️</span>
+                                <span>{error}</span>
+                            </div>
                         )}
 
-                        <Button type="submit" disabled={loading} className="w-full bg-gradient-primary hover:opacity-90 gap-2">
+                        <Button type="submit" disabled={loading} className="w-full h-12 bg-gradient-primary hover:opacity-90 gap-2">
                             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                             {loading ? '등록 중...' : '문의 등록'}
                         </Button>

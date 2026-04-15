@@ -103,7 +103,7 @@ export default function Header({ title }: HeaderProps) {
                 <NotificationBell />
 
                 <DropdownMenu>
-                    <DropdownMenuTrigger className="relative h-9 w-9 rounded-full flex items-center justify-center hover:bg-accent">
+                    <DropdownMenuTrigger className="relative h-11 w-11 rounded-full flex items-center justify-center hover:bg-accent">
                         <Avatar className="h-9 w-9">
                             <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
                                 {userInitial}

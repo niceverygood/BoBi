@@ -68,9 +68,10 @@ export default function NotificationBell() {
         <div className="relative" ref={ref}>
             <button
                 onClick={handleOpen}
-                className="relative h-9 w-9 rounded-lg flex items-center justify-center hover:bg-accent transition-colors"
+                className="relative h-11 w-11 rounded-lg flex items-center justify-center hover:bg-accent transition-colors"
+                aria-label="알림"
             >
-                <Bell className="w-4 h-4" />
+                <Bell className="w-5 h-5" />
                 {hasNew && (
                     <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
                 )}
