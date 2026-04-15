@@ -28,8 +28,52 @@ export async function matchProducts(analysisResult: AnalysisResult): Promise<Pro
         .replace('{EXCEPTION_DISEASE_CONTEXT}', exceptionContext)
         .replace('{RULE_ENGINE_RESULT}', ruleEngineContext + '\n' + kcdMappingContext);
 
-    const response = await callOpenAI({ prompt, maxTokens: 8000, retries: 1 });
-    return parseAIResponse<ProductResult>(response);
+    const response = await callOpenAI({ prompt, maxTokens: 16000, retries: 1 });
+
+    try {
+        return parseAIResponse<ProductResult>(response);
+    } catch (parseError) {
+        console.error('[matchProducts] 1차 파싱 실패, 복구 시도:', (parseError as Error).message);
+        // 복구 시도: 잘린 JSON이라도 가능한 필드만 추출
+        const recovered = tryRecoverPartialResult(response);
+        if (recovered) {
+            console.warn('[matchProducts] 부분 복구 성공');
+            return recovered;
+        }
+        throw parseError;
+    }
+}
+
+/**
+ * 파싱 실패한 응답에서 가능한 필드만 추출하여 부분 결과 반환
+ */
+function tryRecoverPartialResult(response: string): ProductResult | null {
+    try {
+        // products 배열만이라도 추출 시도
+        const productsMatch = response.match(/"products"\s*:\s*\[([\s\S]*?)(?:\]|$)/);
+        if (!productsMatch) return null;
+
+        // 개별 product 객체를 정규식으로 추출
+        const productRegex = /\{\s*"productType"[\s\S]*?"recommendation"[\s\S]*?"[^"]*"\s*\}/g;
+        const productMatches = productsMatch[1].match(productRegex) || [];
+
+        const products: unknown[] = [];
+        for (const pm of productMatches) {
+            try {
+                products.push(JSON.parse(pm));
+            } catch { /* skip invalid */ }
+        }
+
+        if (products.length === 0) return null;
+
+        return {
+            products,
+            bestOption: '일부 결과만 복구되었습니다. 재생성을 권장합니다.',
+            tips: '응답 크기 제한으로 일부 상품 판단 결과가 누락되었을 수 있습니다.',
+        } as unknown as ProductResult;
+    } catch {
+        return null;
+    }
 }
 
 /**
