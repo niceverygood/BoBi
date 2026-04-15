@@ -50,11 +50,11 @@ export default async function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-24 sm:pt-32 pb-12 sm:pb-20 px-4 overflow-hidden bg-gradient-hero">
+      <section className="relative pt-32 sm:pt-40 pb-12 sm:pb-20 px-4 overflow-hidden bg-gradient-hero">
         <div className="max-w-5xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary/10 text-primary text-xs sm:text-sm font-medium mb-6 sm:mb-8 animate-fade-in">
-            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            AI가 심평원 진료이력을 자동 분석합니다
+            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+            <span>AI가 심평원 진료이력을 자동 분석합니다</span>
           </div>
 
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4 sm:mb-6 animate-fade-in" style={{ animationDelay: '0.1s' }}>
