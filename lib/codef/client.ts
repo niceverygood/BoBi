@@ -623,10 +623,17 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
 }> {
     const token = await getAccessToken();
 
+    // HIRA(심평원) 조회 날짜 규칙:
+    // - endDate: 오늘이 아닌 어제까지만 (당일 데이터 미반영)
+    // - startDate: 최대 1년 전까지 (5년은 CF-13001 오류 발생)
     const now = new Date();
-    const endDate = params.endDate || now.toISOString().slice(0, 10).replace(/-/g, '');
-    const fiveYearsAgo = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate());
-    const startDate = params.startDate || fiveYearsAgo.toISOString().slice(0, 10).replace(/-/g, '');
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const endDate = params.endDate || yesterday.toISOString().slice(0, 10).replace(/-/g, '');
+
+    const oneYearAgo = new Date(yesterday);
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    const startDate = params.startDate || oneYearAgo.toISOString().slice(0, 10).replace(/-/g, '');
 
     const isSmsLogin = params.loginType === '2';
 
@@ -762,10 +769,15 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
 }> {
     const token = await getAccessToken();
 
+    // HIRA 조회 날짜 규칙: 어제까지, 최대 1년
     const now = new Date();
-    const endDate = params.endDate || now.toISOString().slice(0, 10).replace(/-/g, '');
-    const fiveYearsAgo = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate());
-    const startDate = params.startDate || fiveYearsAgo.toISOString().slice(0, 10).replace(/-/g, '');
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const endDate = params.endDate || yesterday.toISOString().slice(0, 10).replace(/-/g, '');
+
+    const oneYearAgo = new Date(yesterday);
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    const startDate = params.startDate || oneYearAgo.toISOString().slice(0, 10).replace(/-/g, '');
 
     const isSmsLogin = params.loginType === '2';
 
