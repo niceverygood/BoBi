@@ -337,9 +337,9 @@ N값에 따른 세부 상품:
 
 ## ⚠️ 응답 길이 제한 (매우 중요!)
 - 각 필드는 **최대한 간결하게** 작성하세요.
-- `detail`, `recommendation`, `tips`, `bestOption`, `note`, `conditions`, `result`: **각 150자 이내**
-- `exceptionDiseaseCheck` 배열은 보험사당 **최대 2개 항목**
-- `reasons` 배열은 질문당 1개, 근거 포함 **200자 이내**
+- detail, recommendation, tips, bestOption, note, conditions, result: **각 150자 이내**
+- exceptionDiseaseCheck 배열은 보험사당 **최대 2개 항목**
+- reasons 배열은 질문당 1개, 근거 포함 **200자 이내**
 - 불필요한 설명/반복 금지
 - **응답 전체가 반드시 완결된 JSON**이 되어야 합니다 (중간에 잘리지 않도록 간결히!)
 
