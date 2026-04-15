@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { apiFetch } from '@/lib/api/client';
 import Link from 'next/link';
 import { getPlatform, isNative, type AppPlatform } from '@/lib/iap/platform';
+import { openExternal } from '@/lib/open-external';
 
 const PLAN_ICONS: Record<string, typeof Zap> = {
     basic: Zap,
@@ -811,14 +812,12 @@ function SubscribeContent() {
                                                     <p className="text-xs text-blue-700 dark:text-blue-400 mb-2">
                                                         💳 쿠폰 할인은 {platform === 'ios' ? 'App Store' : 'Google Play'} 결제에 적용할 수 없어 웹 결제로 진행됩니다.
                                                     </p>
-                                                    <a
-                                                        href={`${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.bobi.co.kr'}/dashboard/subscribe?plan=${selectedPlan}&billing=${billingCycle}&coupon=${appliedCoupon.code}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
+                                                    <button
+                                                        onClick={() => openExternal(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.bobi.co.kr'}/dashboard/subscribe?plan=${selectedPlan}&billing=${billingCycle}&coupon=${appliedCoupon.code}`)}
                                                         className="block w-full py-2.5 text-center text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
                                                     >
                                                         🌐 웹에서 {amount.toLocaleString()}원으로 결제하기
-                                                    </a>
+                                                    </button>
                                                 </div>
                                             )}
                                         </div>

@@ -17,6 +17,7 @@ import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
 import MobileNav from '@/components/layout/MobileNav';
 import { apiFetch } from '@/lib/api/client';
+import { openExternal } from '@/lib/open-external';
 
 interface AdminStats {
     totalUsers: number;
@@ -569,7 +570,7 @@ export default function AdminPage() {
                             <Button
                                 variant="outline"
                                 className="h-auto py-4 flex flex-col items-center gap-2"
-                                onClick={() => window.open('https://supabase.com/dashboard/project/urnagawdqxetwwyymdeh', '_blank')}
+                                onClick={() => openExternal('https://supabase.com/dashboard/project/urnagawdqxetwwyymdeh')}
                             >
                                 <TrendingUp className="w-5 h-5" />
                                 <span className="text-sm">Supabase 대시보드</span>
@@ -577,7 +578,7 @@ export default function AdminPage() {
                             <Button
                                 variant="outline"
                                 className="h-auto py-4 flex flex-col items-center gap-2"
-                                onClick={() => window.open('https://vercel.com/malshues-projects/bo-bi', '_blank')}
+                                onClick={() => openExternal('https://vercel.com/malshues-projects/bo-bi')}
                             >
                                 <Activity className="w-5 h-5" />
                                 <span className="text-sm">Vercel 배포 관리</span>
@@ -585,7 +586,7 @@ export default function AdminPage() {
                             <Button
                                 variant="outline"
                                 className="h-auto py-4 flex flex-col items-center gap-2"
-                                onClick={() => window.open('https://platform.openai.com/usage', '_blank')}
+                                onClick={() => openExternal('https://platform.openai.com/usage')}
                             >
                                 <BarChart3 className="w-5 h-5" />
                                 <span className="text-sm">OpenAI 사용량</span>

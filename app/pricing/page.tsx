@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Check, X, ArrowLeft, Sparkles, Zap, Crown, Building, Users } from 'lucide-react';
 import { PLAN_LIMITS, type PlanSlug, type IndividualPlanSlug, type TeamPlanSlug } from '@/lib/utils/constants';
+import { ExternalLinkButton } from '@/components/common/ExternalLinkButton';
 
 const INDIVIDUAL_PLAN_ICONS: Record<IndividualPlanSlug, typeof Sparkles> = {
     free: Sparkles,
@@ -446,11 +447,9 @@ export default function PricingPage() {
                                 무료로 시작하기
                             </Button>
                         </Link>
-                        <a href="https://open.kakao.com/o/sBoBi" target="_blank" rel="noopener noreferrer">
-                            <Button variant="outline" size="lg" className="px-8">
-                                GA 도입 상담
-                            </Button>
-                        </a>
+                        <ExternalLinkButton url="https://open.kakao.com/o/sBoBi" variant="outline" size="lg" className="px-8">
+                            GA 도입 상담
+                        </ExternalLinkButton>
                     </div>
                 </div>
 

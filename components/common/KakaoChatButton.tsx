@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { MessageCircle, X } from 'lucide-react';
+import { openExternal } from '@/lib/open-external';
 
 const KAKAO_CHANNEL_URL = 'https://pf.kakao.com/_xezBuX/chat';
 
@@ -29,17 +30,15 @@ export default function KakaoChatButton() {
                     <p className="text-xs text-muted-foreground">카카오톡으로 편하게 문의하세요</p>
                 </div>
             )}
-            <a
-                href={KAKAO_CHANNEL_URL}
-                target="_blank"
-                rel="noopener noreferrer"
+            <button
+                onClick={() => openExternal(KAKAO_CHANNEL_URL)}
                 onMouseEnter={() => setShowTooltip(true)}
                 onMouseLeave={() => setShowTooltip(false)}
                 className="w-14 h-14 bg-[#FEE500] hover:bg-[#FADA0A] rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
                 aria-label="카카오톡 상담"
             >
                 <MessageCircle className="w-7 h-7 text-[#3C1E1E]" />
-            </a>
+            </button>
         </div>
     );
 }

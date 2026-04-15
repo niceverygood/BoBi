@@ -110,9 +110,9 @@ export default function SignupPage() {
                         {/* 약관 동의 안내 */}
                         <p className="text-xs text-center text-muted-foreground">
                             카카오로 시작하면{' '}
-                            <Link href="/terms" target="_blank" className="text-primary underline">이용약관</Link>
+                            <Link href="/terms" className="text-primary underline">이용약관</Link>
                             {' '}및{' '}
-                            <Link href="/privacy" target="_blank" className="text-primary underline">개인정보처리방침</Link>
+                            <Link href="/privacy" className="text-primary underline">개인정보처리방침</Link>
                             에 동의하게 됩니다.
                         </p>
 
@@ -202,9 +202,9 @@ export default function SignupPage() {
                                     className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                                 />
                                 <label htmlFor="agree" className="text-xs text-muted-foreground leading-relaxed">
-                                    <Link href="/terms" target="_blank" className="text-primary underline">이용약관</Link>
+                                    <Link href="/terms" className="text-primary underline">이용약관</Link>
                                     {' '}및{' '}
-                                    <Link href="/privacy" target="_blank" className="text-primary underline">개인정보처리방침</Link>
+                                    <Link href="/privacy" className="text-primary underline">개인정보처리방침</Link>
                                     에 동의합니다. (필수)
                                 </label>
                             </div>

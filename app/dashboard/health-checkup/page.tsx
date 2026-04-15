@@ -572,7 +572,7 @@ function HealthCheckupContent() {
                     <span className="text-sm">
                         <strong>개인정보 수집·이용 및 제3자 제공에 동의합니다.</strong>
                         {' '}
-                        <a href="/privacy" target="_blank" className="text-primary underline">개인정보처리방침</a>
+                        <a href="/privacy" className="text-primary underline">개인정보처리방침</a>
                     </span>
                 </label>
             </div>
