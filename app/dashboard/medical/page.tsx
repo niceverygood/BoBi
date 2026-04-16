@@ -10,7 +10,8 @@ import {
     Calendar, Building2, DollarSign, FileText, Pill, CheckCircle2,
     Smartphone, AlertCircle, ChevronDown, ChevronUp, HeartPulse,
 } from 'lucide-react';
-import { apiFetch } from '@/lib/api/client';
+import { ApiError, apiFetch } from '@/lib/api/client';
+import { createClient as createBrowserClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { HiraMedicalRecord, HiraBasicTreatRecord, HiraCarInsuranceRecord, HiraCarBasicTreatRecord, HiraPrescribeDrugRecord, MyMedicineRecord } from '@/lib/codef/client';
@@ -390,6 +391,15 @@ function MedicalInfoContent() {
         setError(null);
 
         try {
+            // 세션 갱신 — CODEF 2-Way 인증 과정에서 토큰이 만료될 수 있으므로 사전 갱신
+            const supabase = createBrowserClient();
+            const { error: refreshError } = await supabase.auth.refreshSession();
+            if (refreshError) {
+                setAnalyzing(false);
+                router.push('/auth/login');
+                return;
+            }
+
             const analyzeBody: Record<string, unknown> = {};
             if (myMedicineRecords.length > 0) {
                 analyzeBody.myMedicineRecords = myMedicineRecords;
@@ -409,6 +419,10 @@ function MedicalInfoContent() {
 
             router.push(`/dashboard/analyze?analysisId=${data.analysisId}`);
         } catch (err) {
+            if (err instanceof ApiError && err.status === 401) {
+                router.push('/auth/login');
+                return;
+            }
             setError((err as Error).message);
             setAnalyzing(false);
         }
