@@ -390,6 +390,11 @@ function MedicalInfoContent() {
         setError(null);
 
         try {
+            // 세션 갱신 (CODEF 조회 시간이 길어 세션 만료 가능)
+            const { createClient } = await import('@/lib/supabase/client');
+            const supabase = createClient();
+            await supabase.auth.refreshSession();
+
             const analyzeBody: Record<string, unknown> = {};
             if (myMedicineRecords.length > 0) {
                 analyzeBody.myMedicineRecords = myMedicineRecords;
