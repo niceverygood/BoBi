@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import {
     ArrowLeft, Activity, HeartPulse, Pill, AlertTriangle,
     FileSearch, Receipt, Brain, Loader2, MessageSquare,
-    CheckCircle2, XCircle, Calendar, TrendingUp, Stethoscope, Link2, Trash2,
+    CheckCircle2, XCircle, Calendar, TrendingUp, Stethoscope, Link2, Trash2, Sparkles,
 } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { apiFetch } from '@/lib/api/client';
@@ -273,6 +273,13 @@ function CustomerCardContent() {
                 {s.latestAnalysisDate && (
                     <Link href={`/dashboard/risk-report?analysisId=${data.analyses[0]?.id}`}>
                         <Button variant="outline" size="sm"><HeartPulse className="w-3.5 h-3.5 mr-1" />위험도 리포트</Button>
+                    </Link>
+                )}
+                {s.riskReport && s.riskReport.riskItems.length > 0 && (
+                    <Link href={`/dashboard/future-me?customerId=${c.id}`}>
+                        <Button size="sm" className="bg-gradient-to-r from-violet-500 to-violet-600 hover:opacity-90">
+                            <Sparkles className="w-3.5 h-3.5 mr-1" />미래의 나
+                        </Button>
                     </Link>
                 )}
             </div>
