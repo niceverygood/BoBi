@@ -38,15 +38,37 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: '플랜을 찾을 수 없습니다.' }, { status: 404 });
         }
 
+        // 결제창 표시용 금액 계산 (실제 청구는 return 콜백에서 다시 계산)
+        let displayAmount = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
+        if (couponCode) {
+            const { data: coupon } = await supabase
+                .from('promo_codes')
+                .select('discount_type, discount_value, price_override, expires_at, max_uses, used_count, active')
+                .eq('code', couponCode)
+                .eq('active', true)
+                .maybeSingle();
+            if (coupon && (!coupon.expires_at || new Date(coupon.expires_at) >= new Date())) {
+                if (coupon.discount_type === 'percent') {
+                    displayAmount = Math.max(0, displayAmount - Math.round((displayAmount * Math.min(coupon.discount_value, 100)) / 100));
+                } else if (coupon.discount_type === 'fixed') {
+                    displayAmount = Math.max(0, displayAmount - coupon.discount_value);
+                } else if (coupon.price_override !== null && coupon.price_override !== undefined) {
+                    displayAmount = Math.max(0, coupon.price_override);
+                }
+            }
+        }
+        // BILLAUTH 모드는 실제 청구 없음. 0원은 일부 카드사 거부 가능 → 최소 100원
+        if (displayAmount <= 0) displayAmount = 100;
+
         const origin =
             process.env.NEXT_PUBLIC_BASE_URL ||
             request.headers.get('origin') ||
             'https://www.bobi.co.kr';
         const returnUrl = `${origin.replace(/\/$/, '')}/api/inicis/billing-key-return`;
-        const closeUrl = `${origin.replace(/\/$/, '')}/dashboard/subscribe?plan=${planSlug}&billing=${billingCycle}&inicis_closed=true`;
+        // closeUrl: 공개 라우트(/inicis/closed)로 지정해 미들웨어 auth redirect 회피
+        const closeUrl = `${origin.replace(/\/$/, '')}/inicis/closed`;
 
         // merchantData: 서버 callback에서 우리가 받을 페이로드
-        // — 서명된 토큰으로 넣어도 되지만, returnUrl이 서버 사이드라 DB에 저장하는 방식이 안전
         const form = buildBillingKeyForm({
             goodName: `보비 ${plan.display_name} 플랜 정기결제 (${billingCycle === 'yearly' ? '연간' : '월간'})`,
             buyerName,
@@ -55,6 +77,7 @@ export async function POST(request: Request) {
             returnUrl,
             closeUrl,
             merchantData: body.merchantData || '',
+            displayPrice: displayAmount,
             enableAppCard: true,
             enableIsp: true,
             enableEasyPay: true,
