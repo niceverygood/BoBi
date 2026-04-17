@@ -101,6 +101,25 @@ function SubscribeContent() {
         }
     }, [planParam]);
 
+    // INICIS 직접 연동 콜백 처리
+    useEffect(() => {
+        const inicisStatus = searchParams.get('inicis_status');
+        if (inicisStatus === 'success') {
+            setSuccess(true);
+            return;
+        }
+        if (inicisStatus === 'failed' || inicisStatus === 'payment_failed' || inicisStatus === 'sub_create_failed') {
+            const code = searchParams.get('code') || '';
+            const msg = searchParams.get('msg') || '';
+            setError(`결제 실패 (${code}): ${decodeURIComponent(msg) || '다시 시도해주세요.'}`);
+            return;
+        }
+        if (inicisStatus === 'closed' || searchParams.get('inicis_closed') === 'true') {
+            setError('결제가 취소되었습니다.');
+            return;
+        }
+    }, [searchParams]);
+
     // 카카오페이 콜백 처리 (approve 후 리다이렉트)
     useEffect(() => {
         const status = searchParams.get('status');
@@ -347,7 +366,7 @@ function SubscribeContent() {
         }
     };
 
-    // 웹 결제 — 신용카드 (빌링 채널 있으면 정기결제, 없으면 1회결제)
+    // 웹 결제 — 신용카드 (KG이니시스 직접 연동 + INIpay Standard JS SDK)
     const handleCardSubscribe = async () => {
         if (!userName || !userEmail || !userPhone) {
             setError('결제를 위해 이름, 이메일, 휴대폰 번호가 모두 필요합니다.');
@@ -358,116 +377,78 @@ function SubscribeContent() {
         setError(null);
 
         try {
-            const PortOne = await import('@portone/browser-sdk/v2');
-
-            const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID;
-            const billingChannelKey = process.env.NEXT_PUBLIC_PORTONE_INICIS_BILLING_CHANNEL_KEY;
-            const channelKey = billingChannelKey || process.env.NEXT_PUBLIC_PORTONE_INICIS_CHANNEL_KEY || process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY;
-
-            if (!storeId || !channelKey) {
-                setError('결제 설정이 올바르지 않습니다. 관리자에게 문의해주세요.');
-                setLoading(false);
-                return;
-            }
-
-            const customerId = `bobi-${crypto.randomUUID()}`;
-            const customer = {
-                customerId,
-                fullName: userName,
-                email: userEmail,
-                phoneNumber: userPhone.replace(/-/g, ''),
-            };
-
-            // ── 빌링 채널 키가 있으면: requestIssueBillingKey (정기결제) ──
-            if (billingChannelKey) {
-                const redirectParams = new URLSearchParams({
-                    plan: selectedPlan,
-                    cycle: billingCycle,
-                    method: 'card',
-                    billing_callback: 'true',
-                });
-                if (appliedCoupon) redirectParams.set('coupon', appliedCoupon.code);
-                const redirectUrl = `${window.location.origin}/dashboard/subscribe?${redirectParams.toString()}`;
-
-                const response = await PortOne.requestIssueBillingKey({
-                    storeId,
-                    channelKey: billingChannelKey,
-                    billingKeyMethod: 'CARD',
-                    // 이니시스 V2 필수: issueName (빌링키 발급 건명)
-                    issueName: `보비 ${planInfo.name} 플랜 정기결제 (${billingCycle === 'yearly' ? '연간' : '월간'})`,
-                    issueId: `issue-${selectedPlan}-${Date.now()}`,
-                    customer,
-                    redirectUrl,
-                });
-
-                if (response?.code) {
-                    setError(response.code === 'FAILURE_TYPE_PG' ? '빌링키 발급이 취소되었습니다.' : (response.message || '빌링키 발급에 실패했습니다.'));
-                    setLoading(false);
-                    return;
-                }
-
-                if (response?.billingKey) {
-                    try {
-                        await apiFetch('/api/billing/issue', {
-                            method: 'POST',
-                            body: {
-                                billingKey: response.billingKey,
-                                planSlug: selectedPlan,
-                                billingCycle,
-                                paymentMethod: 'card',
-                                ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
-                                ...(appliedCoupon?.upgradeToPlan ? { upgradePlanSlug: appliedCoupon.upgradeToPlan } : {}),
-                            },
-                        });
-                        setSuccess(true);
-                    } catch (err) {
-                        setError((err as Error).message || '첫 결제 처리에 실패했습니다.');
-                    }
-                    setLoading(false);
-                    return;
-                }
-                // 리다이렉트 방식이면 여기까지 오지 않음
-                return;
-            }
-
-            // ── 빌링 채널 없으면: requestPayment (1회 결제) ──
-            const paymentId = `card-${selectedPlan}-${Date.now()}`;
-            const response = await PortOne.requestPayment({
-                storeId,
-                channelKey,
-                paymentId,
-                orderName: `보비 ${planInfo.name} 플랜 (${billingCycle === 'yearly' ? '연간' : '월간'})`,
-                totalAmount: amount,
-                currency: 'CURRENCY_KRW',
-                payMethod: 'CARD',
-                customer,
-                redirectUrl: `${window.location.origin}/dashboard/subscribe?plan=${selectedPlan}&paymentId=${paymentId}&status=card_success`,
-            });
-
-            if (response?.code) {
-                setError(response.code === 'FAILURE_TYPE_PG' ? '결제가 취소되었습니다.' : (response.message || '결제에 실패했습니다.'));
-                setLoading(false);
-                return;
-            }
-
-            // 1회 결제 완료 → 구독 생성
-            await apiFetch('/api/billing/issue', {
+            // 1. 서버에서 빌링키 발급 폼 파라미터 받아오기 (signature 포함)
+            const prepResult = await apiFetch<{
+                form: Record<string, string>;
+                scriptUrl: string;
+                oid: string;
+            }>('/api/inicis/prepare-billing-key', {
                 method: 'POST',
                 body: {
-                    paymentId,
                     planSlug: selectedPlan,
                     billingCycle,
-                    paymentMethod: 'card',
+                    buyerName: userName,
+                    buyerEmail: userEmail,
+                    buyerTel: userPhone.replace(/-/g, ''),
                     ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
                     ...(appliedCoupon?.upgradeToPlan ? { upgradePlanSlug: appliedCoupon.upgradeToPlan } : {}),
                 },
             });
-            setSuccess(true);
+
+            // 2. INIpay Standard JS SDK 로드
+            await loadInipayScript(prepResult.scriptUrl);
+
+            // 3. 동적으로 form 생성하여 document.body에 추가
+            const formId = `SendPayForm_id_${prepResult.oid}`;
+            let form = document.getElementById(formId) as HTMLFormElement | null;
+            if (form) form.remove();
+            form = document.createElement('form');
+            form.id = formId;
+            form.method = 'POST';
+            form.style.display = 'none';
+            for (const [key, value] of Object.entries(prepResult.form)) {
+                if (value === undefined || value === null) continue;
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = String(value);
+                form.appendChild(input);
+            }
+            document.body.appendChild(form);
+
+            // 4. INIStdPay.pay(formId) 호출 → 결제창 팝업
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const INIStdPay = (window as any).INIStdPay;
+            if (!INIStdPay || typeof INIStdPay.pay !== 'function') {
+                setError('이니시스 결제창 로드에 실패했습니다. 새로고침 후 다시 시도해주세요.');
+                setLoading(false);
+                return;
+            }
+            INIStdPay.pay(formId);
+            // 결제창에서 완료되면 returnUrl(/api/inicis/billing-key-return)로 POST
+            // 서버에서 빌링키 승인 + 구독 생성 + 리다이렉트(inicis_status=success|failed)
+            // → useEffect의 inicisStatus 감지로 success/error 표시
         } catch (err) {
             setError((err as Error).message || '결제 처리 중 오류가 발생했습니다.');
-        } finally {
             setLoading(false);
         }
+    };
+
+    // INIpay Standard JS SDK 동적 로드
+    const loadInipayScript = (src: string): Promise<void> => {
+        return new Promise((resolve, reject) => {
+            const existing = document.querySelector(`script[src="${src}"]`);
+            if (existing) {
+                resolve();
+                return;
+            }
+            const script = document.createElement('script');
+            script.src = src;
+            script.async = true;
+            script.onload = () => resolve();
+            script.onerror = () => reject(new Error('INIpay JS SDK 로드 실패'));
+            document.head.appendChild(script);
+        });
     };
 
     // 무료 쿠폰 결제 (금액 0원일 때 — 결제 없이 구독 생성)

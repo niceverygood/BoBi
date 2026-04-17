@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { payWithBillingKey } from '@/lib/portone/server';
 import { kakaoPaySubscription } from '@/lib/kakaopay/client';
+import { chargeBillkey as inicisDirectCharge } from '@/lib/inicis/server';
 
 // Vercel Cron에서 호출 — CRON_SECRET으로 인증
 export async function GET(request: Request) {
@@ -26,12 +27,8 @@ export async function GET(request: Request) {
                 plan:subscription_plans(*)
             `)
             .eq('status', 'active')
-            .neq('payment_provider', 'admin_manual')
-            .neq('payment_provider', 'coupon_free')
-            .neq('payment_provider', 'promo_code')
-            .neq('payment_provider', 'discount_code')
-            .neq('payment_provider', 'apple_iap')
-            .neq('payment_provider', 'google_play')
+            // cron에서 갱신 가능한 provider: portone_inicis, portone_kakaopay, kakaopay, inicis_direct
+            .in('payment_provider', ['portone_inicis', 'portone_kakaopay', 'kakaopay', 'inicis_direct'])
             .lt('current_period_end', now.toISOString());
 
         if (fetchError) {
@@ -103,6 +100,28 @@ export async function GET(request: Request) {
                         });
                         paySuccess = true;
                         newSid = kakaoResult.sid; // 갱신된 SID
+                    } catch (err) {
+                        payError = (err as Error).message;
+                    }
+                } else if (provider === 'inicis_direct') {
+                    // KG이니시스 직접 연동 빌링키 결제
+                    try {
+                        const { data: userRow } = await supabase
+                            .from('profiles')
+                            .select('email, full_name')
+                            .eq('id', sub.user_id)
+                            .maybeSingle();
+
+                        const chargeResult = await inicisDirectCharge({
+                            billKey: billingKey,
+                            price: amount,
+                            goodName: `보비 ${plan.display_name} (${cycleLabel} 자동갱신)`,
+                            buyerName: (userRow as { full_name?: string } | null)?.full_name || '보비 고객',
+                            buyerEmail: (userRow as { email?: string } | null)?.email || 'billing@bobi.co.kr',
+                            moid: paymentId,
+                        });
+                        paySuccess = chargeResult.success;
+                        payError = chargeResult.success ? '' : `${chargeResult.resultCode}: ${chargeResult.resultMsg}`;
                     } catch (err) {
                         payError = (err as Error).message;
                     }
@@ -260,6 +279,23 @@ export async function GET(request: Request) {
                             });
                             retrySuccess = true;
                             retryNewSid = kakaoResult.sid;
+                        } catch { /* retry failed */ }
+                    } else if (provider === 'inicis_direct') {
+                        try {
+                            const { data: userRow } = await supabase
+                                .from('profiles')
+                                .select('email, full_name')
+                                .eq('id', sub.user_id)
+                                .maybeSingle();
+                            const retryCharge = await inicisDirectCharge({
+                                billKey: bk,
+                                price: retryAmount,
+                                goodName: `보비 ${plan.display_name} (${cycleLabel} 재시도)`,
+                                buyerName: (userRow as { full_name?: string } | null)?.full_name || '보비 고객',
+                                buyerEmail: (userRow as { email?: string } | null)?.email || 'billing@bobi.co.kr',
+                                moid: retryPaymentId,
+                            });
+                            retrySuccess = retryCharge.success;
                         } catch { /* retry failed */ }
                     } else {
                         const retryChannelKey = provider === 'portone_inicis'
