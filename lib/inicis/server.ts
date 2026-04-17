@@ -92,10 +92,14 @@ export function buildBillingKeyForm(input: BuildBillingKeyFormInput): InicisBill
     const mKey = sha256Hex(signKey);
 
     // acceptmethod: 빌링키 발급 + 추가 옵션
+    //
+    // ⚠️ 주의: 아래 파라미터는 "가맹점 계약"이 되어 있어야만 결제창에 실제로 노출됨.
+    // 계약이 안 된 결제수단은 파라미터를 넣어도 무시됨.
+    // KG이니시스 담당자에게 MID(MOIbobi998)에 각 결제수단 계약 여부 확인 필요.
     const acceptParts: string[] = ['BILLAUTH(Card)'];
-    if (input.enableEasyPay !== false) acceptParts.push('noeasypay(N)');
-    if (input.enableIsp !== false) acceptParts.push('useisp(Y)');
-    if (input.enableAppCard !== false) acceptParts.push('cardcode(11,14,17,34,35,36,37,41,43,44,48,51,52,54,55,56,57,61,62,71,91,95)');
+    if (input.enableAppCard !== false) acceptParts.push('useappcard(Y)');    // 앱카드 (신한/삼성/KB/현대/하나/롯데/NH/BC 등)
+    if (input.enableIsp !== false) acceptParts.push('useisp(Y)');            // ISP/안심클릭
+    if (input.enableEasyPay !== false) acceptParts.push('noeasypay(N)');     // 간편결제 (네이버페이/토스페이/페이코/카카오페이)
     const acceptmethod = acceptParts.join(':');
 
     return {
