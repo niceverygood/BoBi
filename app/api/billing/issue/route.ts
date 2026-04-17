@@ -130,11 +130,21 @@ export async function POST(request: Request) {
         finalPaymentId = `sub-${emailPrefix}-${planSlug}-${Date.now()}`;
         const cycleLabel = billingCycle === 'yearly' ? '연간' : '월간';
 
+        // 이니시스 V2 정기결제 채널키 (카드 결제인 경우)
+        const inicisChannelKey = paymentMethod === 'card'
+            ? process.env.NEXT_PUBLIC_PORTONE_INICIS_BILLING_CHANNEL_KEY
+            : undefined;
+
         const payResult = await payWithBillingKey({
             billingKey,
             paymentId: finalPaymentId,
             orderName: `보비 ${plan.display_name} 플랜 (${cycleLabel})`,
             amount,
+            channelKey: inicisChannelKey,
+            customer: {
+                id: user.id,
+                email: user.email || undefined,
+            },
         });
 
         if (!payResult.success) {

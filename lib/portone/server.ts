@@ -15,6 +15,13 @@ interface BillingKeyPaymentRequest {
     orderName: string;
     amount: number;
     currency?: string;
+    channelKey?: string;
+    customer?: {
+        id?: string;
+        email?: string;
+        name?: string;
+        phoneNumber?: string;
+    };
 }
 
 interface BillingKeyPaymentResponse {
@@ -59,6 +66,25 @@ export async function payWithBillingKey(params: BillingKeyPaymentRequest): Promi
     try {
         const accessToken = await getAccessToken();
 
+        const requestBody: Record<string, unknown> = {
+            billingKey: params.billingKey,
+            orderName: params.orderName,
+            amount: {
+                total: params.amount,
+            },
+            currency: params.currency || 'KRW',
+        };
+
+        // 이니시스 V2 등 일부 PG는 빌링키 결제 시 channelKey 명시 필요
+        if (params.channelKey) {
+            requestBody.channelKey = params.channelKey;
+        }
+
+        // customer 정보는 이니시스 V2 결제 내역 조회/재발행에 필요
+        if (params.customer) {
+            requestBody.customer = params.customer;
+        }
+
         const response = await fetch(
             `${PORTONE_API_BASE}/payments/${encodeURIComponent(params.paymentId)}/billing-key`,
             {
@@ -67,22 +93,20 @@ export async function payWithBillingKey(params: BillingKeyPaymentRequest): Promi
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${accessToken}`,
                 },
-                body: JSON.stringify({
-                    billingKey: params.billingKey,
-                    orderName: params.orderName,
-                    amount: {
-                        total: params.amount,
-                    },
-                    currency: params.currency || 'KRW',
-                }),
+                body: JSON.stringify(requestBody),
             }
         );
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
+            console.error('[PortOne] 빌링키 결제 실패:', {
+                status: response.status,
+                paymentId: params.paymentId,
+                error: errorData,
+            });
             return {
                 success: false,
-                error: errorData.message || `결제 실패 (${response.status})`,
+                error: errorData.message || errorData.code || `결제 실패 (${response.status})`,
                 status: 'FAILED',
             };
         }
@@ -95,6 +119,7 @@ export async function payWithBillingKey(params: BillingKeyPaymentRequest): Promi
             status: data.status || 'PAID',
         };
     } catch (error) {
+        console.error('[PortOne] 빌링키 결제 예외:', error);
         return {
             success: false,
             error: (error as Error).message,
