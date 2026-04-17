@@ -890,15 +890,44 @@ function SubscribeContent() {
                                     </div>
                                 )}
 
-                                {/* 결제 수단 — 카드사 심사 통과 전까지 카카오페이만 노출 */}
+                                {/* 결제 수단 — 카카오페이(월간) / 신용카드(월간+연간) */}
                                 {platform === 'web' && (
                                     <div className="space-y-2">
                                         <p className="text-sm font-medium">결제 수단</p>
-                                        <div className="p-3 rounded-lg border-2 border-primary bg-primary/5 text-center text-sm font-semibold">
-                                            카카오페이
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button
+                                                onClick={() => setPaymentMethod('kakaopay')}
+                                                disabled={billingCycle === 'yearly'}
+                                                className={cn(
+                                                    'p-3 rounded-lg border-2 text-center text-sm transition-all',
+                                                    paymentMethod === 'kakaopay'
+                                                        ? 'border-primary bg-primary/5 font-semibold'
+                                                        : 'border-muted hover:border-primary/30',
+                                                    billingCycle === 'yearly' && 'opacity-40 cursor-not-allowed'
+                                                )}
+                                            >
+                                                카카오페이
+                                            </button>
+                                            <button
+                                                onClick={() => setPaymentMethod('card')}
+                                                className={cn(
+                                                    'p-3 rounded-lg border-2 text-center text-sm transition-all',
+                                                    paymentMethod === 'card'
+                                                        ? 'border-primary bg-primary/5 font-semibold'
+                                                        : 'border-muted hover:border-primary/30'
+                                                )}
+                                            >
+                                                신용카드
+                                            </button>
                                         </div>
-                                        <p className="text-[11px] text-muted-foreground">카카오페이에 등록된 카드 또는 카카오머니로 결제됩니다.</p>
-                                        <p className="text-[10px] text-muted-foreground">💳 신용카드 직접 결제는 카드사 심사 후 추가 예정입니다.</p>
+                                        <p className="text-[11px] text-muted-foreground">
+                                            {paymentMethod === 'kakaopay'
+                                                ? '카카오페이에 등록된 카드 또는 카카오머니로 결제됩니다.'
+                                                : 'KG이니시스를 통한 안전결제 (국내 주요 카드사 지원)'}
+                                        </p>
+                                        {billingCycle === 'yearly' && (
+                                            <p className="text-[11px] text-amber-600">연간 결제는 신용카드만 가능합니다.</p>
+                                        )}
                                     </div>
                                 )}
 
