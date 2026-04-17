@@ -107,12 +107,18 @@ export async function GET(request: Request) {
                         payError = (err as Error).message;
                     }
                 } else {
-                    // 포트원 빌링키 결제
+                    // 포트원 빌링키 결제 — provider별 채널키 선택
+                    const channelKey = provider === 'portone_inicis'
+                        ? process.env.NEXT_PUBLIC_PORTONE_INICIS_BILLING_CHANNEL_KEY
+                        : undefined;
+
                     const payResult = await payWithBillingKey({
                         billingKey,
                         paymentId,
                         orderName: `보비 ${plan.display_name} (${cycleLabel} 자동갱신)`,
                         amount,
+                        channelKey,
+                        customer: { id: sub.user_id },
                     });
                     paySuccess = payResult.success;
                     payError = payResult.error || '';
@@ -256,11 +262,16 @@ export async function GET(request: Request) {
                             retryNewSid = kakaoResult.sid;
                         } catch { /* retry failed */ }
                     } else {
+                        const retryChannelKey = provider === 'portone_inicis'
+                            ? process.env.NEXT_PUBLIC_PORTONE_INICIS_BILLING_CHANNEL_KEY
+                            : undefined;
                         const retryResult = await payWithBillingKey({
                             billingKey: bk,
                             paymentId: retryPaymentId,
                             orderName: `보비 ${plan.display_name} (${cycleLabel} 재시도)`,
                             amount: retryAmount,
+                            channelKey: retryChannelKey,
+                            customer: { id: sub.user_id },
                         });
                         retrySuccess = retryResult.success;
                     }
