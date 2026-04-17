@@ -393,6 +393,9 @@ function SubscribeContent() {
                     storeId,
                     channelKey: billingChannelKey,
                     billingKeyMethod: 'CARD',
+                    // 이니시스 V2 필수: issueName (빌링키 발급 건명)
+                    issueName: `보비 ${planInfo.name} 플랜 정기결제 (${billingCycle === 'yearly' ? '연간' : '월간'})`,
+                    issueId: `issue-${selectedPlan}-${Date.now()}`,
                     customer,
                     redirectUrl,
                 });
