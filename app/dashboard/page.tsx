@@ -14,6 +14,9 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { createClient } from '@/lib/supabase/client';
 import ReferralFloating from '@/components/common/ReferralFloating';
 import SearchTrendWidget from '@/components/dashboard/SearchTrendWidget';
+import WeeklyKpiCards from '@/components/dashboard/WeeklyKpiCards';
+import FollowupsWidget from '@/components/dashboard/FollowupsWidget';
+import ActivityChart from '@/components/dashboard/ActivityChart';
 
 interface RecentAnalysis {
     id: string;
@@ -112,44 +115,52 @@ export default function DashboardPage() {
                 </p>
             </div>
 
-            {/* 통계 3개 */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                <Card className="border-0 shadow-sm">
-                    <CardContent className="p-4 sm:p-5">
-                        <p className="text-xs text-muted-foreground">이번 달 분석</p>
-                        {loading ? <Skeleton className="h-9 w-16 mt-1" /> : (
-                            <>
-                                <p className="text-2xl sm:text-3xl font-black mt-1">{usage.analyses_used}<span className="text-sm sm:text-base font-normal text-muted-foreground ml-1">건</span></p>
-                                <p className="text-[11px] text-muted-foreground mt-1">잔여 {displayRemaining}건</p>
-                            </>
-                        )}
-                    </CardContent>
-                </Card>
-                <Card className="border-0 shadow-sm">
-                    <CardContent className="p-4 sm:p-5">
-                        <p className="text-xs text-muted-foreground">총 고객 분석</p>
-                        {recentLoading ? <Skeleton className="h-9 w-16 mt-1" /> : (
-                            <>
-                                <p className="text-2xl sm:text-3xl font-black mt-1">{totalAnalyses}<span className="text-sm sm:text-base font-normal text-muted-foreground ml-1">건</span></p>
-                                <p className="text-[11px] text-muted-foreground mt-1">누적 분석 건수</p>
-                            </>
-                        )}
-                    </CardContent>
-                </Card>
-                <Card className="border-0 shadow-sm">
-                    <CardContent className="p-4 sm:p-5">
-                        <p className="text-xs text-muted-foreground">이번 달 남은 분석</p>
-                        {loading ? <Skeleton className="h-9 w-16 mt-1" /> : (
-                            <>
-                                <p className="text-2xl sm:text-3xl font-black mt-1">{displayRemaining}<span className="text-sm sm:text-base font-normal text-muted-foreground ml-1">{remainingAnalyses !== -1 ? '건' : ''}</span></p>
-                                <p className="text-[11px] text-[#1a56db] mt-1 cursor-pointer hover:underline">
-                                    <Link href="/dashboard/settings">잔여 횟수 확인</Link>
-                                </p>
-                            </>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
+            {/* ⭐ 팔로업 필요 고객 (리텐션 핵심 — 최상단 배치) */}
+            <FollowupsWidget />
+
+            {/* 주간 KPI — 이번 주 vs 지난 주 */}
+            <WeeklyKpiCards />
+
+            {/* 최근 30일 활동 차트 */}
+            <ActivityChart />
+
+            {/* 사용량 요약 (기존 3개 통계를 1줄로 축약) */}
+            <Card className="border-0 shadow-sm bg-gradient-to-r from-slate-50 to-white">
+                <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
+                    <div className="flex items-center gap-6 flex-wrap">
+                        <div>
+                            <p className="text-[11px] text-muted-foreground">이번 달 분석</p>
+                            <p className="text-lg font-bold mt-0.5">
+                                {loading ? '...' : `${usage.analyses_used}`}
+                                <span className="text-xs font-normal text-muted-foreground ml-1">
+                                    / {usage.analyses_limit === -1 ? '∞' : usage.analyses_limit}건
+                                </span>
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-[11px] text-muted-foreground">총 누적</p>
+                            <p className="text-lg font-bold mt-0.5">
+                                {recentLoading ? '...' : totalAnalyses}
+                                <span className="text-xs font-normal text-muted-foreground ml-1">건</span>
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-[11px] text-muted-foreground">잔여</p>
+                            <p className="text-lg font-bold text-[#1a56db] mt-0.5">
+                                {loading ? '...' : displayRemaining}
+                                <span className="text-xs font-normal text-muted-foreground ml-1">
+                                    {remainingAnalyses !== -1 ? '건' : ''}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                    <Link href="/dashboard/settings">
+                        <Button variant="outline" size="sm" className="text-xs">
+                            플랜 관리 →
+                        </Button>
+                    </Link>
+                </CardContent>
+            </Card>
 
             {/* 실시간 보험 검색 트렌드 */}
             <SearchTrendWidget />
