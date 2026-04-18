@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
     Shield, Users, FileText, CreditCard, Activity, BarChart3,
     TrendingUp, AlertCircle, Search, CheckCircle2, ArrowUpDown,
-    ChevronDown, Tag
+    ChevronDown, Tag, Building2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -525,6 +525,26 @@ export default function AdminPage() {
                                     </div>
                                 </div>
                                 <Link href="/admin/inquiries">
+                                    <Button size="sm">문의 관리</Button>
+                                </Link>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* 엔터프라이즈 문의 관리 */}
+                    <Card className="border-0 shadow-md mb-8">
+                        <CardContent className="p-5">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                                        <Building2 className="w-5 h-5 text-amber-600" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-sm">엔터프라이즈 문의</p>
+                                        <p className="text-xs text-muted-foreground">팀/조직 도입 문의 관리 (전화 연락 필수)</p>
+                                    </div>
+                                </div>
+                                <Link href="/admin/enterprise-inquiries">
                                     <Button size="sm">문의 관리</Button>
                                 </Link>
                             </div>

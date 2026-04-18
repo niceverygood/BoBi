@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Check, Loader2, ArrowLeft, CreditCard, Shield, Zap, Crown, Apple, Smartphone, Users, Building, Tag, X } from 'lucide-react';
+import { Check, Loader2, ArrowLeft, CreditCard, Shield, Zap, Crown, Apple, Smartphone, Building2, Tag, X, ArrowRight } from 'lucide-react';
 import { PLAN_LIMITS, type PlanSlug } from '@/lib/utils/constants';
 import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
@@ -14,12 +14,12 @@ import { apiFetch } from '@/lib/api/client';
 import Link from 'next/link';
 import { getPlatform, isNative, type AppPlatform } from '@/lib/iap/platform';
 import { openExternal } from '@/lib/open-external';
+import EnterpriseInquiryDialog from '@/components/subscribe/EnterpriseInquiryDialog';
 
+// 개인 플랜 아이콘 (팀 플랜은 엔터프라이즈 문의로 대체됨)
 const PLAN_ICONS: Record<string, typeof Zap> = {
     basic: Zap,
     pro: Crown,
-    team_basic: Users,
-    team_pro: Building,
 };
 
 export default function SubscribePage() {
@@ -48,6 +48,7 @@ function SubscribeContent() {
     const [userName, setUserName] = useState('');
     const [isMobile, setIsMobile] = useState(false);
     const [iapReady, setIapReady] = useState(false);
+    const [enterpriseDialogOpen, setEnterpriseDialogOpen] = useState(false);
 
     // Coupon
     const couponParam = searchParams.get('coupon');
@@ -607,45 +608,37 @@ function SubscribeContent() {
                                     </button>
                                 );
                             })}
-                            <p className="text-xs text-muted-foreground mb-2 mt-4 font-medium">팀 / GA 플랜</p>
-                            {(['team_basic', 'team_pro'] as PlanSlug[]).map((slug) => {
-                                const info = PLAN_LIMITS[slug];
-                                const Icon = PLAN_ICONS[slug];
-                                const colorMap: Record<string, string> = { team_basic: 'bg-teal-100', team_pro: 'bg-amber-100' };
-                                const textMap: Record<string, string> = { team_basic: 'text-teal-600', team_pro: 'text-amber-600' };
-                                return (
-                                    <button
-                                        key={slug}
-                                        onClick={() => setSelectedPlan(slug)}
-                                        className={cn(
-                                            'w-full p-4 rounded-xl border-2 text-left transition-all',
-                                            selectedPlan === slug
-                                                ? 'border-primary bg-primary/5'
-                                                : 'border-muted hover:border-primary/30'
-                                        )}
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', colorMap[slug])}>
-                                                    <Icon className={cn('w-5 h-5', textMap[slug])} />
-                                                </div>
-                                                <div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-semibold">{info.name}</span>
-                                                        {info.recommended && <Badge variant="default" className="text-[10px] px-1.5 py-0">인기</Badge>}
-                                                    </div>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        {info.includedSeats}명 포함 · 인당 {info.perSeatPrice?.toLocaleString()}원
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="font-bold">{info.priceMonthly.toLocaleString()}원<span className="font-normal text-sm text-muted-foreground">/월</span></p>
-                                            </div>
+                            {/* 엔터프라이즈 / 팀 플랜 — 직접 구독 대신 문의 접수 */}
+                            <p className="text-xs text-muted-foreground mb-2 mt-4 font-medium">팀 / 엔터프라이즈</p>
+                            <button
+                                type="button"
+                                onClick={() => setEnterpriseDialogOpen(true)}
+                                className="w-full p-4 rounded-xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 text-left transition-all hover:border-amber-400 hover:shadow-sm"
+                            >
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                                            <Building2 className="w-5 h-5 text-amber-600" />
                                         </div>
-                                    </button>
-                                );
-                            })}
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-semibold">엔터프라이즈</span>
+                                                <Badge className="bg-amber-500 text-white text-[10px] px-1.5 py-0 hover:bg-amber-500">맞춤형</Badge>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground mt-0.5">
+                                                다수 인원 · 맞춤 보장 분석 · 전담 매니저
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-1 text-amber-700 shrink-0">
+                                        <span className="text-sm font-semibold">문의하기</span>
+                                        <ArrowRight className="w-4 h-4" />
+                                    </div>
+                                </div>
+                            </button>
+                            <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed pl-1">
+                                💡 5명 이상 팀/조직 도입 시 단가 협의 가능 · 영업일 1~2일 내 담당자 연락
+                            </p>
                         </CardContent>
                     </Card>
 
@@ -985,6 +978,15 @@ function SubscribeContent() {
                     </div>
                 </div>
             </div>
+
+            {/* 엔터프라이즈 문의 다이얼로그 */}
+            <EnterpriseInquiryDialog
+                open={enterpriseDialogOpen}
+                onOpenChange={setEnterpriseDialogOpen}
+                defaultName={userName}
+                defaultEmail={userEmail}
+                defaultPhone={userPhone}
+            />
         </div>
     );
 }
