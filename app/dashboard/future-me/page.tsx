@@ -56,10 +56,14 @@ function FutureMeContent() {
     const [loadingCustomer, setLoadingCustomer] = useState(true);
     const [customerError, setCustomerError] = useState<string | null>(null);
 
-    // 카테고리별 설계 보험금 입력
+    // 카테고리별 설계 보험금 입력 (신규로 설계해줄 보장)
     const [cancerAmount, setCancerAmount] = useState('');
     const [brainAmount, setBrainAmount] = useState('');
     const [cardioAmount, setCardioAmount] = useState('');
+    // 카테고리별 현재 보유 보험 입력 (고객이 이미 가입한 보장 — 설계사가 직접 입력)
+    const [currentCancer, setCurrentCancer] = useState('');
+    const [currentBrain, setCurrentBrain] = useState('');
+    const [currentCardio, setCurrentCardio] = useState('');
     const [additionalPremium, setAdditionalPremium] = useState('');
 
     const [result, setResult] = useState<FutureMeResult | null>(null);
@@ -97,11 +101,14 @@ function FutureMeContent() {
         const cancer = Number(cancerAmount) || 0;
         const brain = Number(brainAmount) || 0;
         const cardio = Number(cardioAmount) || 0;
+        const currCancer = Number(currentCancer) || 0;
+        const currBrain = Number(currentBrain) || 0;
+        const currCardio = Number(currentCardio) || 0;
         const premium = Number(additionalPremium);
 
         const coveredTotal = cancer + brain + cardio;
         if (coveredTotal <= 0) {
-            setError('암/뇌혈관/심혈관 중 최소 한 가지 보장 금액을 입력해주세요.');
+            setError('설계해줄 보험의 암/뇌혈관/심혈관 중 최소 한 가지 보장 금액을 입력해주세요.');
             return;
         }
         if (isNaN(premium) || premium < 0) {
@@ -117,6 +124,7 @@ function FutureMeContent() {
                 body: {
                     customerId,
                     coveredAmountByCategory: { cancer, brain, cardio },
+                    currentInsuranceByCategory: { cancer: currCancer, brain: currBrain, cardio: currCardio },
                     additionalPremium: premium,
                 },
             });
@@ -286,9 +294,40 @@ function FutureMeContent() {
                             </p>
                         </CardHeader>
                         <CardContent className="space-y-4 pt-1">
-                            {/* 암/뇌혈관/심혈관별 보장 금액 */}
+                            {/* ① 현재 보유 보험 (설계사가 기존 보유 보험을 직접 입력 — 보장분석 연동 전 임시) */}
                             <div className="space-y-2">
-                                <Label className="text-sm font-semibold text-slate-800">보험으로 보장되는 금액</Label>
+                                <div className="flex items-center justify-between gap-2">
+                                    <Label className="text-sm font-semibold text-slate-800">현재 보유 보험</Label>
+                                    <span className="text-[10px] text-muted-foreground">비워두면 없음 처리</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <CategoryInput
+                                        label="암(치료비포함)"
+                                        value={currentCancer}
+                                        onChange={setCurrentCancer}
+                                        placeholder="0"
+                                    />
+                                    <CategoryInput
+                                        label="뇌혈관(치료비포함)"
+                                        value={currentBrain}
+                                        onChange={setCurrentBrain}
+                                        placeholder="0"
+                                    />
+                                    <CategoryInput
+                                        label="심혈관(치료비포함)"
+                                        value={currentCardio}
+                                        onChange={setCurrentCardio}
+                                        placeholder="0"
+                                    />
+                                </div>
+                                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                    💡 고객이 이미 가입한 보험의 보장 금액을 직접 입력해주세요. 이후 시나리오 비교의 기준값이 됩니다.
+                                </p>
+                            </div>
+
+                            {/* ② 설계해줄 신규 보험 (추가로 가입할 보장) */}
+                            <div className="space-y-2 pt-3 border-t border-blue-200/60">
+                                <Label className="text-sm font-semibold text-slate-800">설계해줄 신규 보험 (추가 보장)</Label>
                                 <div className="grid grid-cols-3 gap-2">
                                     <CategoryInput
                                         label="암(치료비포함)"
@@ -789,13 +828,20 @@ function ScenarioCard({ scenario }: { scenario: FutureMeScenario }) {
                     )}
                 </div>
 
-                {/* 실제 자기부담금 하이라이트 */}
-                <div className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-slate-50 border">
-                    <span className="text-sm text-slate-600">실제 자기부담금</span>
-                    <span className={`text-xl font-bold ${selfPayColor}`}>
-                        약 {scenario.selfPayAmount.toLocaleString()}만원
-                        {isDelay && <span className="text-xs ml-1">↑</span>}
-                    </span>
+                {/* 실제 자기부담금 하이라이트 — 카테고리별 분해 */}
+                <div className="rounded-lg bg-slate-50 border p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-slate-700">실제 자기부담금</span>
+                        <span className={`text-xl font-bold ${selfPayColor}`}>
+                            약 {scenario.selfPayAmount.toLocaleString()}만원
+                            {isDelay && <span className="text-xs ml-1">↑</span>}
+                        </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200">
+                        <SelfPayCategoryCell label="암" amount={scenario.selfPayByCategory.cancer} />
+                        <SelfPayCategoryCell label="뇌혈관" amount={scenario.selfPayByCategory.brain} />
+                        <SelfPayCategoryCell label="심혈관" amount={scenario.selfPayByCategory.cardio} />
+                    </div>
                 </div>
 
                 {/* 하단 설명 */}
@@ -806,6 +852,19 @@ function ScenarioCard({ scenario }: { scenario: FutureMeScenario }) {
                 )}
             </CardContent>
         </Card>
+    );
+}
+
+/* ── 시나리오 카드 내 카테고리별 자기부담 셀 ── */
+function SelfPayCategoryCell({ label, amount }: { label: string; amount: number }) {
+    return (
+        <div className="text-center">
+            <p className="text-[10px] text-slate-500 mb-0.5">{label}</p>
+            <p className="text-sm font-bold text-slate-900">
+                {amount.toLocaleString()}
+                <span className="text-[10px] font-normal text-slate-500 ml-0.5">만원</span>
+            </p>
+        </div>
     );
 }
 

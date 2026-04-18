@@ -50,8 +50,9 @@ export async function POST(request: Request) {
 
         const {
             customerId,
-            coveredAmount,            // 하위 호환 (합계)
-            coveredAmountByCategory,  // 신규 — 카테고리별
+            coveredAmount,                // 하위 호환 (합계)
+            coveredAmountByCategory,      // 신규 — 카테고리별 설계 보험금
+            currentInsuranceByCategory,   // 신규 — 설계사가 직접 입력한 현재 보유 보험 (카테고리별)
             additionalPremium,
         } = await request.json();
 
@@ -72,6 +73,11 @@ export async function POST(request: Request) {
                 { status: 400 },
             );
         }
+
+        // 현재 보유 보험 (설계사 입력) — 없으면 모두 0 (기존 보험 없음으로 가정)
+        const currentInsuranceInput: CategoryAmount = currentInsuranceByCategory
+            ? safeCategoryAmount(currentInsuranceByCategory)
+            : { cancer: 0, brain: 0, cardio: 0 };
 
         const coveredTotal = sumCategory(coveredByCategory);
         if (coveredTotal <= 0) {
@@ -144,6 +150,8 @@ export async function POST(request: Request) {
         const treatmentMonths = topDiseaseCost?.avgTreatmentMonths ?? 12;
         const topDiseaseName = topRiskItem?.riskDisease ?? '주요 질환';
 
+        const currentInsuranceTotal = sumCategory(currentInsuranceInput);
+
         const todayDate = new Date().toISOString().split('T')[0];
         const prompt = FUTURE_ME_PROMPT
             .replace('{TODAY_DATE}', todayDate)
@@ -160,6 +168,10 @@ export async function POST(request: Request) {
             .replace('{COVERED_BRAIN}', String(coveredByCategory.brain))
             .replace('{COVERED_CARDIO}', String(coveredByCategory.cardio))
             .replace('{COVERED_TOTAL}', String(coveredTotal))
+            .replace('{CURRENT_CANCER}', String(currentInsuranceInput.cancer))
+            .replace('{CURRENT_BRAIN}', String(currentInsuranceInput.brain))
+            .replace('{CURRENT_CARDIO}', String(currentInsuranceInput.cardio))
+            .replace('{CURRENT_TOTAL}', String(currentInsuranceTotal))
             .replace('{ADDITIONAL_PREMIUM}', String(additionalPremium));
 
         console.log(`[FutureMe] AI 호출: ${customer.name}, age=${customerAge}, topDisease=${topDiseaseName}, covered=${JSON.stringify(coveredByCategory)}`);
@@ -196,12 +208,9 @@ export async function POST(request: Request) {
         }
         const estimatedTotalCost = sumCategory(estimatedCostByCategory);
 
-        const currentCoverageByCategory = safeCategoryAmount(parsed.currentCoverageByCategory);
-        if (sumCategory(currentCoverageByCategory) === 0) {
-            currentCoverageByCategory.cancer = Math.round(coveredByCategory.cancer * 0.25);
-            currentCoverageByCategory.brain = Math.round(coveredByCategory.brain * 0.25);
-            currentCoverageByCategory.cardio = Math.round(coveredByCategory.cardio * 0.25);
-        }
+        // ⭐ 현재 보유 보험은 "설계사 직접 입력값"을 그대로 사용 (AI/임의 추정 금지)
+        // 설계사가 입력 안 하면 0원(= 기존 보험 없음)으로 처리
+        const currentCoverageByCategory: CategoryAmount = { ...currentInsuranceInput };
         const currentCoverage = sumCategory(currentCoverageByCategory);
 
         const coverageGapByCategory: CategoryAmount = {
@@ -211,77 +220,81 @@ export async function POST(request: Request) {
         };
         const coverageGap = sumCategory(coverageGapByCategory);
 
-        const rawScenarios = Array.isArray(parsed.scenarios) ? parsed.scenarios : [];
-        const scenarios: FutureMeScenario[] = rawScenarios.map((s) => {
-            const est = safeCategoryAmount(s.estimatedCostByCategory);
-            // 비용은 전체 동일하게 유지 (시나리오마다 다르게 주면 UI 혼란)
-            if (sumCategory(est) === 0) {
-                est.cancer = estimatedCostByCategory.cancer;
-                est.brain = estimatedCostByCategory.brain;
-                est.cardio = estimatedCostByCategory.cardio;
+        // ⭐ 시나리오별 보장 금액은 "설계사 입력값 (현재 보험 + 설계 보험금)"으로 확정 계산
+        //    AI가 산정한 값이 아닌, 설계사가 직접 입력한 값을 기반으로 자기부담금 정확히 계산
+        //
+        // A (지금 보완)   = 현재보험 + 설계보험
+        // B (5년 후 가입) = 현재보험 + 설계보험 × 감소율 (고위험군일수록 낮음)
+        // C (아무것도 안함) = 현재보험만
+
+        // 5년 후 가입 시 보장 감소율 — 위험도 기반
+        const highRiskCount = (riskReport.riskItems || [])
+            .filter(r => r.riskLevel === 'high').length;
+        const delayCoverageRate = highRiskCount >= 2 ? 0.10    // likely_decline
+            : highRiskCount >= 1 ? 0.50                         // conditional
+                : 0.85;                                         // likely_accept
+
+        function computeScenarioCoverage(type: FutureMeScenario['type']): CategoryAmount {
+            if (type === 'complement') {
+                return {
+                    cancer: currentInsuranceInput.cancer + coveredByCategory.cancer,
+                    brain: currentInsuranceInput.brain + coveredByCategory.brain,
+                    cardio: currentInsuranceInput.cardio + coveredByCategory.cardio,
+                };
             }
-            const cov = safeCategoryAmount(s.coverageByCategory);
-            const self: CategoryAmount = {
+            if (type === 'delay') {
+                return {
+                    cancer: currentInsuranceInput.cancer + Math.round(coveredByCategory.cancer * delayCoverageRate),
+                    brain: currentInsuranceInput.brain + Math.round(coveredByCategory.brain * delayCoverageRate),
+                    cardio: currentInsuranceInput.cardio + Math.round(coveredByCategory.cardio * delayCoverageRate),
+                };
+            }
+            // nothing
+            return { ...currentInsuranceInput };
+        }
+
+        function computeSelfPay(est: CategoryAmount, cov: CategoryAmount): CategoryAmount {
+            return {
                 cancer: Math.max(0, est.cancer - cov.cancer),
                 brain: Math.max(0, est.brain - cov.brain),
                 cardio: Math.max(0, est.cardio - cov.cardio),
             };
+        }
+
+        const rawScenarios = Array.isArray(parsed.scenarios) ? parsed.scenarios : [];
+        const rawByType = new Map<FutureMeScenario['type'], RawScenario>();
+        for (const s of rawScenarios) {
+            const t = (s.type === 'delay' || s.type === 'nothing') ? s.type : 'complement';
+            rawByType.set(t as FutureMeScenario['type'], s);
+        }
+
+        const types: Array<FutureMeScenario['type']> = ['complement', 'delay', 'nothing'];
+        const orderedScenarios: FutureMeScenario[] = types.map((t) => {
+            const raw = rawByType.get(t);
+            // 비용은 전체 동일 (암/뇌혈관/심혈관 평균 병원비 — 모든 시나리오 공통)
+            const est = { ...estimatedCostByCategory };
+            // 보장 금액은 설계사 입력 기반으로 강제 계산 (AI 산정 무시)
+            const cov = computeScenarioCoverage(t);
+            const self = computeSelfPay(est, cov);
+
             return {
-                type: (s.type === 'delay' || s.type === 'nothing' ? s.type : 'complement') as FutureMeScenario['type'],
-                label: s.label ||
-                    (s.type === 'delay' ? '5년 후 가입을 시도한다면'
-                        : s.type === 'nothing' ? '아무것도 하지 않는다면'
-                            : '지금 보험을 보완한다면'),
-                badge: s.badge || (s.type === 'delay' ? '위험' : s.type === 'nothing' ? '최악' : '권장'),
+                type: t,
+                label: raw?.label ||
+                    (t === 'complement' ? '지금 보험을 보완한다면'
+                        : t === 'delay' ? '5년 후 가입을 시도한다면'
+                            : '아무것도 하지 않는다면'),
+                badge: raw?.badge || (t === 'complement' ? '권장' : t === 'delay' ? '위험' : '최악'),
                 estimatedCostByCategory: est,
                 estimatedTotalCost: sumCategory(est),
                 coverageByCategory: cov,
                 coverageAmount: sumCategory(cov),
                 selfPayByCategory: self,
                 selfPayAmount: sumCategory(self),
-                rejectionRisk: s.rejectionRisk,
-                premiumNote: s.premiumNote,
-                details: s.details || '',
+                rejectionRisk: raw?.rejectionRisk,
+                premiumNote: raw?.premiumNote,
+                details: raw?.details || '',
             };
         });
-
-        // 시나리오가 3개 미만이면 폴백으로 채움
-        const types: Array<FutureMeScenario['type']> = ['complement', 'delay', 'nothing'];
-        const byType = new Map(scenarios.map(s => [s.type, s]));
-        for (const t of types) {
-            if (!byType.has(t)) {
-                const cov: CategoryAmount = t === 'complement'
-                    ? { ...coveredByCategory }
-                    : t === 'delay'
-                        ? {
-                            cancer: Math.round(coveredByCategory.cancer * 0.4),
-                            brain: Math.round(coveredByCategory.brain * 0.4),
-                            cardio: Math.round(coveredByCategory.cardio * 0.4),
-                        }
-                        : { ...currentCoverageByCategory };
-                const est = { ...estimatedCostByCategory };
-                const self: CategoryAmount = {
-                    cancer: Math.max(0, est.cancer - cov.cancer),
-                    brain: Math.max(0, est.brain - cov.brain),
-                    cardio: Math.max(0, est.cardio - cov.cardio),
-                };
-                byType.set(t, {
-                    type: t,
-                    label: t === 'complement' ? '지금 보험을 보완한다면'
-                        : t === 'delay' ? '5년 후 가입을 시도한다면'
-                            : '아무것도 하지 않는다면',
-                    badge: t === 'complement' ? '권장' : t === 'delay' ? '위험' : '최악',
-                    estimatedCostByCategory: est,
-                    estimatedTotalCost: sumCategory(est),
-                    coverageByCategory: cov,
-                    coverageAmount: sumCategory(cov),
-                    selfPayByCategory: self,
-                    selfPayAmount: sumCategory(self),
-                    details: '',
-                });
-            }
-        }
-        const orderedScenarios = types.map(t => byType.get(t)!).filter(Boolean);
 
         const result: FutureMeResult = {
             generatedAt: new Date().toISOString(),
