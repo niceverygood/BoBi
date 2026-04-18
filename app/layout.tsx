@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import ChatBot from "@/components/chat/ChatBot";
+import PostHogProvider from "@/components/analytics/PostHogProvider";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -34,6 +36,10 @@ export default function RootLayout({
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
       </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
+        {/* PostHog 분석 초기화 + pageview 자동 캡처 (useSearchParams 때문에 Suspense 필요) */}
+        <Suspense fallback={null}>
+          <PostHogProvider />
+        </Suspense>
         {children}
         <Toaster position="top-right" richColors />
         <ChatBot />

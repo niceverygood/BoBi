@@ -34,6 +34,15 @@ export default function DashboardLayout({
                     setSentryUser({ id: user.id });
                 }).catch(() => { /* Sentry 미설치 환경 무시 */ });
 
+                // PostHog 유저 식별 (id만, 이메일/이름은 PII라 제외)
+                import('@/lib/analytics/events').then(({ identifyUser, track }) => {
+                    identifyUser(user.id);
+                    track('user_login', {
+                        // created_at만 traits로 기록 (이메일/이름 없음)
+                        signup_date: user.created_at ? user.created_at.slice(0, 10) : null,
+                    });
+                }).catch(() => { /* PostHog 미설치 환경 무시 */ });
+
                 // 기기 등록 (최대 2대 제한)
                 import('@/lib/device').then(({ registerDevice }) => {
                     registerDevice().then(result => {

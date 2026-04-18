@@ -130,6 +130,13 @@ function FutureMeContent() {
             });
             setResult(data.result);
             setReportId(data.reportId);
+            // 분석 완료 이벤트
+            import('@/lib/analytics/events').then(({ track }) => {
+                track('future_me_generated', {
+                    hasCurrentInsurance: (currCancer + currBrain + currCardio) > 0,
+                    totalCoverage: cancer + brain + cardio,
+                });
+            }).catch(() => { });
             setTimeout(() => {
                 reportRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 100);

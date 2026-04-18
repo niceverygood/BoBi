@@ -36,6 +36,7 @@
     "next": "16.1.6",
     "next-themes": "^0.4.6",
     "openai": "^6.27.0",
+    "posthog-js": "^1.369.3",
     "pdf-parse": "^1.1.1",
     "pdfjs-dist": "^4.9.155",
     "puppeteer": "^24.39.1",

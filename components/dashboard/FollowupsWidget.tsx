@@ -7,6 +7,29 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Bell, HeartPulse, Sparkles, Send, Users, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { apiFetch } from '@/lib/api/client';
+import { track, useFeatureFlag, trackExperimentExposure } from '@/lib/analytics/events';
+
+// A/B 테스트 — PostHog에서 'followups_widget_copy' 실험 생성
+// 변형:
+//   control     — "팔로업 필요 고객" (기존)
+//   urgent      — "⏰ 오늘 꼭 연락해야 할 고객" (긴급성 강조)
+//   opportunity — "💡 전환 기회가 있는 고객" (기회 프레이밍)
+type Variant = 'control' | 'urgent' | 'opportunity';
+
+const COPY: Record<Variant, { title: string; subtitle: string }> = {
+    control: {
+        title: '팔로업 필요 고객',
+        subtitle: '방치된 고객을 놓치지 마세요. 시간이 지날수록 전환이 어려워집니다.',
+    },
+    urgent: {
+        title: '⏰ 오늘 꼭 연락해야 할 고객',
+        subtitle: '지금 연락하지 않으면 다른 설계사에게 넘어갈 수 있습니다.',
+    },
+    opportunity: {
+        title: '💡 전환 기회가 있는 고객',
+        subtitle: '분석은 끝났지만 다음 단계로 안 넘어간 고객입니다. 지금이 마무리 타이밍.',
+    },
+};
 
 type FollowupType = 'need_risk_report' | 'need_future_me' | 'need_send' | 'stale';
 
@@ -33,18 +56,41 @@ export default function FollowupsWidget() {
     const [loading, setLoading] = useState(true);
     const [expanded, setExpanded] = useState(false);
 
+    // A/B 테스트 — followups_widget_copy (control / urgent / opportunity)
+    const flagValue = useFeatureFlag('followups_widget_copy');
+    const variant: Variant = (
+        flagValue === 'urgent' || flagValue === 'opportunity' ? flagValue : 'control'
+    ) as Variant;
+    const copy = COPY[variant];
+
     useEffect(() => {
         (async () => {
             try {
                 const res = await apiFetch<{ followups: FollowupItem[] }>('/api/dashboard/followups');
                 setItems(res.followups);
+                // 위젯 노출 이벤트 (변형 기록 포함)
+                track('dashboard_followup_shown', {
+                    count: res.followups.length,
+                    variant,
+                });
+                if (res.followups.length > 0) {
+                    trackExperimentExposure('followups_widget_copy', variant);
+                }
             } catch {
                 // 조용히 실패
             } finally {
                 setLoading(false);
             }
         })();
-    }, []);
+    }, [variant]);
+
+    const handleItemClick = (item: FollowupItem) => {
+        track('dashboard_followup_clicked', {
+            type: item.type,
+            daysSince: item.daysSince,
+            variant,
+        });
+    };
 
     if (loading) {
         return (
@@ -95,14 +141,14 @@ export default function FollowupsWidget() {
                             <Bell className="w-4 h-4 text-amber-600" />
                             <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full animate-pulse" />
                         </div>
-                        팔로업 필요 고객
+                        {copy.title}
                     </span>
                     <span className="text-xs font-normal text-amber-700">
                         {items.length}명 확인 필요
                     </span>
                 </CardTitle>
                 <p className="text-[11px] text-muted-foreground pt-1">
-                    방치된 고객을 놓치지 마세요. 시간이 지날수록 전환이 어려워집니다.
+                    {copy.subtitle}
                 </p>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -110,7 +156,7 @@ export default function FollowupsWidget() {
                     const cfg = TYPE_CONFIG[item.type];
                     const Icon = cfg.icon;
                     return (
-                        <Link key={`${item.customerId}-${item.type}`} href={item.actionHref}>
+                        <Link key={`${item.customerId}-${item.type}`} href={item.actionHref} onClick={() => handleItemClick(item)}>
                             <div className="flex items-center gap-3 p-3 rounded-lg bg-white border hover:border-amber-300 hover:shadow-sm transition-all cursor-pointer group">
                                 <div className={`w-9 h-9 rounded-lg ${cfg.bg} flex items-center justify-center shrink-0`}>
                                     <Icon className={`w-4 h-4 ${cfg.color}`} />

@@ -107,12 +107,18 @@ function SubscribeContent() {
         const tossStatus = searchParams.get('toss_status');
         if (tossStatus === 'success') {
             setSuccess(true);
+            import('@/lib/analytics/events').then(({ track }) => {
+                track('checkout_completed', { provider: 'tosspayments_direct' });
+            }).catch(() => { });
             return;
         }
         if (tossStatus === 'failed' || tossStatus === 'payment_failed' || tossStatus === 'sub_create_failed') {
             const code = searchParams.get('code') || '';
             const msg = searchParams.get('msg') || '';
             setError(`토스페이먼츠 결제 실패 (${code}): ${decodeURIComponent(msg) || '다시 시도해주세요.'}`);
+            import('@/lib/analytics/events').then(({ track }) => {
+                track('checkout_failed', { provider: 'tosspayments_direct', code });
+            }).catch(() => { });
             return;
         }
     }, [searchParams]);
@@ -122,12 +128,18 @@ function SubscribeContent() {
         const inicisStatus = searchParams.get('inicis_status');
         if (inicisStatus === 'success') {
             setSuccess(true);
+            import('@/lib/analytics/events').then(({ track }) => {
+                track('checkout_completed', { provider: 'inicis_direct' });
+            }).catch(() => { });
             return;
         }
         if (inicisStatus === 'failed' || inicisStatus === 'payment_failed' || inicisStatus === 'sub_create_failed') {
             const code = searchParams.get('code') || '';
             const msg = searchParams.get('msg') || '';
             setError(`결제 실패 (${code}): ${decodeURIComponent(msg) || '다시 시도해주세요.'}`);
+            import('@/lib/analytics/events').then(({ track }) => {
+                track('checkout_failed', { provider: 'inicis_direct', code });
+            }).catch(() => { });
             return;
         }
         if (inicisStatus === 'closed' || searchParams.get('inicis_closed') === 'true') {
