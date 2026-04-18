@@ -96,10 +96,18 @@ export function buildBillingKeyForm(input: BuildBillingKeyFormInput): InicisBill
     // ⚠️ 주의: 아래 파라미터는 "가맹점 계약"이 되어 있어야만 결제창에 실제로 노출됨.
     // 계약이 안 된 결제수단은 파라미터를 넣어도 무시됨.
     // KG이니시스 담당자에게 MID(MOIbobi998)에 각 결제수단 계약 여부 확인 필요.
+    //
+    // 고객층(주부/중장년)에 맞춰 공동인증서(centerCd) 노출 최소화:
+    //   - nointerest(Y): 무이자 할부 숨김
+    //   - onlycardcode: 특정 카드사만 노출 가능
+    //   - quotabase(Y): 할부 기본값 일시불
     const acceptParts: string[] = ['BILLAUTH(Card)'];
     if (input.enableAppCard !== false) acceptParts.push('useappcard(Y)');    // 앱카드 (신한/삼성/KB/현대/하나/롯데/NH/BC 등)
     if (input.enableIsp !== false) acceptParts.push('useisp(Y)');            // ISP/안심클릭
-    if (input.enableEasyPay !== false) acceptParts.push('noeasypay(N)');     // 간편결제 (네이버페이/토스페이/페이코/카카오페이)
+    if (input.enableEasyPay !== false) acceptParts.push('noeasypay(N)');     // 간편결제 (네이버페이/토스페이/페이코)
+    // 공동인증서 인증 숨김 요청 (결제창 기본 인증을 ISP로 유도)
+    acceptParts.push('centerCd(Y)');        // 센터 인증 활성화 (인증서 직접 노출 줄이는 효과)
+    acceptParts.push('quotabase(Y=0)');     // 할부 기본 일시불
     const acceptmethod = acceptParts.join(':');
 
     return {
