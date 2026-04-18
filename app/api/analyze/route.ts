@@ -278,6 +278,15 @@ export async function POST(request: Request) {
     } catch (error) {
         console.error('Analysis error:', error);
         const rawMsg = (error as Error).message || '';
+
+        // Sentry에 컨텍스트와 함께 전송
+        const { captureError } = await import('@/lib/monitoring/sentry-helpers');
+        captureError(error, {
+            area: 'analyze',
+            tags: { api: 'analyze' },
+            metadata: { rawMsgPrefix: rawMsg.slice(0, 120) },
+        });
+
         // Supabase/내부 에러는 사용자에게 노출하지 않음
         const userMsg = rawMsg.includes('did not match')
             || rawMsg.includes('violates')

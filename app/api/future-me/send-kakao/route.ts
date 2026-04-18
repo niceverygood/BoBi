@@ -204,6 +204,12 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: true, template, aligo: aligoResult });
     } catch (err) {
         const msg = (err as Error).message || '';
+        const { captureError } = await import('@/lib/monitoring/sentry-helpers');
+        captureError(err, {
+            area: 'alimtalk',
+            level: 'error',
+            tags: { provider: 'aligo' },
+        });
         return NextResponse.json(
             { error: `알림톡 발송 실패: ${msg}` },
             { status: 500 },

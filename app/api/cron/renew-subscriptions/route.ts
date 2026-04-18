@@ -409,6 +409,20 @@ export async function GET(request: Request) {
             }
         }
 
+        // 갱신 실패율이 임계치 초과하면 Sentry warning
+        const total = results.renewed + results.pastDue + results.failed;
+        if (total > 0 && results.renewed / total < 0.8) {
+            const { captureWarning } = await import('@/lib/monitoring/sentry-helpers');
+            captureWarning(
+                `구독 갱신 성공률 저하: ${results.renewed}/${total}`,
+                {
+                    area: 'billing',
+                    tags: { job: 'cron_renew', alert: 'low_success_rate' },
+                    metadata: results,
+                },
+            );
+        }
+
         return NextResponse.json({
             message: `갱신 완료: ${results.renewed}건 성공, ${results.pastDue}건 결제실패, ${results.failed}건 오류`,
             results,
@@ -416,6 +430,12 @@ export async function GET(request: Request) {
         });
     } catch (error) {
         console.error('Cron renewal error:', error);
+        const { captureError } = await import('@/lib/monitoring/sentry-helpers');
+        captureError(error, {
+            area: 'billing',
+            level: 'fatal',
+            tags: { job: 'cron_renew', stage: 'top_level_exception' },
+        });
         return NextResponse.json({ error: (error as Error).message }, { status: 500 });
     }
 }

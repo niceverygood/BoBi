@@ -90,6 +90,18 @@ export async function POST(request: Request) {
 
         if (approveResult.resultCode !== '0000' || !approveResult.billKey) {
             console.error('[inicis/return] 빌링키 승인 실패:', approveResult);
+            const { captureError } = await import('@/lib/monitoring/sentry-helpers');
+            captureError(new Error(`INICIS 빌링키 승인 실패: ${approveResult.resultCode}`), {
+                area: 'billing',
+                level: 'error',
+                tags: { provider: 'inicis_direct', stage: 'billing_key_approve' },
+                metadata: {
+                    resultCode: approveResult.resultCode,
+                    resultMsg: approveResult.resultMsg?.slice(0, 200),
+                    userId: pending.user_id,
+                    planSlug: pending.plan_slug,
+                },
+            });
             return NextResponse.redirect(
                 buildRedirect(origin, {
                     inicis_status: 'failed',
@@ -173,6 +185,19 @@ export async function POST(request: Request) {
 
             if (!charge.success) {
                 console.error('[inicis/return] 첫 결제 실패:', charge);
+                const { captureError } = await import('@/lib/monitoring/sentry-helpers');
+                captureError(new Error(`INICIS 첫 결제 실패: ${charge.resultCode}`), {
+                    area: 'billing',
+                    level: 'error',
+                    tags: { provider: 'inicis_direct', stage: 'first_charge' },
+                    metadata: {
+                        resultCode: charge.resultCode,
+                        resultMsg: charge.resultMsg?.slice(0, 200),
+                        amount,
+                        userId: pending.user_id,
+                        planSlug: actualPlan.slug,
+                    },
+                });
                 return NextResponse.redirect(
                     buildRedirect(origin, {
                         inicis_status: 'payment_failed',
@@ -304,6 +329,12 @@ export async function POST(request: Request) {
         );
     } catch (err) {
         console.error('[inicis/return] 처리 중 오류:', err);
+        const { captureError } = await import('@/lib/monitoring/sentry-helpers');
+        captureError(err, {
+            area: 'billing',
+            level: 'error',
+            tags: { provider: 'inicis_direct', stage: 'return_exception' },
+        });
         return NextResponse.redirect(
             buildRedirect(origin, {
                 inicis_status: 'failed',

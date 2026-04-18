@@ -67,6 +67,18 @@ export async function GET(request: Request) {
         const issueResult = await issueBillingKey({ authKey, customerKey });
         if (!issueResult.success || !issueResult.billingKey) {
             console.error('[toss/success] 빌링키 발급 실패:', issueResult);
+            const { captureError } = await import('@/lib/monitoring/sentry-helpers');
+            captureError(new Error(`TOSS 빌링키 발급 실패: ${issueResult.errorCode}`), {
+                area: 'billing',
+                level: 'error',
+                tags: { provider: 'tosspayments_direct', stage: 'billing_key_issue' },
+                metadata: {
+                    errorCode: issueResult.errorCode,
+                    errorMessage: issueResult.errorMessage?.slice(0, 200),
+                    userId: pending.user_id,
+                    planSlug: pending.plan_slug,
+                },
+            });
             return NextResponse.redirect(
                 buildRedirect(origin, {
                     toss_status: 'failed',
@@ -150,6 +162,19 @@ export async function GET(request: Request) {
 
             if (!charge.success) {
                 console.error('[toss/success] 첫 결제 실패:', charge);
+                const { captureError } = await import('@/lib/monitoring/sentry-helpers');
+                captureError(new Error(`TOSS 첫 결제 실패: ${charge.errorCode}`), {
+                    area: 'billing',
+                    level: 'error',
+                    tags: { provider: 'tosspayments_direct', stage: 'first_charge' },
+                    metadata: {
+                        errorCode: charge.errorCode,
+                        errorMessage: charge.errorMessage?.slice(0, 200),
+                        amount,
+                        userId: pending.user_id,
+                        planSlug: actualPlan.slug,
+                    },
+                });
                 return NextResponse.redirect(
                     buildRedirect(origin, {
                         toss_status: 'payment_failed',
@@ -305,6 +330,12 @@ export async function GET(request: Request) {
         );
     } catch (err) {
         console.error('[toss/success] 예외:', err);
+        const { captureError } = await import('@/lib/monitoring/sentry-helpers');
+        captureError(err, {
+            area: 'billing',
+            level: 'error',
+            tags: { provider: 'tosspayments_direct', stage: 'return_exception' },
+        });
         return NextResponse.redirect(
             buildRedirect(origin, {
                 toss_status: 'failed',

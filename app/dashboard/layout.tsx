@@ -29,6 +29,11 @@ export default function DashboardLayout({
                     || '';
                 setUserName(name);
 
+                // Sentry 유저 컨텍스트 (에러 발생 시 어느 설계사인지 추적)
+                import('@/lib/monitoring/sentry-helpers').then(({ setSentryUser }) => {
+                    setSentryUser({ id: user.id });
+                }).catch(() => { /* Sentry 미설치 환경 무시 */ });
+
                 // 기기 등록 (최대 2대 제한)
                 import('@/lib/device').then(({ registerDevice }) => {
                     registerDevice().then(result => {
