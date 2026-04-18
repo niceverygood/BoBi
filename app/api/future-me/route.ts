@@ -305,7 +305,28 @@ export async function POST(request: Request) {
             disclaimer: '본 리포트는 의학 통계 및 AI 분석 기반의 참고 자료이며, 실제 보험 인수 심사, 보험료, 보장 금액은 보험사 및 상품에 따라 달라질 수 있습니다.',
         };
 
-        return NextResponse.json({ result });
+        // DB 저장 (카카오톡 공유 / 재조회용). 테이블 없어도 fail soft.
+        let reportId: string | null = null;
+        try {
+            const { data: saved, error: saveErr } = await svc
+                .from('future_me_reports')
+                .insert({
+                    user_id: user.id,
+                    customer_id: customerId,
+                    result,
+                })
+                .select('id')
+                .single();
+            if (saveErr) {
+                console.warn('[FutureMe] DB 저장 실패 (테이블 미존재 가능):', saveErr.message);
+            } else {
+                reportId = saved?.id || null;
+            }
+        } catch (err) {
+            console.warn('[FutureMe] DB 저장 예외:', err);
+        }
+
+        return NextResponse.json({ result, reportId });
     } catch (error) {
         console.error('[FutureMe] 에러:', error);
         const rawMsg = (error as Error).message || '';

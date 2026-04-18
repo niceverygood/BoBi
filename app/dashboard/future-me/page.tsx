@@ -14,11 +14,12 @@ import {
     MessageCircle, Users, DollarSign,
 } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import SendKakaoDialog from '@/components/future-me/SendKakaoDialog';
 import { apiFetch } from '@/lib/api/client';
 import type { FutureMeResult, FutureMeScenario, CategoryAmount } from '@/types/future-me';
 
 interface CustomerCardData {
-    customer: { id: string; name: string; birth_date: string | null; gender: string | null };
+    customer: { id: string; name: string; birth_date: string | null; gender: string | null; phone?: string | null };
     summary: {
         riskReport: {
             riskItems: Array<{ riskDisease: string; relativeRisk: number; riskLevel: string; riskCategory: string }>;
@@ -62,6 +63,9 @@ function FutureMeContent() {
     const [additionalPremium, setAdditionalPremium] = useState('');
 
     const [result, setResult] = useState<FutureMeResult | null>(null);
+    const [reportId, setReportId] = useState<string | null>(null);
+    const [customerPhone, setCustomerPhone] = useState<string>('');
+    const [kakaoOpen, setKakaoOpen] = useState(false);
     const [generating, setGenerating] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [pdfLoading, setPdfLoading] = useState(false);
@@ -76,6 +80,7 @@ function FutureMeContent() {
             try {
                 const data = await apiFetch<CustomerCardData>(`/api/customers/${customerId}`);
                 setCustomerData(data);
+                if (data.customer.phone) setCustomerPhone(data.customer.phone);
                 if (!data.summary.riskReport || data.summary.riskReport.riskItems.length === 0) {
                     setCustomerError('이 고객의 질병위험도 리포트가 없습니다. 먼저 병력 분석과 위험도 리포트를 생성해주세요.');
                 }
@@ -107,7 +112,7 @@ function FutureMeContent() {
         setGenerating(true);
         setError(null);
         try {
-            const data = await apiFetch<{ result: FutureMeResult }>('/api/future-me', {
+            const data = await apiFetch<{ result: FutureMeResult; reportId: string | null }>('/api/future-me', {
                 method: 'POST',
                 body: {
                     customerId,
@@ -116,6 +121,7 @@ function FutureMeContent() {
                 },
             });
             setResult(data.result);
+            setReportId(data.reportId);
             setTimeout(() => {
                 reportRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 100);
@@ -140,7 +146,12 @@ function FutureMeContent() {
     };
 
     const handleSendKakao = async () => {
-        alert('카카오톡 전송 기능은 준비 중입니다. (ALIGO 템플릿 검수 대기 중)');
+        if (!result) return;
+        if (!reportId) {
+            setError('리포트 저장이 완료되지 않아 발송할 수 없습니다. 잠시 후 다시 시도해주세요.');
+            return;
+        }
+        setKakaoOpen(true);
     };
 
     const handleAnalyzeAnother = () => {
@@ -391,6 +402,18 @@ function FutureMeContent() {
                             </Button>
                         </div>
                     </div>
+
+                    {/* 카카오톡 발송 다이얼로그 */}
+                    {result && (
+                        <SendKakaoDialog
+                            open={kakaoOpen}
+                            onOpenChange={setKakaoOpen}
+                            reportId={reportId}
+                            result={result}
+                            defaultPhone={customerPhone}
+                            defaultCustomerName={customerData?.customer.name || ''}
+                        />
+                    )}
                 </>
             )}
         </div>
