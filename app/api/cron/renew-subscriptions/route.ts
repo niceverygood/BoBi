@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { payWithBillingKey } from '@/lib/portone/server';
 import { kakaoPaySubscription } from '@/lib/kakaopay/client';
 import { chargeBillkey as inicisDirectCharge } from '@/lib/inicis/server';
+import { chargeBillingKey as tossDirectCharge, generateOrderId as tossOrderId } from '@/lib/tosspayments/server';
 
 // Vercel Cron에서 호출 — CRON_SECRET으로 인증
 export async function GET(request: Request) {
@@ -27,8 +28,11 @@ export async function GET(request: Request) {
                 plan:subscription_plans(*)
             `)
             .eq('status', 'active')
-            // cron에서 갱신 가능한 provider: portone_inicis, portone_kakaopay, kakaopay, inicis_direct
-            .in('payment_provider', ['portone_inicis', 'portone_kakaopay', 'kakaopay', 'inicis_direct'])
+            // cron에서 갱신 가능한 provider
+            .in('payment_provider', [
+                'portone_inicis', 'portone_kakaopay', 'kakaopay',
+                'inicis_direct', 'tosspayments_direct',
+            ])
             .lt('current_period_end', now.toISOString());
 
         if (fetchError) {
@@ -122,6 +126,40 @@ export async function GET(request: Request) {
                         });
                         paySuccess = chargeResult.success;
                         payError = chargeResult.success ? '' : `${chargeResult.resultCode}: ${chargeResult.resultMsg}`;
+                    } catch (err) {
+                        payError = (err as Error).message;
+                    }
+                } else if (provider === 'tosspayments_direct') {
+                    // 토스페이먼츠 직접 연동 빌링키 결제
+                    try {
+                        // customer_key 조회 (billing + customerKey 페어 필요)
+                        const { data: ck } = await supabase
+                            .from('tosspayments_customer_keys')
+                            .select('customer_key')
+                            .eq('user_id', sub.user_id)
+                            .maybeSingle();
+
+                        if (!ck?.customer_key) {
+                            payError = 'tosspayments customer_key 없음';
+                        } else {
+                            const { data: userRow } = await supabase
+                                .from('profiles')
+                                .select('email, full_name')
+                                .eq('id', sub.user_id)
+                                .maybeSingle();
+
+                            const chargeResult = await tossDirectCharge({
+                                billingKey,
+                                customerKey: ck.customer_key,
+                                amount,
+                                orderId: tossOrderId(`renew-${sub.id.slice(0, 8)}`),
+                                orderName: `보비 ${plan.display_name} (${cycleLabel} 자동갱신)`,
+                                customerEmail: (userRow as { email?: string } | null)?.email || undefined,
+                                customerName: (userRow as { full_name?: string } | null)?.full_name || undefined,
+                            });
+                            paySuccess = chargeResult.success;
+                            payError = chargeResult.success ? '' : `${chargeResult.errorCode}: ${chargeResult.errorMessage}`;
+                        }
                     } catch (err) {
                         payError = (err as Error).message;
                     }
@@ -296,6 +334,31 @@ export async function GET(request: Request) {
                                 moid: retryPaymentId,
                             });
                             retrySuccess = retryCharge.success;
+                        } catch { /* retry failed */ }
+                    } else if (provider === 'tosspayments_direct') {
+                        try {
+                            const { data: ck } = await supabase
+                                .from('tosspayments_customer_keys')
+                                .select('customer_key')
+                                .eq('user_id', sub.user_id)
+                                .maybeSingle();
+                            if (ck?.customer_key) {
+                                const { data: userRow } = await supabase
+                                    .from('profiles')
+                                    .select('email, full_name')
+                                    .eq('id', sub.user_id)
+                                    .maybeSingle();
+                                const retryCharge = await tossDirectCharge({
+                                    billingKey: bk,
+                                    customerKey: ck.customer_key,
+                                    amount: retryAmount,
+                                    orderId: tossOrderId(`retry-${sub.id.slice(0, 8)}`),
+                                    orderName: `보비 ${plan.display_name} (${cycleLabel} 재시도)`,
+                                    customerEmail: (userRow as { email?: string } | null)?.email || undefined,
+                                    customerName: (userRow as { full_name?: string } | null)?.full_name || undefined,
+                                });
+                                retrySuccess = retryCharge.success;
+                            }
                         } catch { /* retry failed */ }
                     } else {
                         const retryChannelKey = provider === 'portone_inicis'

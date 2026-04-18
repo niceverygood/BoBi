@@ -38,7 +38,7 @@ function SubscribeContent() {
 
     const [selectedPlan, setSelectedPlan] = useState<PlanSlug>(planParam || 'basic');
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
-    const [paymentMethod, setPaymentMethod] = useState<'kakaopay' | 'card'>('kakaopay');
+    const [paymentMethod, setPaymentMethod] = useState<'kakaopay' | 'card' | 'tosspayments'>('kakaopay');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
@@ -101,6 +101,21 @@ function SubscribeContent() {
             setSelectedPlan(planParam);
         }
     }, [planParam]);
+
+    // 토스페이먼츠 콜백 처리
+    useEffect(() => {
+        const tossStatus = searchParams.get('toss_status');
+        if (tossStatus === 'success') {
+            setSuccess(true);
+            return;
+        }
+        if (tossStatus === 'failed' || tossStatus === 'payment_failed' || tossStatus === 'sub_create_failed') {
+            const code = searchParams.get('code') || '';
+            const msg = searchParams.get('msg') || '';
+            setError(`토스페이먼츠 결제 실패 (${code}): ${decodeURIComponent(msg) || '다시 시도해주세요.'}`);
+            return;
+        }
+    }, [searchParams]);
 
     // INICIS 직접 연동 콜백 처리
     useEffect(() => {
@@ -452,6 +467,90 @@ function SubscribeContent() {
         });
     };
 
+    // 토스페이먼츠 JS SDK 동적 로드
+    const loadTossPaymentsScript = (): Promise<void> => {
+        return new Promise((resolve, reject) => {
+            const src = 'https://js.tosspayments.com/v1/payment';
+            if (document.querySelector(`script[src="${src}"]`)) {
+                resolve();
+                return;
+            }
+            const script = document.createElement('script');
+            script.src = src;
+            script.async = true;
+            script.onload = () => resolve();
+            script.onerror = () => reject(new Error('TossPayments JS SDK 로드 실패'));
+            document.head.appendChild(script);
+        });
+    };
+
+    // 웹 결제 — 토스페이먼츠 자동결제 (빌링키 SDK 방식)
+    // 공동인증서 불필요 — 카드 정보 + 휴대폰 본인인증만으로 등록
+    const handleTosspaymentsSubscribe = async () => {
+        if (!userName || !userEmail || !userPhone) {
+            setError('결제를 위해 이름, 이메일, 휴대폰 번호가 모두 필요합니다.');
+            return;
+        }
+        setLoading(true);
+        setError(null);
+
+        try {
+            // 1. 서버에서 customerKey + SDK 파라미터 받기
+            const prepResult = await apiFetch<{
+                customerKey: string;
+                clientKey: string;
+                successUrl: string;
+                failUrl: string;
+                orderName: string;
+                displayAmount: number;
+                buyerName: string;
+                buyerEmail: string;
+            }>('/api/tosspayments/prepare-billing', {
+                method: 'POST',
+                body: {
+                    planSlug: selectedPlan,
+                    billingCycle,
+                    buyerName: userName,
+                    buyerEmail: userEmail,
+                    buyerTel: userPhone.replace(/-/g, ''),
+                    ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
+                    ...(appliedCoupon?.upgradeToPlan ? { upgradePlanSlug: appliedCoupon.upgradeToPlan } : {}),
+                },
+            });
+
+            // 2. 토스페이먼츠 SDK 로드
+            await loadTossPaymentsScript();
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const TossPayments = (window as any).TossPayments;
+            if (typeof TossPayments !== 'function') {
+                setError('토스페이먼츠 SDK 로드에 실패했습니다. 새로고침 후 다시 시도해주세요.');
+                setLoading(false);
+                return;
+            }
+
+            const tossPayments = TossPayments(prepResult.clientKey);
+
+            // 3. 카드 빌링키 요청 (결제창 팝업 → 카드입력 → 휴대폰 본인인증)
+            //    성공 시 successUrl로 자동 리다이렉트 (authKey + customerKey 쿼리 파라미터)
+            await tossPayments.requestBillingAuth('카드', {
+                customerKey: prepResult.customerKey,
+                successUrl: prepResult.successUrl,
+                failUrl: prepResult.failUrl,
+            });
+            // 리다이렉트되므로 여기 코드는 실행 안 됨
+        } catch (err) {
+            // SDK가 Promise reject 시 여기로 옴
+            const e = err as { code?: string; message?: string };
+            if (e?.code === 'USER_CANCEL') {
+                setError('결제가 취소되었습니다.');
+            } else {
+                setError(e?.message || '결제 처리 중 오류가 발생했습니다.');
+            }
+            setLoading(false);
+        }
+    };
+
     // 무료 쿠폰 결제 (금액 0원일 때 — 결제 없이 구독 생성)
     const handleFreeCouponSubscribe = async () => {
         setLoading(true);
@@ -489,6 +588,9 @@ function SubscribeContent() {
         }
         if (paymentMethod === 'kakaopay') {
             return handleKakaoPaySubscribe();
+        }
+        if (paymentMethod === 'tosspayments') {
+            return handleTosspaymentsSubscribe();
         }
         return handleCardSubscribe();
     };
@@ -537,7 +639,9 @@ function SubscribeContent() {
                 ? 'Google Play로 결제하기'
                 : paymentMethod === 'kakaopay'
                     ? '카카오페이로 결제하기'
-                    : '신용카드로 결제하기';
+                    : paymentMethod === 'tosspayments'
+                        ? '토스로 카드 등록하기'
+                        : '신용카드로 결제하기';
 
     const paymentProviderLabel = platform === 'ios'
         ? 'Apple App Store'
@@ -545,7 +649,9 @@ function SubscribeContent() {
             ? 'Google Play'
             : paymentMethod === 'kakaopay'
                 ? '카카오페이'
-                : 'KG이니시스';
+                : paymentMethod === 'tosspayments'
+                    ? '토스페이먼츠'
+                    : 'KG이니시스';
 
     return (
         <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
@@ -867,16 +973,16 @@ function SubscribeContent() {
                                     </div>
                                 )}
 
-                                {/* 결제 수단 — 카카오페이(월간) / 신용카드(월간+연간) */}
+                                {/* 결제 수단 — 카카오페이 / 토스(카드) / 신용카드 (이니시스) */}
                                 {platform === 'web' && (
                                     <div className="space-y-2">
                                         <p className="text-sm font-medium">결제 수단</p>
-                                        <div className="grid grid-cols-2 gap-2">
+                                        <div className="grid grid-cols-3 gap-2">
                                             <button
                                                 onClick={() => setPaymentMethod('kakaopay')}
                                                 disabled={billingCycle === 'yearly'}
                                                 className={cn(
-                                                    'p-3 rounded-lg border-2 text-center text-sm transition-all',
+                                                    'p-2.5 rounded-lg border-2 text-center text-xs transition-all',
                                                     paymentMethod === 'kakaopay'
                                                         ? 'border-primary bg-primary/5 font-semibold'
                                                         : 'border-muted hover:border-primary/30',
@@ -886,9 +992,21 @@ function SubscribeContent() {
                                                 카카오페이
                                             </button>
                                             <button
+                                                onClick={() => setPaymentMethod('tosspayments')}
+                                                className={cn(
+                                                    'p-2.5 rounded-lg border-2 text-center text-xs transition-all relative',
+                                                    paymentMethod === 'tosspayments'
+                                                        ? 'border-primary bg-primary/5 font-semibold'
+                                                        : 'border-muted hover:border-primary/30'
+                                                )}
+                                            >
+                                                <span>토스 카드</span>
+                                                <span className="absolute -top-1.5 -right-1 bg-blue-500 text-white text-[9px] px-1 rounded font-semibold">쉬움</span>
+                                            </button>
+                                            <button
                                                 onClick={() => setPaymentMethod('card')}
                                                 className={cn(
-                                                    'p-3 rounded-lg border-2 text-center text-sm transition-all',
+                                                    'p-2.5 rounded-lg border-2 text-center text-xs transition-all',
                                                     paymentMethod === 'card'
                                                         ? 'border-primary bg-primary/5 font-semibold'
                                                         : 'border-muted hover:border-primary/30'
@@ -898,12 +1016,12 @@ function SubscribeContent() {
                                             </button>
                                         </div>
                                         <p className="text-[11px] text-muted-foreground">
-                                            {paymentMethod === 'kakaopay'
-                                                ? '카카오페이에 등록된 카드 또는 카카오머니로 결제됩니다.'
-                                                : 'KG이니시스를 통한 안전결제 (국내 주요 카드사 지원)'}
+                                            {paymentMethod === 'kakaopay' && '카카오페이에 등록된 카드 또는 카카오머니로 결제됩니다.'}
+                                            {paymentMethod === 'tosspayments' && '토스페이먼츠 안전결제 · 카드번호 + 휴대폰 본인인증만으로 등록 (공동인증서 불필요)'}
+                                            {paymentMethod === 'card' && 'KG이니시스를 통한 안전결제 (국내 주요 카드사 지원)'}
                                         </p>
                                         {billingCycle === 'yearly' && (
-                                            <p className="text-[11px] text-amber-600">연간 결제는 신용카드만 가능합니다.</p>
+                                            <p className="text-[11px] text-amber-600">연간 결제는 신용카드(토스·이니시스)만 가능합니다.</p>
                                         )}
                                     </div>
                                 )}
@@ -925,7 +1043,7 @@ function SubscribeContent() {
                                 )}
 
                                 {/* 신용카드 결제 시 필수 정보 입력 */}
-                                {platform === 'web' && paymentMethod === 'card' && (
+                                {platform === 'web' && (paymentMethod === 'card' || paymentMethod === 'tosspayments') && (
                                     <div className="space-y-3">
                                         <div className="space-y-1">
                                             <label className="text-xs text-muted-foreground">구매자 이름 (필수)</label>
