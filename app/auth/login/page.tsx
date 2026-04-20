@@ -101,6 +101,15 @@ function LoginContent() {
                             카카오로 시작하기
                         </Button>
 
+                        {/* 약관 동의 안내 */}
+                        <p className="mt-4 text-xs text-center text-muted-foreground leading-relaxed">
+                            로그인 하면{' '}
+                            <Link href="/terms" className="text-primary underline">이용약관</Link>
+                            {' '}및{' '}
+                            <Link href="/privacy" className="text-primary underline">개인정보처리방침</Link>
+                            에 동의하게 됩니다.
+                        </p>
+
                         {/* 구분선 */}
                         <div className="relative my-6">
                             <div className="absolute inset-0 flex items-center">
