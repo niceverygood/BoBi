@@ -26,6 +26,7 @@ interface CustomerCardData {
             riskItems: Array<{ riskDisease: string; relativeRisk: number; riskLevel: string; riskCategory: string }>;
             overallAssessment: string;
         } | null;
+        hasHealthCheckup?: boolean;
     };
 }
 
@@ -271,6 +272,39 @@ function FutureMeContent() {
             {/* 입력 단계 */}
             {!result && !customerError && customerData && (
                 <>
+                    {/* 건강검진 연동 안내 — 미연동 시 정확도 향상 유도, 연동 시 활용 중 배지 */}
+                    {customerData.summary.hasHealthCheckup ? (
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs">
+                            <ShieldCheck className="w-4 h-4 shrink-0" />
+                            <span>
+                                <strong>건강검진 수치 연동 중</strong> — BMI·혈압·혈당 등 NHIS 데이터를 반영해 정확도 높은 리포트를 생성합니다.
+                            </span>
+                        </div>
+                    ) : (
+                        <div className="rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50 to-indigo-50 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-sm">
+                                <Sparkles className="w-5 h-5 text-white" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-violet-900 text-sm mb-0.5">
+                                    건강검진 데이터 연동 시 정확도 크게 향상
+                                </p>
+                                <p className="text-xs text-violet-700 leading-relaxed">
+                                    BMI·혈압·혈당·콜레스테롤 같은 NHIS 건강검진 수치를 연동하면
+                                    고객별 현실적인 발병 확률·치료비 시나리오를 제공합니다.
+                                </p>
+                            </div>
+                            <Link
+                                href={`/dashboard/health-checkup${customerId ? `?customerId=${customerId}` : ''}`}
+                                className="shrink-0"
+                            >
+                                <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white">
+                                    연동하기
+                                </Button>
+                            </Link>
+                        </div>
+                    )}
+
                     {/* 질병위험도 리포트 연동 */}
                     {customerData.summary.riskReport && (
                         <Card className="border-0 shadow-sm">

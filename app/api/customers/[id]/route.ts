@@ -12,29 +12,45 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return NextResponse.json({ error: '인증 필요' }, { status: 401 });
 
-        // 고객 정보
-        const { data: customer } = await supabase
-            .from('customers')
-            .select('*')
-            .eq('id', id)
-            .eq('user_id', user.id)
-            .single();
+        // 고객 정보 + 최신 분석 1건을 병렬 로드.
+        // 과거엔 모든 분석의 모든 JSON 컬럼(`*`)을 전부 가져왔는데 수 MB 단위 전송 발생 →
+        // summary 계산에 필요한 최신 1건의 필요 컬럼만 조회하도록 축소.
+        const [customerRes, latestRes, metaRes] = await Promise.all([
+            supabase
+                .from('customers')
+                .select('*')
+                .eq('id', id)
+                .eq('user_id', user.id)
+                .single(),
+            supabase
+                .from('analyses')
+                .select('id, created_at, status, medical_history, product_eligibility, risk_report')
+                .eq('customer_id', id)
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(1),
+            supabase
+                .from('analyses')
+                .select('id, created_at, status', { count: 'exact' })
+                .eq('customer_id', id)
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false }),
+        ]);
 
+        const customer = customerRes.data;
         if (!customer) return NextResponse.json({ error: '고객을 찾을 수 없습니다.' }, { status: 404 });
 
-        // 이 고객의 모든 분석 이력
-        const { data: analyses } = await supabase
-            .from('analyses')
-            .select('*')
-            .eq('customer_id', id)
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false });
+        // 이력 메타만 (무거운 JSON 없음) — 프론트에서 이력 리스트 렌더링용
+        const analyses = metaRes.data || [];
+        // summary 계산은 최신 1건으로
+        const latestAnalyses = latestRes.data || [];
 
         // 최신 분석에서 데이터 추출
-        const latest = analyses?.[0];
+        const latest = latestAnalyses[0];
         const medicalHistory = latest?.medical_history as Record<string, any> | null;
         const productEligibility = latest?.product_eligibility as Record<string, any> | null;
         const riskReport = latest?.risk_report as Record<string, any> | null;
+        const hasHealthCheckup = !!(riskReport?.healthCheckupData || medicalHistory?.healthCheckupData);
 
         // 건강 점수 계산 (0~100)
         let healthScore = 100;
@@ -103,6 +119,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
                     compoundRisks: riskReport.compoundRisks || [],
                     overallAssessment: riskReport.overallAssessment,
                 } : null,
+                hasHealthCheckup,
                 coverageGaps,
             },
         });

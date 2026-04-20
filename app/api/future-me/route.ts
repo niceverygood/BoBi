@@ -40,6 +40,59 @@ function safeCategoryAmount(raw: unknown): CategoryAmount {
     };
 }
 
+/**
+ * NHIS 건강검진 원본(risk-report에 같이 저장된 healthCheckupData)을
+ * AI 프롬프트에 넣을 짧은 문자열로 요약한다. 데이터가 없으면 "미연동".
+ * 핵심 수치(BMI·혈압·공복혈당·콜레스테롤·GFR·간기능)와 NHIS 예측(건강나이·뇌졸중·심뇌혈관)만 추출.
+ */
+function summarizeHealthCheckup(raw: unknown): string {
+    if (!raw || typeof raw !== 'object') return '미연동';
+    const d = raw as Record<string, unknown>;
+    const lines: string[] = [];
+
+    // 검진 수치 최신값
+    const checkup = d.checkup as Record<string, unknown> | undefined;
+    const preview = (checkup?.resPreviewList as Array<Record<string, unknown>> | undefined)?.[0];
+    if (preview) {
+        if (preview.resCheckupYear) lines.push(`- 검진년도: ${preview.resCheckupYear}`);
+        if (preview.resBMI) lines.push(`- BMI: ${preview.resBMI} (정상 18.5~24.9)`);
+        if (preview.resBloodPressure) lines.push(`- 혈압: ${preview.resBloodPressure} mmHg (정상 <120/80)`);
+        if (preview.resFastingBloodSuger) lines.push(`- 공복혈당: ${preview.resFastingBloodSuger} mg/dL (정상 <100)`);
+        if (preview.resTotalCholesterol) {
+            const parts = [`총 ${preview.resTotalCholesterol}`];
+            if (preview.resHDLCholesterol) parts.push(`HDL ${preview.resHDLCholesterol}`);
+            if (preview.resLDLCholesterol) parts.push(`LDL ${preview.resLDLCholesterol}`);
+            if (preview.resTriglyceride) parts.push(`중성지방 ${preview.resTriglyceride}`);
+            lines.push(`- 콜레스테롤: ${parts.join(' / ')} mg/dL`);
+        }
+        if (preview.resGFR) lines.push(`- 신사구체여과율(GFR): ${preview.resGFR} mL/min (정상 >60)`);
+        if (preview.resAST || preview.resALT) {
+            lines.push(`- 간기능: AST ${preview.resAST ?? '-'} / ALT ${preview.resALT ?? '-'} U/L`);
+        }
+        if (preview.resJudgement) lines.push(`- 종합판정: ${preview.resJudgement}`);
+    }
+
+    // 건강나이
+    const ha = d.healthAge as Record<string, unknown> | undefined;
+    if (ha?.resAge && ha?.resChronologicalAge) {
+        lines.push(`- 건강나이: ${ha.resAge}세 (실제 ${ha.resChronologicalAge}세)`);
+    }
+
+    // NHIS 예측
+    const stroke = d.stroke as Record<string, unknown> | undefined;
+    if (stroke?.resRiskGrade) {
+        const ratio = stroke.resRatio ? ` (${stroke.resRatio})` : '';
+        lines.push(`- NHIS 뇌졸중 10년 예측: ${stroke.resRiskGrade}${ratio}`);
+    }
+    const cardio = d.cardio as Record<string, unknown> | undefined;
+    if (cardio?.resRiskGrade) {
+        const ratio = cardio.resRatio ? ` (${cardio.resRatio})` : '';
+        lines.push(`- NHIS 심뇌혈관 10년 예측: ${cardio.resRiskGrade}${ratio}`);
+    }
+
+    return lines.length > 0 ? lines.join('\n') : '미연동';
+}
+
 export async function POST(request: Request) {
     try {
         const supabase = await createClient();
@@ -135,13 +188,20 @@ export async function POST(request: Request) {
         const customerAge = customer.birth_date ? calculateAge(customer.birth_date) : 40;
         const genderDisplay = customer.gender === 'male' ? '남성' : customer.gender === 'female' ? '여성' : '미입력';
 
+        // 프롬프트 슬림화 — 상위 5개만 전달 (과거 10개)
         const riskItemsText = riskReport.riskItems
-            .slice(0, 10)
+            .slice(0, 5)
             .map((item, i) =>
                 `${i + 1}. ${item.riskDisease} (${item.riskCategory})\n` +
-                `   - 상대위험도: ${item.relativeRisk}배 | 위험수준: ${item.riskLevel}\n` +
-                `   - 근거: ${item.evidence || item.explanation}`
-            ).join('\n\n');
+                `   - 상대위험도: ${item.relativeRisk}배 | 위험수준: ${item.riskLevel}`
+            ).join('\n');
+
+        // 건강검진 데이터 추출 → 프롬프트 요약 문자열 생성
+        // analysis.risk_report.healthCheckupData에 저장된 NHIS 원본을 파싱한다.
+        const rawHealthCheckup = (analysis.risk_report as unknown as Record<string, unknown>)?.healthCheckupData
+            || (analysis.medical_history as unknown as Record<string, unknown>)?.healthCheckupData;
+        const healthCheckupText = summarizeHealthCheckup(rawHealthCheckup);
+        const hasHealthCheckup = healthCheckupText !== '미연동';
 
         const topRiskItem = riskReport.riskItems[0];
         const topDiseaseCost = topRiskItem
@@ -169,6 +229,7 @@ export async function POST(request: Request) {
             .replace('{GENDER}', genderDisplay)
             .replace('{AGE}', String(customerAge))
             .replace('{RISK_ITEMS}', riskItemsText || '(위험도 데이터 없음)')
+            .replace('{HEALTH_CHECKUP_DATA}', healthCheckupText)
             .replace('{TOP_DISEASE_NAME}', topDiseaseName)
             .replace('{ESTIMATED_COST}', String(estimatedCost))
             .replace('{COVERED_COST}', String(coveredCost))
@@ -184,9 +245,10 @@ export async function POST(request: Request) {
             .replace('{CURRENT_TOTAL}', String(currentInsuranceTotal))
             .replace('{ADDITIONAL_PREMIUM}', String(additionalPremium));
 
-        console.log(`[FutureMe] AI 호출: ${customer.name}, age=${customerAge}, topDisease=${topDiseaseName}, covered=${JSON.stringify(coveredByCategory)}`);
+        console.log(`[FutureMe] AI 호출: ${customer.name}, age=${customerAge}, topDisease=${topDiseaseName}, hasCheckup=${hasHealthCheckup}`);
 
-        const aiResponse = await callClaude({ prompt, maxTokens: 4500, retries: 1 });
+        // maxTokens 축소 (4500 → 2500) — 실제 응답 길이가 2000 토큰 이하로 충분
+        const aiResponse = await callClaude({ prompt, maxTokens: 2500, retries: 1 });
 
         interface RawScenario {
             type?: string;
@@ -328,28 +390,18 @@ export async function POST(request: Request) {
             disclaimer: '본 리포트는 의학 통계 및 AI 분석 기반의 참고 자료이며, 실제 보험 인수 심사, 보험료, 보장 금액은 보험사 및 상품에 따라 달라질 수 있습니다.',
         };
 
-        // DB 저장 (카카오톡 공유 / 재조회용). 테이블 없어도 fail soft.
-        let reportId: string | null = null;
-        try {
-            const { data: saved, error: saveErr } = await svc
-                .from('future_me_reports')
-                .insert({
-                    user_id: user.id,
-                    customer_id: customerId,
-                    result,
-                })
-                .select('id')
-                .single();
-            if (saveErr) {
-                console.warn('[FutureMe] DB 저장 실패 (테이블 미존재 가능):', saveErr.message);
-            } else {
-                reportId = saved?.id || null;
-            }
-        } catch (err) {
-            console.warn('[FutureMe] DB 저장 예외:', err);
-        }
+        // DB 저장 — 응답을 블로킹하지 않도록 fire-and-forget.
+        // 카카오톡 공유·재조회는 이후 목록 조회에서 링크됨. 사용자는 즉시 결과를 본다.
+        svc
+            .from('future_me_reports')
+            .insert({ user_id: user.id, customer_id: customerId, result })
+            .then(({ error: saveErr }) => {
+                if (saveErr) {
+                    console.warn('[FutureMe] DB 저장 실패 (테이블 미존재 가능):', saveErr.message);
+                }
+            });
 
-        return NextResponse.json({ result, reportId });
+        return NextResponse.json({ result, reportId: null, hasHealthCheckup });
     } catch (error) {
         console.error('[FutureMe] 에러:', error);
         const rawMsg = (error as Error).message || '';
