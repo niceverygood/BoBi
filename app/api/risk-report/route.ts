@@ -7,6 +7,7 @@ import { parseAIResponse } from '@/lib/ai/parser';
 import { matchRisks, extractMedications, extractPatientProfile } from '@/lib/risk/risk-matcher';
 import { extractCheckupSnapshots, analyzeAllTrends, sortTrendsByPriority } from '@/lib/health/trend-analyzer';
 import { anonymizeAnalysis, saveAnonymizedRecord, isOptedOut } from '@/lib/privacy/anonymizer';
+import { getUserPlan, canAccessProFeature } from '@/lib/subscription/access';
 import type { AnalysisResult } from '@/types/analysis';
 import type { RiskReport } from '@/types/risk-report';
 
@@ -19,6 +20,15 @@ export async function POST(request: Request) {
 
         if (authError || !user) {
             return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
+        }
+
+        // 플랜 권한 체크 — 질병 위험도 리포트는 Pro 전용
+        const plan = await getUserPlan(supabase, user.id);
+        if (!canAccessProFeature(plan, 'risk_report')) {
+            return NextResponse.json(
+                { error: '질병 위험도 리포트는 프로 플랜 이상에서 이용 가능합니다.' },
+                { status: 403 },
+            );
         }
 
         const { analysisId, regenerate, healthCheckupData } = await request.json();

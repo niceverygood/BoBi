@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ArrowLeft, Loader2, AlertTriangle, HeartPulse, Download } from 'lucide-react';
 import RiskReportView from '@/components/risk-report/RiskReportView';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import FeatureGate from '@/components/common/FeatureGate';
 import { apiFetch } from '@/lib/api/client';
 import { createClient } from '@/lib/supabase/client';
 import type { RiskReport } from '@/types/risk-report';
@@ -205,12 +206,14 @@ function RiskReportContent() {
 
 export default function RiskReportPage() {
     return (
-        <Suspense fallback={
-            <div className="max-w-4xl mx-auto py-12">
-                <LoadingSpinner text="페이지 로딩 중..." size="lg" />
-            </div>
-        }>
-            <RiskReportContent />
-        </Suspense>
+        <FeatureGate feature="risk_report" title="질병 위험도 리포트">
+            <Suspense fallback={
+                <div className="max-w-4xl mx-auto py-12">
+                    <LoadingSpinner text="페이지 로딩 중..." size="lg" />
+                </div>
+            }>
+                <RiskReportContent />
+            </Suspense>
+        </FeatureGate>
     );
 }

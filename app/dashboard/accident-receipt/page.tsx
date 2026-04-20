@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Receipt, Download, Loader2, Calculator } from 'lucide-react';
 import ReceiptView from '@/components/accident-receipt/ReceiptView';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import FeatureGate from '@/components/common/FeatureGate';
 import { DISEASE_COST_DATA, getDiseaseCostByCategory, type DiseaseCostInfo } from '@/lib/receipt/disease-cost-data';
 import { apiFetch } from '@/lib/api/client';
 import type { AccidentReceipt } from '@/types/accident-receipt';
@@ -343,12 +344,14 @@ function AccidentReceiptContent() {
 
 export default function AccidentReceiptPage() {
     return (
-        <Suspense fallback={
-            <div className="max-w-4xl mx-auto py-12">
-                <LoadingSpinner text="페이지 로딩 중..." size="lg" />
-            </div>
-        }>
-            <AccidentReceiptContent />
-        </Suspense>
+        <FeatureGate feature="virtual_receipt" title="가상 영수증">
+            <Suspense fallback={
+                <div className="max-w-4xl mx-auto py-12">
+                    <LoadingSpinner text="페이지 로딩 중..." size="lg" />
+                </div>
+            }>
+                <AccidentReceiptContent />
+            </Suspense>
+        </FeatureGate>
     );
 }

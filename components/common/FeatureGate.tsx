@@ -1,0 +1,72 @@
+'use client';
+
+import Link from 'next/link';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Crown, ArrowLeft } from 'lucide-react';
+import { useSubscription } from '@/hooks/useSubscription';
+import type { PlanFeatures } from '@/types/subscription';
+
+interface FeatureGateProps {
+    feature: keyof PlanFeatures;
+    title: string;
+    description?: string;
+    children: React.ReactNode;
+}
+
+export default function FeatureGate({ feature, title, description, children }: FeatureGateProps) {
+    const { isFeatureEnabled, plan, loading } = useSubscription();
+
+    if (loading) {
+        return (
+            <div className="max-w-2xl mx-auto py-12 space-y-4">
+                <Skeleton className="h-8 w-48" />
+                <Skeleton className="h-48 w-full" />
+            </div>
+        );
+    }
+
+    if (isFeatureEnabled(feature)) {
+        return <>{children}</>;
+    }
+
+    return (
+        <div className="max-w-2xl mx-auto py-12 px-4">
+            <Card className="border-0 shadow-xl bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/20 dark:to-violet-900/10">
+                <CardHeader className="text-center pb-4">
+                    <div className="mx-auto w-16 h-16 bg-gradient-to-br from-violet-500 to-violet-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
+                        <Crown className="w-8 h-8 text-white" />
+                    </div>
+                    <CardTitle className="text-2xl font-bold">
+                        {title}은 프로 플랜 전용 기능입니다
+                    </CardTitle>
+                    <CardDescription className="mt-3 text-base leading-relaxed">
+                        현재 <span className="font-semibold text-foreground">{plan.display_name}</span> 플랜을 이용 중이세요.
+                        {description ? (
+                            <span className="block mt-2 text-sm">{description}</span>
+                        ) : (
+                            <span className="block mt-2 text-sm">
+                                프로 또는 팀 프로 플랜으로 업그레이드하면 이 기능을 바로 사용할 수 있습니다.
+                            </span>
+                        )}
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+                    <Link href="/pricing" className="flex-1 sm:flex-initial">
+                        <Button size="lg" className="bg-gradient-primary hover:opacity-90 shadow-md w-full sm:w-auto">
+                            <Crown className="w-4 h-4 mr-2" />
+                            프로 플랜으로 업그레이드
+                        </Button>
+                    </Link>
+                    <Link href="/dashboard" className="flex-1 sm:flex-initial">
+                        <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            대시보드로 돌아가기
+                        </Button>
+                    </Link>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}

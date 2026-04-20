@@ -12,16 +12,26 @@ import BobiLogo from '@/components/common/BobiLogo';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useAdmin } from '@/hooks/useAdmin';
 import { FEATURE_FLAGS } from '@/lib/utils/constants';
+import type { PlanFeatures } from '@/types/subscription';
 
-const navItems = [
+type NavItem = {
+    title: string;
+    href: string;
+    icon: typeof LayoutDashboard;
+    disabled?: boolean;
+    comingSoon?: boolean;
+    proFeature?: keyof PlanFeatures;
+};
+
+const navItems: NavItem[] = [
     { title: '대시보드', href: '/dashboard', icon: LayoutDashboard },
     { title: '고객 카드', href: '/dashboard/customers', icon: Users },
     { title: '새 분석', href: '/dashboard/analyze', icon: FileSearch },
     { title: '보장 분석', href: '/dashboard/coverage', icon: ShieldPlus, disabled: !FEATURE_FLAGS.coverage_analysis, comingSoon: !FEATURE_FLAGS.coverage_analysis },
     { title: '진료정보', href: '/dashboard/medical', icon: Stethoscope },
     { title: '건강검진', href: '/dashboard/health-checkup', icon: HeartPulse },
-    { title: '가상 영수증', href: '/dashboard/accident-receipt', icon: Receipt },
-    { title: '미래의 나', href: '/dashboard/future-me', icon: Sparkles },
+    { title: '가상 영수증', href: '/dashboard/accident-receipt', icon: Receipt, proFeature: 'virtual_receipt' },
+    { title: '미래의 나', href: '/dashboard/future-me', icon: Sparkles, proFeature: 'future_me' },
     { title: '분석 이력', href: '/dashboard/history', icon: History },
     { title: '1:1 문의', href: '/dashboard/inquiries', icon: MessageCircle },
     { title: '설정', href: '/dashboard/settings', icon: Settings },
@@ -34,10 +44,10 @@ interface SidebarProps {
 
 export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
     const pathname = usePathname();
-    const { plan, remainingAnalyses, loading } = useSubscription();
+    const { plan, remainingAnalyses, loading, isFeatureEnabled } = useSubscription();
     const { hasAdminAccess } = useAdmin();
 
-    const allNavItems = hasAdminAccess
+    const allNavItems: NavItem[] = hasAdminAccess
         ? [...navItems, { title: '관리자', href: '/admin', icon: ShieldCheck }]
         : navItems;
 
@@ -80,6 +90,7 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                     const Icon = item.icon;
                     const isDisabled = 'disabled' in item && item.disabled;
                     const showComingSoon = 'comingSoon' in item && item.comingSoon;
+                    const showProLock = !!item.proFeature && !loading && !isFeatureEnabled(item.proFeature);
 
                     if (isDisabled) {
                         return (
@@ -119,7 +130,16 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                             )}
                         >
                             <Icon className="w-5 h-5 shrink-0" />
-                            {!collapsed && <span>{item.title}</span>}
+                            {!collapsed && (
+                                <span className="flex items-center gap-2 flex-1">
+                                    {item.title}
+                                    {showProLock && (
+                                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 font-normal border-violet-300 text-violet-600 bg-violet-50 dark:bg-violet-950/20">
+                                            PRO
+                                        </Badge>
+                                    )}
+                                </span>
+                            )}
                         </Link>
                     );
                 })}

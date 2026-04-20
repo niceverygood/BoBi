@@ -31,6 +31,9 @@ const TEAM_PLAN_COLORS: Record<TeamPlanSlug, string> = {
 const INDIVIDUAL_FEATURES = [
     { label: 'AI 고지사항 분석', free: true, basic: true, pro: true },
     { label: '보장 분석 리포트', free: false, basic: true, pro: true },
+    { label: '질병 위험도 리포트', free: false, basic: false, pro: true },
+    { label: '미래의 나 (예상 의료비 시뮬레이션)', free: false, basic: false, pro: true },
+    { label: '가상 영수증 (질병별 의료비 분석)', free: false, basic: false, pro: true },
     { label: '리모델링 제안서', free: false, basic: false, pro: true },
     { label: '보험 자동 조회 (CODEF)', free: false, basic: true, pro: true },
     { label: 'PDF 용량 무제한', free: true, basic: true, pro: true },
@@ -45,6 +48,9 @@ const TEAM_FEATURES = [
     { label: '보험 자동 조회 (CODEF)', team_basic: true, team_pro: true },
     { label: '팀 관리 대시보드', team_basic: true, team_pro: true },
     { label: '팀원별 실적 리포트', team_basic: true, team_pro: true },
+    { label: '질병 위험도 리포트', team_basic: false, team_pro: true },
+    { label: '미래의 나 (예상 의료비 시뮬레이션)', team_basic: false, team_pro: true },
+    { label: '가상 영수증 (질병별 의료비 분석)', team_basic: false, team_pro: true },
     { label: '리모델링 제안서', team_basic: false, team_pro: true },
     { label: '맞춤 보험사 상품DB', team_basic: false, team_pro: true },
     { label: '전담 매니저 배정', team_basic: false, team_pro: true },
@@ -301,14 +307,16 @@ export default function PricingPage() {
                                             </li>
                                         ))}
                                     </ul>
-                                    <Link href={`/dashboard/subscribe?plan=${slug}`}>
-                                        <Button
-                                            className={`w-full ${isRecommended ? 'bg-gradient-primary hover:opacity-90' : ''}`}
-                                            variant={isRecommended ? 'default' : 'outline'}
-                                        >
-                                            구독 시작하기
-                                        </Button>
-                                    </Link>
+                                    <ExternalLinkButton
+                                        url="https://open.kakao.com/o/sBoBi"
+                                        className={`w-full ${isRecommended ? 'bg-gradient-primary hover:opacity-90' : ''}`}
+                                        variant={isRecommended ? 'default' : 'outline'}
+                                    >
+                                        도입 문의하기
+                                    </ExternalLinkButton>
+                                    <p className="text-[11px] text-center text-muted-foreground mt-2">
+                                        조직 규모·요구사항 확인 후 담당자가 안내드립니다.
+                                    </p>
                                 </CardContent>
                             </Card>
                         );

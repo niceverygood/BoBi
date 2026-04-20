@@ -5,6 +5,7 @@ import { callClaude } from '@/lib/ai/claude';
 import { FUTURE_ME_PROMPT } from '@/lib/ai/prompts';
 import { parseAIResponse } from '@/lib/ai/parser';
 import { DISEASE_COST_DATA } from '@/lib/receipt/disease-cost-data';
+import { getUserPlan, canAccessProFeature } from '@/lib/subscription/access';
 import type { RiskReport } from '@/types/risk-report';
 import type {
     FutureMeResult,
@@ -46,6 +47,15 @@ export async function POST(request: Request) {
 
         if (authError || !user) {
             return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
+        }
+
+        // 플랜 권한 체크 — 미래의 나는 Pro 전용
+        const plan = await getUserPlan(supabase, user.id);
+        if (!canAccessProFeature(plan, 'future_me')) {
+            return NextResponse.json(
+                { error: '미래의 나 기능은 프로 플랜 이상에서 이용 가능합니다.' },
+                { status: 403 },
+            );
         }
 
         const {

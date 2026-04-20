@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { callOpenAI } from '@/lib/ai/openai';
 import { parseAIResponse } from '@/lib/ai/parser';
+import { getUserPlan, canAccessProFeature } from '@/lib/subscription/access';
 import type { AccidentScenario, AccidentReceipt } from '@/types/accident-receipt';
 
 export const maxDuration = 300;
@@ -81,6 +82,15 @@ export async function POST(request: Request) {
 
         if (authError || !user) {
             return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
+        }
+
+        // 플랜 권한 체크 — 가상 영수증은 Pro 전용
+        const plan = await getUserPlan(supabase, user.id);
+        if (!canAccessProFeature(plan, 'virtual_receipt')) {
+            return NextResponse.json(
+                { error: '가상 영수증 기능은 프로 플랜 이상에서 이용 가능합니다.' },
+                { status: 403 },
+            );
         }
 
         const scenario: AccidentScenario = await request.json();

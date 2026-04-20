@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
     ArrowLeft, Building2, Phone, Mail, Loader2, RefreshCw, CheckCircle2,
-    Clock, PhoneCall, AlertCircle,
+    Clock, PhoneCall, AlertCircle, Crown, Check,
 } from 'lucide-react';
 import { useAdmin } from '@/hooks/useAdmin';
 import { apiFetch } from '@/lib/api/client';
@@ -119,6 +119,43 @@ export default function AdminEnterpriseInquiriesPage() {
             await fetchList();
         } catch (err) {
             alert((err as Error).message);
+        } finally {
+            setUpdating(null);
+        }
+    };
+
+    /**
+     * 문의자에게 팀 플랜 지정 + 상태를 '완료'로 변경.
+     * 총괄관리자(super) 전용.
+     */
+    const assignTeamPlan = async (inq: EnterpriseInquiry, planSlug: 'team_basic' | 'team_pro') => {
+        if (!inq.user_email) {
+            alert('문의자 이메일을 찾을 수 없습니다.');
+            return;
+        }
+        const planLabel = planSlug === 'team_basic' ? '팀 베이직' : '팀 프로';
+        if (!confirm(
+            `[${inq.contact_name}] ${inq.user_email}에게 ${planLabel} 플랜을 지정하시겠습니까?\n\n` +
+            `기존 활성 구독은 취소되고, 지정일로부터 1년간 유효한 신규 구독이 생성됩니다.`,
+        )) return;
+
+        setUpdating(inq.id);
+        try {
+            await apiFetch('/api/admin/update-plan', {
+                method: 'POST',
+                body: { targetEmail: inq.user_email, planSlug },
+            });
+            // 문의 상태 자동 완료 처리 + 메모 자동 기록
+            const memoLine = `[${new Date().toLocaleString('ko-KR')}] ${planLabel} 플랜 지정 완료`;
+            const combinedMemo = inq.admin_memo ? `${inq.admin_memo}\n${memoLine}` : memoLine;
+            await apiFetch('/api/enterprise-inquiries', {
+                method: 'PATCH',
+                body: { id: inq.id, status: 'completed', adminMemo: combinedMemo },
+            });
+            await fetchList();
+            alert(`${planLabel} 플랜이 지정되었습니다.`);
+        } catch (err) {
+            alert(`플랜 지정 실패: ${(err as Error).message}`);
         } finally {
             setUpdating(null);
         }
@@ -269,6 +306,41 @@ export default function AdminEnterpriseInquiriesPage() {
                                                 onSave={saveMemo}
                                                 disabled={updating === inq.id}
                                             />
+
+                                            {/* 팀 플랜 지정 — 총괄관리자 전용 */}
+                                            {role === 'super' && (
+                                                <div className="rounded-lg border border-violet-200 bg-violet-50/40 dark:bg-violet-950/10 p-3">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <Crown className="w-4 h-4 text-violet-600" />
+                                                        <p className="text-xs font-semibold text-violet-700 dark:text-violet-400">팀 플랜 지정</p>
+                                                    </div>
+                                                    <p className="text-[11px] text-muted-foreground mb-3 leading-relaxed">
+                                                        협의 완료 후 문의자({inq.user_email || '(이메일 없음)'})에게 팀 플랜을 지정합니다.
+                                                        기존 활성 구독은 자동 취소되고 신규 구독(1년 유효)이 생성됩니다. 문의 상태는 &quot;완료&quot;로 자동 변경됩니다.
+                                                    </p>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="h-8 text-xs border-violet-300 text-violet-700 hover:bg-violet-100 dark:hover:bg-violet-950/30"
+                                                            disabled={updating === inq.id || !inq.user_email}
+                                                            onClick={() => assignTeamPlan(inq, 'team_basic')}
+                                                        >
+                                                            <Check className="w-3.5 h-3.5 mr-1" />
+                                                            팀 베이직 지정
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            className="h-8 text-xs bg-violet-600 hover:bg-violet-700 text-white"
+                                                            disabled={updating === inq.id || !inq.user_email}
+                                                            onClick={() => assignTeamPlan(inq, 'team_pro')}
+                                                        >
+                                                            <Crown className="w-3.5 h-3.5 mr-1" />
+                                                            팀 프로 지정
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </>
                                     )}
 

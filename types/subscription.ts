@@ -22,6 +22,10 @@ export interface PlanFeatures {
     custom_product_db: boolean;
     priority_support: boolean;
     team_dashboard?: boolean;
+    // Pro 전용 기능 (Free/Basic/Team_Basic에서는 잠금)
+    risk_report?: boolean;
+    future_me?: boolean;
+    virtual_receipt?: boolean;
 }
 
 export interface Subscription {

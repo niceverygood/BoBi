@@ -21,9 +21,20 @@ const DEFAULT_PLAN: SubscriptionPlan = {
         pdf_export: false,
         custom_product_db: false,
         priority_support: false,
+        risk_report: false,
+        future_me: false,
+        virtual_receipt: false,
     },
     sort_order: 0,
 };
+
+// Pro 전용 기능 (DB의 plan.features에 해당 키가 없을 때 slug 기반으로 판정)
+const PRO_ONLY_FEATURES = new Set<keyof import('@/types/subscription').PlanFeatures>([
+    'risk_report',
+    'future_me',
+    'virtual_receipt',
+]);
+const PRO_PLAN_SLUGS = new Set(['pro', 'team_pro']);
 
 const DEFAULT_USAGE: UsageTracking = {
     id: '',
@@ -125,7 +136,13 @@ export function useSubscription() {
         : Math.max(0, usage.analyses_limit - usage.analyses_used);
 
     const isFeatureEnabled = (feature: keyof typeof plan.features): boolean => {
-        return plan.features[feature] === true;
+        const val = plan.features[feature];
+        if (val !== undefined) return val === true;
+        // DB에 키가 없는 경우: Pro 전용 기능은 slug로 판정, 그 외는 false
+        if (PRO_ONLY_FEATURES.has(feature)) {
+            return PRO_PLAN_SLUGS.has(plan.slug);
+        }
+        return false;
     };
 
     const result: SubscriptionWithUsage = {

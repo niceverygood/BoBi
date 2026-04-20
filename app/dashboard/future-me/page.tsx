@@ -14,6 +14,7 @@ import {
     MessageCircle, Users, DollarSign,
 } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import FeatureGate from '@/components/common/FeatureGate';
 import SendKakaoDialog from '@/components/future-me/SendKakaoDialog';
 import { apiFetch } from '@/lib/api/client';
 import type { FutureMeResult, FutureMeScenario, CategoryAmount } from '@/types/future-me';
@@ -877,12 +878,14 @@ function SelfPayCategoryCell({ label, amount }: { label: string; amount: number 
 
 export default function FutureMePage() {
     return (
-        <Suspense fallback={
-            <div className="max-w-3xl mx-auto py-12">
-                <LoadingSpinner text="페이지 로딩 중..." size="lg" />
-            </div>
-        }>
-            <FutureMeContent />
-        </Suspense>
+        <FeatureGate feature="future_me" title="미래의 나">
+            <Suspense fallback={
+                <div className="max-w-3xl mx-auto py-12">
+                    <LoadingSpinner text="페이지 로딩 중..." size="lg" />
+                </div>
+            }>
+                <FutureMeContent />
+            </Suspense>
+        </FeatureGate>
     );
 }
