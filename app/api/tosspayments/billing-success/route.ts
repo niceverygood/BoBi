@@ -13,6 +13,7 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { issueBillingKey, chargeBillingKey, generateOrderId } from '@/lib/tosspayments/server';
+import { TRIAL_DAYS, computeTrialEndsAt, isTrialEligiblePlan } from '@/lib/subscription/trial';
 
 export const dynamic = 'force-dynamic';
 
@@ -145,11 +146,25 @@ export async function GET(request: Request) {
             }
         }
 
-        // 4. 첫 결제 승인 (0원 쿠폰은 skip — 빌링키만 등록 후 다음 달 정상가 청구)
+        // 4. 체험 여부 판단 (pending.intent + 재자격 체크)
+        const now = new Date();
+        let isTrial = pending.intent === 'trial' && isTrialEligiblePlan(actualPlan.slug);
+        if (isTrial) {
+            // 이미 체험 이력이 있으면 체험 모드 해제 (중복 방지)
+            const { data: history } = await svc
+                .from('trial_history')
+                .select('id')
+                .eq('user_id', pending.user_id)
+                .eq('plan_slug', actualPlan.slug)
+                .maybeSingle();
+            if (history) isTrial = false;
+        }
+
+        // 5. 첫 결제 승인 (체험 모드면 스킵 — 빌링키만 등록하고 cron이 체험 종료 시 자동 청구)
         const orderId = generateOrderId(`sub-${actualPlan.slug}`);
         const orderName = `보비 ${actualPlan.display_name} (${pending.billing_cycle === 'yearly' ? '연간' : '월간'})`;
 
-        if (amount > 0) {
+        if (!isTrial && amount > 0) {
             const charge = await chargeBillingKey({
                 billingKey,
                 customerKey,
@@ -186,31 +201,36 @@ export async function GET(request: Request) {
             }
         }
 
-        // 5. 구독 생성
-        const now = new Date();
+        // 6. 구독 생성 — 체험 모드면 status='trialing' + trial_ends_at 설정
         const periodEnd = new Date(now);
-        if (pending.billing_cycle === 'yearly') {
+        if (isTrial) {
+            periodEnd.setDate(periodEnd.getDate() + TRIAL_DAYS);
+        } else if (pending.billing_cycle === 'yearly') {
             periodEnd.setFullYear(periodEnd.getFullYear() + 1);
         } else {
             periodEnd.setMonth(periodEnd.getMonth() + 1);
         }
 
-        // 기존 active 구독 취소
+        // 기존 active/trialing 구독 취소
         await svc
             .from('subscriptions')
             .update({ status: 'cancelled', cancelled_at: now.toISOString() })
             .eq('user_id', pending.user_id)
-            .eq('status', 'active');
+            .in('status', ['active', 'trialing']);
+
+        const trialEndsAt = isTrial ? computeTrialEndsAt(now) : null;
 
         const { data: subscription, error: subError } = await svc
             .from('subscriptions')
             .insert({
                 user_id: pending.user_id,
                 plan_id: actualPlan.id,
-                status: 'active',
+                status: isTrial ? 'trialing' : 'active',
                 billing_cycle: pending.billing_cycle,
                 current_period_start: now.toISOString(),
                 current_period_end: periodEnd.toISOString(),
+                trial_ends_at: trialEndsAt,
+                trial_used: isTrial,
                 payment_provider: 'tosspayments_direct',
                 payment_key: billingKey,
             })
@@ -269,6 +289,24 @@ export async function GET(request: Request) {
             console.warn('[toss/success] customer_keys 저장 실패 (테이블 미존재 가능):', err);
         }
 
+        // 체험 이력 기록
+        if (isTrial) {
+            try {
+                await svc.from('trial_history').upsert(
+                    {
+                        user_id: pending.user_id,
+                        plan_slug: actualPlan.slug,
+                        started_at: now.toISOString(),
+                        subscription_id: subscription.id,
+                        converted: false,
+                    },
+                    { onConflict: 'user_id,plan_slug' },
+                );
+            } catch (err) {
+                console.warn('[toss/success] trial_history 기록 실패:', err);
+            }
+        }
+
         // 쿠폰 사용 기록
         if (validatedCouponId) {
             try {
@@ -325,6 +363,7 @@ export async function GET(request: Request) {
             buildRedirect(origin, {
                 toss_status: 'success',
                 plan: actualPlan.slug,
+                ...(isTrial ? { trial: '1' } : {}),
             }),
             { status: 303 },
         );

@@ -1,11 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Crown, ArrowLeft } from 'lucide-react';
+import { Crown, ArrowLeft, Sparkles } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
+import { apiFetch } from '@/lib/api/client';
 import type { PlanFeatures } from '@/types/subscription';
 
 interface FeatureGateProps {
@@ -17,6 +19,18 @@ interface FeatureGateProps {
 
 export default function FeatureGate({ feature, title, description, children }: FeatureGateProps) {
     const { isFeatureEnabled, plan, loading } = useSubscription();
+    const [trialEligible, setTrialEligible] = useState(false);
+    const [trialDays, setTrialDays] = useState(7);
+
+    useEffect(() => {
+        if (loading || plan.slug !== 'free') return;
+        apiFetch<{ eligible: boolean; trialDays?: number }>('/api/billing/trial-eligibility?plan=basic')
+            .then((d) => {
+                setTrialEligible(!!d.eligible);
+                if (d.trialDays) setTrialDays(d.trialDays);
+            })
+            .catch(() => setTrialEligible(false));
+    }, [plan.slug, loading]);
 
     if (loading) {
         return (
@@ -52,19 +66,43 @@ export default function FeatureGate({ feature, title, description, children }: F
                         )}
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-                    <Link href="/pricing" className="flex-1 sm:flex-initial">
-                        <Button size="lg" className="bg-gradient-primary hover:opacity-90 shadow-md w-full sm:w-auto">
-                            <Crown className="w-4 h-4 mr-2" />
-                            프로 플랜으로 업그레이드
-                        </Button>
-                    </Link>
-                    <Link href="/dashboard" className="flex-1 sm:flex-initial">
-                        <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                            <ArrowLeft className="w-4 h-4 mr-2" />
-                            대시보드로 돌아가기
-                        </Button>
-                    </Link>
+                <CardContent className="space-y-4 pt-2">
+                    {/* 베이직 체험 가능 시 먼저 홍보 */}
+                    {trialEligible && (
+                        <div className="rounded-xl border-2 border-violet-300 bg-white/60 dark:bg-violet-950/30 p-4 text-center">
+                            <div className="flex items-center justify-center gap-2 mb-2">
+                                <Sparkles className="w-4 h-4 text-violet-600" />
+                                <p className="font-semibold text-sm text-violet-900 dark:text-violet-200">
+                                    먼저 베이직을 {trialDays}일 무료로 써보세요
+                                </p>
+                            </div>
+                            <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+                                베이직 플랜으로 주요 기능을 체험 후 필요 시 프로로 업그레이드할 수 있습니다.
+                                {' '}체험 기간 해지 시 <strong>0원</strong>.
+                            </p>
+                            <Link href="/dashboard/subscribe?plan=basic">
+                                <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white">
+                                    <Sparkles className="w-4 h-4 mr-1.5" />
+                                    {trialDays}일 무료 체험 시작
+                                </Button>
+                            </Link>
+                        </div>
+                    )}
+
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                        <Link href="/pricing" className="flex-1 sm:flex-initial">
+                            <Button size="lg" className="bg-gradient-primary hover:opacity-90 shadow-md w-full sm:w-auto">
+                                <Crown className="w-4 h-4 mr-2" />
+                                프로 플랜으로 업그레이드
+                            </Button>
+                        </Link>
+                        <Link href="/dashboard" className="flex-1 sm:flex-initial">
+                            <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                                <ArrowLeft className="w-4 h-4 mr-2" />
+                                대시보드로 돌아가기
+                            </Button>
+                        </Link>
+                    </div>
                 </CardContent>
             </Card>
         </div>

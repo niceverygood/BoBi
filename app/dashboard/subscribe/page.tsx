@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Check, Loader2, ArrowLeft, CreditCard, Shield, Zap, Crown, Apple, Smartphone, Building2, Tag, X, ArrowRight } from 'lucide-react';
+import { Check, Loader2, ArrowLeft, CreditCard, Shield, Zap, Crown, Apple, Smartphone, Building2, Tag, X, ArrowRight, Sparkles as SparklesIcon, Calendar } from 'lucide-react';
 import { PLAN_LIMITS, type PlanSlug } from '@/lib/utils/constants';
 import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
@@ -49,6 +49,12 @@ function SubscribeContent() {
     const [isMobile, setIsMobile] = useState(false);
     const [iapReady, setIapReady] = useState(false);
     const [enterpriseDialogOpen, setEnterpriseDialogOpen] = useState(false);
+
+    // 7일 무료 체험
+    const [trialEligible, setTrialEligible] = useState(false);
+    const [trialDays, setTrialDays] = useState(7);
+    const [useTrial, setUseTrial] = useState(false);
+    const [trialChecked, setTrialChecked] = useState(false);
 
     // Coupon
     const couponParam = searchParams.get('coupon');
@@ -101,6 +107,39 @@ function SubscribeContent() {
             setSelectedPlan(planParam);
         }
     }, [planParam]);
+
+    // 체험 모드일 때 결제 수단을 토스로 강제 (현재 토스만 지원)
+    useEffect(() => {
+        if (useTrial && trialEligible && paymentMethod !== 'tosspayments') {
+            setPaymentMethod('tosspayments');
+        }
+    }, [useTrial, trialEligible, paymentMethod]);
+
+    // 선택 플랜에 대한 7일 무료 체험 자격 체크
+    useEffect(() => {
+        if (subLoading) return;
+        const fetchEligibility = async () => {
+            try {
+                const data = await apiFetch<{ eligible: boolean; trialDays?: number }>(
+                    `/api/billing/trial-eligibility?plan=${selectedPlan}`,
+                );
+                setTrialEligible(!!data.eligible);
+                if (data.trialDays) setTrialDays(data.trialDays);
+                // 자격이 있고 월간 결제면 기본으로 체험 모드 체크 (월간에서만 체험 제공)
+                if (data.eligible && billingCycle === 'monthly') {
+                    setUseTrial(true);
+                } else {
+                    setUseTrial(false);
+                }
+            } catch {
+                setTrialEligible(false);
+                setUseTrial(false);
+            } finally {
+                setTrialChecked(true);
+            }
+        };
+        fetchEligibility();
+    }, [selectedPlan, billingCycle, subLoading]);
 
     // 토스페이먼츠 콜백 처리
     useEffect(() => {
@@ -527,6 +566,7 @@ function SubscribeContent() {
                     buyerTel: userPhone.replace(/-/g, ''),
                     ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
                     ...(appliedCoupon?.upgradeToPlan ? { upgradePlanSlug: appliedCoupon.upgradeToPlan } : {}),
+                    ...(useTrial && trialEligible ? { intent: 'trial' } : {}),
                 },
             });
 
@@ -610,17 +650,36 @@ function SubscribeContent() {
     const handleSubscribe = platform === 'web' ? handleWebSubscribe : handleIAPSubscribe;
 
     if (success) {
+        const isTrialSuccess = searchParams.get('trial') === '1';
         return (
             <div className="max-w-lg mx-auto mt-12 animate-fade-in">
                 <Card className="border-0 shadow-xl text-center">
                     <CardHeader>
-                        <div className="mx-auto w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mb-4">
-                            <Check className="w-8 h-8 text-white" />
+                        <div className={cn(
+                            "mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4",
+                            isTrialSuccess ? "bg-violet-500" : "bg-green-500",
+                        )}>
+                            {isTrialSuccess ? (
+                                <SparklesIcon className="w-8 h-8 text-white" />
+                            ) : (
+                                <Check className="w-8 h-8 text-white" />
+                            )}
                         </div>
-                        <CardTitle className="text-2xl">구독 완료!</CardTitle>
+                        <CardTitle className="text-2xl">
+                            {isTrialSuccess ? `${trialDays}일 무료 체험 시작!` : '구독 완료!'}
+                        </CardTitle>
                         <CardDescription className="text-base mt-2">
-                            {planInfo.name} 플랜이 활성화되었습니다.<br />
-                            지금 바로 모든 기능을 사용할 수 있습니다.
+                            {isTrialSuccess ? (
+                                <>
+                                    {planInfo.name} 플랜의 모든 기능을 <strong>{trialDays}일간 무료</strong>로 사용하세요.<br />
+                                    체험 종료일에 자동 결제되며, 그 전에 언제든 해지할 수 있습니다.
+                                </>
+                            ) : (
+                                <>
+                                    {planInfo.name} 플랜이 활성화되었습니다.<br />
+                                    지금 바로 모든 기능을 사용할 수 있습니다.
+                                </>
+                            )}
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
@@ -637,23 +696,32 @@ function SubscribeContent() {
                         >
                             바로 분석 시작하기
                         </Button>
+                        {isTrialSuccess && (
+                            <p className="text-xs text-muted-foreground pt-2">
+                                해지는 언제든 <Link href="/dashboard/settings" className="text-primary underline">설정 &gt; 구독 관리</Link>에서 가능합니다.
+                            </p>
+                        )}
                     </CardContent>
                 </Card>
             </div>
         );
     }
 
-    const paymentLabel = (amount === 0 && appliedCoupon)
-        ? '🎉 무료 쿠폰 적용하기'
-        : platform === 'ios'
-            ? 'Apple로 결제하기'
-            : platform === 'android'
-                ? 'Google Play로 결제하기'
-                : paymentMethod === 'kakaopay'
-                    ? '카카오페이로 결제하기'
-                    : paymentMethod === 'tosspayments'
-                        ? '토스로 카드 등록하기'
-                        : '신용카드로 결제하기';
+    const trialActive = useTrial && trialEligible && paymentMethod === 'tosspayments' && platform === 'web';
+
+    const paymentLabel = trialActive
+        ? `✨ ${trialDays}일 무료 체험 시작`
+        : (amount === 0 && appliedCoupon)
+            ? '🎉 무료 쿠폰 적용하기'
+            : platform === 'ios'
+                ? 'Apple로 결제하기'
+                : platform === 'android'
+                    ? 'Google Play로 결제하기'
+                    : paymentMethod === 'kakaopay'
+                        ? '카카오페이로 결제하기'
+                        : paymentMethod === 'tosspayments'
+                            ? '토스로 카드 등록하기'
+                            : '신용카드로 결제하기';
 
     const paymentProviderLabel = platform === 'ios'
         ? 'Apple App Store'
@@ -982,6 +1050,48 @@ function SubscribeContent() {
                                 {error && (
                                     <div className="p-3 rounded-lg bg-red-50 text-red-700 text-sm border border-red-200">
                                         {error}
+                                    </div>
+                                )}
+
+                                {/* 7일 무료 체험 — 베이직 선택 + 자격 있음 + 월간일 때만 노출 */}
+                                {trialChecked && trialEligible && selectedPlan === 'basic' && billingCycle === 'monthly' && platform === 'web' && (
+                                    <div className="rounded-xl border-2 border-violet-200 bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/20 dark:to-violet-900/10 p-4 space-y-3">
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shrink-0 shadow-md">
+                                                <SparklesIcon className="w-5 h-5 text-white" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <p className="font-bold text-violet-900 dark:text-violet-200">
+                                                        첫 결제 {trialDays}일 무료 체험
+                                                    </p>
+                                                    <Badge className="bg-violet-600 text-white text-[10px]">NEW</Badge>
+                                                </div>
+                                                <p className="text-xs text-violet-700 dark:text-violet-300 leading-relaxed">
+                                                    오늘 카드를 등록하고 {trialDays}일간 모든 기능을 써보세요.
+                                                    {' '}체험 종료일({new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })})에 자동 결제되며,
+                                                    그 전에 해지하면 <strong>단 한 푼도 청구되지 않습니다.</strong>
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 pt-2 border-t border-violet-200/60">
+                                            <input
+                                                type="checkbox"
+                                                id="use-trial"
+                                                checked={useTrial}
+                                                onChange={(e) => setUseTrial(e.target.checked)}
+                                                className="w-4 h-4 rounded border-violet-300 text-violet-600 focus:ring-violet-500"
+                                            />
+                                            <label htmlFor="use-trial" className="text-sm font-medium text-violet-900 dark:text-violet-200 cursor-pointer flex items-center gap-1.5">
+                                                <Calendar className="w-4 h-4" />
+                                                {trialDays}일 무료 체험 사용 (권장)
+                                            </label>
+                                        </div>
+                                        {useTrial && (
+                                            <p className="text-[11px] text-violet-600 dark:text-violet-400 leading-relaxed pl-6">
+                                                💳 결제 수단은 <strong>토스 카드</strong>로 자동 설정됩니다. 오늘은 0원, {trialDays}일 후 {planInfo.priceMonthly.toLocaleString()}원이 청구됩니다.
+                                            </p>
+                                        )}
                                     </div>
                                 )}
 

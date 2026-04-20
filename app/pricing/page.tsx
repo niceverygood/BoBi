@@ -118,7 +118,14 @@ export default function PricingPage() {
                                     <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center mb-3 shadow-md`}>
                                         <Icon className="w-6 h-6 text-white" />
                                     </div>
-                                    <CardTitle className="text-xl">{plan.name}</CardTitle>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <CardTitle className="text-xl">{plan.name}</CardTitle>
+                                        {slug === 'basic' && (
+                                            <Badge className="bg-violet-600 text-white text-[10px] px-2 py-0.5">
+                                                7일 무료 체험
+                                            </Badge>
+                                        )}
+                                    </div>
                                     <div className="mt-2">
                                         {plan.priceMonthly > 0 ? (
                                             <>
@@ -129,6 +136,11 @@ export default function PricingPage() {
                                                 <p className="text-xs text-muted-foreground mt-1">
                                                     연간 결제 시 {Math.round(plan.priceYearly / 12).toLocaleString()}원/월
                                                 </p>
+                                                {slug === 'basic' && (
+                                                    <p className="text-xs text-violet-600 font-semibold mt-1">
+                                                        ✨ 첫 7일 무료 · 언제든 해지 가능
+                                                    </p>
+                                                )}
                                             </>
                                         ) : (
                                             <span className="text-3xl font-bold">무료</span>
@@ -158,7 +170,7 @@ export default function PricingPage() {
                                             className={`w-full ${isRecommended ? 'bg-gradient-primary hover:opacity-90' : ''}`}
                                             variant={isRecommended ? 'default' : 'outline'}
                                         >
-                                            {slug === 'free' ? '무료로 시작' : '구독 시작하기'}
+                                            {slug === 'free' ? '무료로 시작' : slug === 'basic' ? '7일 무료 체험 시작' : '구독 시작하기'}
                                         </Button>
                                     </Link>
                                 </CardContent>

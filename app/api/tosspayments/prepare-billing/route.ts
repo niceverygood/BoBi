@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { generateCustomerKey } from '@/lib/tosspayments/server';
+import { checkTrialEligibility, isTrialEligiblePlan } from '@/lib/subscription/trial';
 
 export async function POST(request: Request) {
     try {
@@ -21,6 +22,22 @@ export async function POST(request: Request) {
         const buyerTel = body.buyerTel ? String(body.buyerTel).replace(/\D/g, '') : '';
         const couponCode = body.couponCode ? String(body.couponCode).trim().toUpperCase() : null;
         const upgradePlanSlug = body.upgradePlanSlug ? String(body.upgradePlanSlug).trim() : null;
+        const rawIntent = body.intent === 'trial' ? 'trial' : 'normal';
+
+        // 체험 요청이면 서버 사이드 재검증 (클라 우회 방지)
+        let intent: 'normal' | 'trial' = rawIntent;
+        if (intent === 'trial') {
+            if (!isTrialEligiblePlan(planSlug)) {
+                return NextResponse.json({ error: '해당 플랜은 무료 체험을 지원하지 않습니다.' }, { status: 400 });
+            }
+            const eligibility = await checkTrialEligibility(supabase, user.id, planSlug);
+            if (!eligibility.eligible) {
+                return NextResponse.json(
+                    { error: '무료 체험 대상이 아닙니다.', reason: eligibility.reason },
+                    { status: 400 },
+                );
+            }
+        }
 
         if (!planSlug) {
             return NextResponse.json({ error: 'planSlug 누락' }, { status: 400 });
@@ -79,6 +96,7 @@ export async function POST(request: Request) {
                 buyer_email: buyerEmail,
                 buyer_tel: buyerTel,
                 amount,
+                intent,
             });
         } catch (err) {
             console.error('[tosspayments/prepare] pending 저장 실패:', err);

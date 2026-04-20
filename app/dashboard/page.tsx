@@ -17,6 +17,7 @@ import SearchTrendWidget from '@/components/dashboard/SearchTrendWidget';
 import WeeklyKpiCards from '@/components/dashboard/WeeklyKpiCards';
 import FollowupsWidget from '@/components/dashboard/FollowupsWidget';
 import ActivityChart from '@/components/dashboard/ActivityChart';
+import TrialPromoBanner from '@/components/subscribe/TrialPromoBanner';
 
 interface RecentAnalysis {
     id: string;
@@ -114,6 +115,9 @@ export default function DashboardPage() {
                     {loading ? <Skeleton className="h-5 w-80 mt-1" /> : `오늘도 성공적인 상담 되세요. 이번 달 남은 분석 ${displayRemaining}건입니다.`}
                 </p>
             </div>
+
+            {/* 🎁 베이직 7일 무료 체험 프로모션 (무료 유저 + 자격 있을 때만) */}
+            <TrialPromoBanner />
 
             {/* ⭐ 팔로업 필요 고객 (리텐션 핵심 — 최상단 배치) */}
             <FollowupsWidget />

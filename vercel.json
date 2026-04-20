@@ -5,6 +5,10 @@
             "schedule": "0 0 * * *"
         },
         {
+            "path": "/api/cron/trial-end",
+            "schedule": "0 1 * * *"
+        },
+        {
             "path": "/api/cron/search-trends",
             "schedule": "0 22,3,6 * * *"
         }

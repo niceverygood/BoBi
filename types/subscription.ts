@@ -32,13 +32,15 @@ export interface Subscription {
     id: string;
     user_id: string;
     plan_id: string;
-    status: 'active' | 'cancelled' | 'past_due';
+    status: 'active' | 'trialing' | 'cancelled' | 'past_due';
     billing_cycle: 'monthly' | 'yearly';
     current_period_start: string;
     current_period_end: string;
     payment_provider?: string;
     payment_key?: string;
     cancelled_at?: string;
+    trial_ends_at?: string | null;
+    trial_used?: boolean;
     created_at: string;
     updated_at: string;
     // Joined
