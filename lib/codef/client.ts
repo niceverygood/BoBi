@@ -1090,9 +1090,16 @@ export interface DiseaseRiskPrediction {
 async function callHealthCheckupApi(
     endpoint: string,
     params: HealthCheckupRequest,
-    apiName: string
+    apiName: string,
+    opts: { useProd?: boolean } = {},
 ): Promise<{ data: unknown; requires2Way?: boolean; twoWayData?: Record<string, unknown> }> {
-    const token = await getDemoAccessToken();
+    // useProd=true: 프로덕션 CODEF (api.codef.io + CODEF_CLIENT_ID/SECRET)
+    // useProd=false: 데모 CODEF (development.codef.io + CODEF_DEMO_CLIENT_ID/SECRET)
+    // 환경변수 CODEF_HEALTH_CHECKUP_FORCE_DEMO=true 로 긴급 롤백 가능.
+    const forceDemo = process.env.CODEF_HEALTH_CHECKUP_FORCE_DEMO === 'true';
+    const useProd = forceDemo ? false : (opts.useProd ?? false);
+    const token = useProd ? await getAccessToken() : await getDemoAccessToken();
+    const baseUrl = useProd ? CODEF_API_URL : CODEF_DEMO_API_URL;
     const isSmsLogin = params.loginType === '2';
 
     // 건강보험공단(0002)은 identity를 생년월일(YYYYMMDD) 형식으로 요청
@@ -1152,14 +1159,14 @@ async function callHealthCheckupApi(
             body.secureNoRefresh = params.secureNoRefresh || '0';
         }
     }
-    console.log(`[CODEF] ${apiName} request:`, JSON.stringify(body, null, 2));
-    const res = await fetch(`${CODEF_DEMO_API_URL}${endpoint}`, {
+    console.log(`[CODEF] ${apiName} (${useProd ? 'prod' : 'demo'}) request:`, JSON.stringify(body, null, 2));
+    const res = await fetch(`${baseUrl}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(body),
     });
     const data = await parseCodefResponse<{ result: { code: string; message: string }; data: unknown }>(res);
-    console.log(`[CODEF] ${apiName} response:`, data.result?.code, data.result?.message);
+    console.log(`[CODEF] ${apiName} (${useProd ? 'prod' : 'demo'}) response:`, data.result?.code, data.result?.message);
     if (data.result?.code === 'CF-03002') {
         return { data: null, requires2Way: true, twoWayData: data.data as Record<string, unknown> };
     }
@@ -1169,22 +1176,42 @@ async function callHealthCheckupApi(
     return { data: data.data };
 }
 
-/** 건강검진결과 조회 */
+/** 건강검진결과 조회 — 프로덕션 CODEF (2026-04 승인 완료, 건당 50원 과금) */
 export async function fetchHealthCheckupResult(params: HealthCheckupRequest) {
-    return callHealthCheckupApi('/v1/kr/public/pp/nhis-health-checkup/result', params, '건강검진결과');
+    return callHealthCheckupApi(
+        '/v1/kr/public/pp/nhis-health-checkup/result',
+        params,
+        '건강검진결과',
+        { useProd: true },
+    );
 }
 
-/** 건강나이알아보기 */
+/** 건강나이알아보기 — 프로덕션 미승인, 데모 경로 유지 */
 export async function fetchHealthAge(params: HealthCheckupRequest) {
-    return callHealthCheckupApi('/v1/kr/public/pp/hi-nhis-list/review-health-age', params, '건강나이알아보기');
+    return callHealthCheckupApi(
+        '/v1/kr/public/pp/hi-nhis-list/review-health-age',
+        params,
+        '건강나이알아보기',
+        { useProd: false },
+    );
 }
 
-/** 뇌졸중 예측 */
+/** 뇌졸중 예측 — 프로덕션 미승인, 데모 경로 유지 */
 export async function fetchStrokePrediction(params: HealthCheckupRequest) {
-    return callHealthCheckupApi('/v1/kr/public/pp/hi-nhis-list/stroke', params, '뇌졸중예측');
+    return callHealthCheckupApi(
+        '/v1/kr/public/pp/hi-nhis-list/stroke',
+        params,
+        '뇌졸중예측',
+        { useProd: false },
+    );
 }
 
-/** 심뇌혈관 질환예측 */
+/** 심뇌혈관 질환예측 — 프로덕션 미승인, 데모 경로 유지 */
 export async function fetchCardioPrediction(params: HealthCheckupRequest) {
-    return callHealthCheckupApi('/v1/kr/public/pp/hi-nhis-list/cardio-cerebrovascular', params, '심뇌혈관질환예측');
+    return callHealthCheckupApi(
+        '/v1/kr/public/pp/hi-nhis-list/cardio-cerebrovascular',
+        params,
+        '심뇌혈관질환예측',
+        { useProd: false },
+    );
 }
