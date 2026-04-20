@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { getPlatform, isNative, type AppPlatform } from '@/lib/iap/platform';
 import { openExternal } from '@/lib/open-external';
 import EnterpriseInquiryDialog from '@/components/subscribe/EnterpriseInquiryDialog';
+import { SocialProofInline } from '@/components/common/SocialProof';
 
 // 개인 플랜 아이콘 (팀 플랜은 엔터프라이즈 문의로 대체됨)
 const PLAN_ICONS: Record<string, typeof Zap> = {
@@ -745,6 +746,9 @@ function SubscribeContent() {
                     <p className="text-muted-foreground mt-0.5">플랜을 선택하고 결제를 진행하세요</p>
                 </div>
             </div>
+
+            {/* 사회적 증거 — 결제 직전 안심 */}
+            <SocialProofInline />
 
             <div className="grid lg:grid-cols-5 gap-6">
                 {/* Left: Plan Selection */}

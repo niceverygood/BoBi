@@ -18,6 +18,7 @@ import WeeklyKpiCards from '@/components/dashboard/WeeklyKpiCards';
 import FollowupsWidget from '@/components/dashboard/FollowupsWidget';
 import ActivityChart from '@/components/dashboard/ActivityChart';
 import TrialPromoBanner from '@/components/subscribe/TrialPromoBanner';
+import { SocialProofStrip } from '@/components/common/SocialProof';
 
 interface RecentAnalysis {
     id: string;
@@ -118,6 +119,9 @@ export default function DashboardPage() {
 
             {/* 🎁 베이직 7일 무료 체험 프로모션 (무료 유저 + 자격 있을 때만) */}
             <TrialPromoBanner />
+
+            {/* 📊 사회적 증거 — 무료 유저에게 집중 노출 */}
+            {plan.slug === 'free' && !loading && <SocialProofStrip compact />}
 
             {/* ⭐ 팔로업 필요 고객 (리텐션 핵심 — 최상단 배치) */}
             <FollowupsWidget />

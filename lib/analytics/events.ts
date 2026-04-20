@@ -38,6 +38,9 @@ export type EventName =
     | 'checkout_completed'
     | 'checkout_failed'
     | 'coupon_applied'
+    | 'trial_upsell_modal_shown'
+    | 'trial_started'
+    | 'trial_converted'
     // 엔터프라이즈
     | 'enterprise_inquiry_submitted';
 

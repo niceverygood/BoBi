@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Check, X, ArrowLeft, Sparkles, Zap, Crown, Building, Users } from 'lucide-react';
 import { PLAN_LIMITS, type PlanSlug, type IndividualPlanSlug, type TeamPlanSlug } from '@/lib/utils/constants';
 import { ExternalLinkButton } from '@/components/common/ExternalLinkButton';
+import { SocialProofStrip, TestimonialCards } from '@/components/common/SocialProof';
 
 const INDIVIDUAL_PLAN_ICONS: Record<IndividualPlanSlug, typeof Sparkles> = {
     free: Sparkles,
@@ -89,6 +90,11 @@ export default function PricingPage() {
                     </p>
                 </div>
 
+                {/* 사회적 증거 — 헤더 바로 아래 */}
+                <div className="mb-16 animate-fade-in">
+                    <SocialProofStrip />
+                </div>
+
                 {/* ═══════════════════════════════════════ */}
                 {/* 개인 플랜 섹션 */}
                 {/* ═══════════════════════════════════════ */}
@@ -147,7 +153,9 @@ export default function PricingPage() {
                                         )}
                                     </div>
                                     <p className="text-sm text-muted-foreground mt-2">
-                                        월 {plan.analysisLimit === -1 ? '무제한' : `${plan.analysisLimit}건`} 분석
+                                        {slug === 'free'
+                                            ? `${plan.analysisLimit}건 체험 (누적)`
+                                            : `월 ${plan.analysisLimit === -1 ? '무제한' : `${plan.analysisLimit}건`} 분석`}
                                     </p>
                                 </CardHeader>
                                 <CardContent>
@@ -198,10 +206,12 @@ export default function PricingPage() {
                                     </thead>
                                     <tbody>
                                         <tr className="border-b">
-                                            <td className="p-4 text-sm font-medium whitespace-nowrap">월간 분석 건수</td>
+                                            <td className="p-4 text-sm font-medium whitespace-nowrap">분석 건수</td>
                                             {individualSlugs.map((slug) => (
                                                 <td key={slug} className="p-4 text-center text-sm font-semibold whitespace-nowrap">
-                                                    {PLAN_LIMITS[slug].analysisLimit === -1 ? '무제한' : `${PLAN_LIMITS[slug].analysisLimit}건`}
+                                                    {slug === 'free'
+                                                        ? `${PLAN_LIMITS[slug].analysisLimit}건 (누적 체험)`
+                                                        : PLAN_LIMITS[slug].analysisLimit === -1 ? '월 무제한' : `월 ${PLAN_LIMITS[slug].analysisLimit}건`}
                                                 </td>
                                             ))}
                                         </tr>
@@ -457,6 +467,15 @@ export default function PricingPage() {
                             </div>
                         </CardContent>
                     </Card>
+                </div>
+
+                {/* 설계사 후기 */}
+                <div className="mt-20 mb-8 animate-fade-in">
+                    <div className="text-center mb-8">
+                        <h2 className="text-2xl font-bold mb-2">현장 설계사들의 실제 이야기</h2>
+                        <p className="text-sm text-muted-foreground">이미 보비로 성과를 내고 있는 분들의 후기입니다</p>
+                    </div>
+                    <TestimonialCards />
                 </div>
 
                 {/* CTA */}

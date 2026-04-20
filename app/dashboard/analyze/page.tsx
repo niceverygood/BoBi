@@ -9,6 +9,7 @@ import StepIndicator from '@/components/common/StepIndicator';
 import PdfUploader from '@/components/analyze/PdfUploader';
 import AnalysisResultView from '@/components/analyze/AnalysisResult';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import TrialUpsellModal from '@/components/subscribe/TrialUpsellModal';
 import { useSubscription } from '@/hooks/useSubscription';
 import { createClient } from '@/lib/supabase/client';
 import { CREDIT_PACKS } from '@/lib/utils/constants';
@@ -222,6 +223,9 @@ function AnalyzeContent() {
 
     return (
         <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+            {/* 무료 유저 한도 도달 시 자동 업셀 모달 */}
+            <TrialUpsellModal />
+
             <StepIndicator
                 steps={steps}
                 currentStep={1}

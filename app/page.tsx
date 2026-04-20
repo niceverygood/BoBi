@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { FileSearch, Package, Receipt, ArrowRight, CheckCircle2, Sparkles, Zap, Lock, LayoutDashboard } from 'lucide-react';
 import BobiLogo from '@/components/common/BobiLogo';
 import { createClient } from '@/lib/supabase/server';
+import { SocialProofStrip, TestimonialCards } from '@/components/common/SocialProof';
 
 export default async function LandingPage() {
   const supabase = await createClient();
@@ -160,6 +161,13 @@ export default async function LandingPage() {
         </div>
       </section>
 
+      {/* 사회적 증거 — Hero 직후 */}
+      <section className="py-12 px-4 bg-background">
+        <div className="max-w-5xl mx-auto">
+          <SocialProofStrip />
+        </div>
+      </section>
+
       {/* Features */}
       <section className="py-20 px-4 bg-muted/30">
         <div className="max-w-6xl mx-auto">
@@ -199,12 +207,23 @@ export default async function LandingPage() {
         </div>
       </section>
 
+      {/* 설계사 후기 */}
+      <section className="py-20 px-4 bg-background">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold mb-3">현장 설계사들의 이야기</h2>
+            <p className="text-muted-foreground">이미 보비로 성과를 내고 있는 분들의 후기입니다</p>
+          </div>
+          <TestimonialCards />
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="py-20 px-4">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">지금 바로 시작하세요</h2>
           <p className="text-muted-foreground text-lg mb-8">
-            무료로 매월 5건까지 AI 분석을 체험하세요
+            무료로 3건 분석을 체험해보고, 베이직은 <strong>7일 무료</strong>로 시작하세요
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/auth/signup">
