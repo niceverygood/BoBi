@@ -41,10 +41,10 @@ export async function GET() {
 
         const svc = await createServiceClient();
 
-        // 완료된 분석 + 고객 정보 조인
+        // 완료된 분석 — JSON 컬럼 제외하고 메타만 조회 (수 MB 절감)
         const { data: analyses } = await svc
             .from('analyses')
-            .select('id, customer_id, created_at, risk_report, updated_at')
+            .select('id, customer_id, created_at, updated_at')
             .eq('user_id', user.id)
             .eq('status', 'completed')
             .not('customer_id', 'is', null)
@@ -55,23 +55,21 @@ export async function GET() {
             return NextResponse.json({ followups: [] });
         }
 
-        // 고객 이름 매핑
+        const analysisIds = analyses.map(a => a.id);
         const customerIds = [...new Set(analyses.map(a => a.customer_id).filter(Boolean))] as string[];
-        const { data: customers } = await svc
-            .from('customers')
-            .select('id, name')
-            .in('id', customerIds);
-        const customerMap = new Map((customers || []).map(c => [c.id, c.name]));
 
-        // future_me_reports 조회 (analysis_id 또는 customer_id 기준)
-        const { data: fmReports } = await svc
-            .from('future_me_reports')
-            .select('id, customer_id, created_at')
-            .eq('user_id', user.id)
-            .in('customer_id', customerIds);
+        // 고객 이름 매핑 + risk_report 존재 여부(id만) + future_me 세 쿼리 병렬
+        const [customersRes, riskRes, fmRes] = await Promise.all([
+            svc.from('customers').select('id, name').in('id', customerIds),
+            svc.from('analyses').select('id').in('id', analysisIds).not('risk_report', 'is', null),
+            svc.from('future_me_reports').select('id, customer_id, created_at').eq('user_id', user.id).in('customer_id', customerIds),
+        ]);
+
+        const customerMap = new Map((customersRes.data || []).map(c => [c.id, c.name]));
+        const hasRiskSet = new Set((riskRes.data || []).map(r => r.id));
+
         const futureMeMap = new Map<string, { id: string; created_at: string }>();
-        for (const r of fmReports || []) {
-            // 같은 고객이면 가장 최신만 기록
+        for (const r of fmRes.data || []) {
             const existing = futureMeMap.get(r.customer_id);
             if (!existing || new Date(r.created_at) > new Date(existing.created_at)) {
                 futureMeMap.set(r.customer_id, { id: r.id, created_at: r.created_at });
@@ -88,9 +86,10 @@ export async function GET() {
             const name = customerMap.get(a.customer_id) || '알 수 없는 고객';
             const daysSince = daysBetween(a.created_at);
             const fm = futureMeMap.get(a.customer_id);
+            const hasRisk = hasRiskSet.has(a.id);
 
             // Case A: 분석 완료, 위험도 리포트 없음 + 7일 이상
-            if (!a.risk_report && daysSince >= 7) {
+            if (!hasRisk && daysSince >= 7) {
                 items.push({
                     customerId: a.customer_id,
                     customerName: name,
@@ -106,7 +105,7 @@ export async function GET() {
             }
 
             // Case B: 위험도 리포트 있으나 미래의나 없음
-            if (a.risk_report && !fm && daysSince >= 3) {
+            if (hasRisk && !fm && daysSince >= 3) {
                 items.push({
                     customerId: a.customer_id,
                     customerName: name,

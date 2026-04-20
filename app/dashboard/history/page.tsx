@@ -18,57 +18,45 @@ interface AnalysisRecord {
     status: string;
     created_at: string;
     updated_at: string;
-    medical_history: Record<string, unknown> | null;
-    product_eligibility: Record<string, unknown> | null;
-    claim_assessment: Record<string, unknown> | null;
-    disclosure_summary: Record<string, unknown> | null;
-    risk_report: Record<string, unknown> | null;
+    overall_summary: string | null;
+    source: string | null;
+    has_medical_history: boolean;
+    has_product_eligibility: boolean;
+    has_claim_assessment: boolean;
+    has_risk_report: boolean;
 }
+
+const PAGE_SIZE = 20;
 
 export default function HistoryPage() {
     const [analyses, setAnalyses] = useState<AnalysisRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [deleting, setDeleting] = useState<string | null>(null);
+    const [page, setPage] = useState(0);
+    const [totalCount, setTotalCount] = useState(0);
 
-    const fetchAnalyses = useCallback(async () => {
+    const fetchAnalyses = useCallback(async (targetPage = 0) => {
         setLoading(true);
         try {
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            const { data, error } = await supabase
-                .from('analyses')
-                .select('id, customer_id, status, created_at, updated_at, medical_history, product_eligibility, claim_assessment, disclosure_summary')
-                .eq('user_id', user.id)
-                .order('created_at', { ascending: false })
-                .limit(100);
+            const { data, error } = await supabase.rpc('get_analyses_list', {
+                p_user_id: user.id,
+                p_limit: PAGE_SIZE,
+                p_offset: targetPage * PAGE_SIZE,
+            });
 
             if (error) {
                 console.error('History fetch error:', error);
                 return;
             }
 
-            // risk_report는 별도 조회 (컬럼이 없을 수 있음)
-            let enriched = (data || []).map(d => ({ ...d, risk_report: null }));
-            try {
-                const { data: riskData } = await supabase
-                    .from('analyses')
-                    .select('id, risk_report')
-                    .eq('user_id', user.id)
-                    .not('risk_report', 'is', null);
-                if (riskData) {
-                    const riskMap = new Map(riskData.map(r => [r.id, r.risk_report]));
-                    enriched = enriched.map(a => ({
-                        ...a,
-                        risk_report: riskMap.get(a.id) || null,
-                    }));
-                }
-            } catch {
-                // risk_report 컬럼이 없으면 무시
-            }
-
-            setAnalyses(enriched as unknown as AnalysisRecord[]);
+            const rows = (data ?? []) as (AnalysisRecord & { total_count: number })[];
+            setAnalyses(rows);
+            setTotalCount(rows[0]?.total_count ?? 0);
+            setPage(targetPage);
         } catch (err) {
             console.error('History error:', err);
         } finally {
@@ -77,8 +65,12 @@ export default function HistoryPage() {
     }, []);
 
     useEffect(() => {
-        fetchAnalyses();
+        fetchAnalyses(0);
     }, [fetchAnalyses]);
+
+    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+    const canPrev = page > 0;
+    const canNext = page + 1 < totalPages;
 
     const handleDelete = async (id: string) => {
         if (!confirm('이 분석 이력을 삭제하시겠습니까?')) return;
@@ -119,33 +111,24 @@ export default function HistoryPage() {
     };
 
     const getOverallSummary = (analysis: AnalysisRecord): string => {
-        const summary = analysis.disclosure_summary as Record<string, unknown> | null;
-        if (summary?.overallSummary) {
-            return String(summary.overallSummary).substring(0, 80) + '...';
-        }
-        const medHistory = analysis.medical_history as Record<string, unknown> | null;
-        if (medHistory?.overallSummary) {
-            return String(medHistory.overallSummary).substring(0, 80) + '...';
-        }
+        if (analysis.overall_summary) return analysis.overall_summary.substring(0, 80) + '...';
         return '분석 결과 확인하기';
     };
 
     const getSteps = (analysis: AnalysisRecord) => {
         const steps = [];
-        if (analysis.medical_history) steps.push({ label: 'S1', color: 'bg-blue-500' });
-        if (analysis.product_eligibility) steps.push({ label: 'S2', color: 'bg-green-500' });
-        if (analysis.claim_assessment) steps.push({ label: 'S3', color: 'bg-violet-500' });
-        if (analysis.risk_report) steps.push({ label: '위험도', color: 'bg-red-500' });
+        if (analysis.has_medical_history) steps.push({ label: 'S1', color: 'bg-blue-500' });
+        if (analysis.has_product_eligibility) steps.push({ label: 'S2', color: 'bg-green-500' });
+        if (analysis.has_claim_assessment) steps.push({ label: 'S3', color: 'bg-violet-500' });
+        if (analysis.has_risk_report) steps.push({ label: '위험도', color: 'bg-red-500' });
         return steps;
     };
 
     const getSourceBadge = (analysis: AnalysisRecord) => {
-        const source = (analysis.medical_history as Record<string, unknown> | null)?.source
-            || (analysis.disclosure_summary as Record<string, unknown> | null)?.source;
-        if (source === 'codef') {
+        if (analysis.source === 'codef') {
             return <Badge variant="outline" className="text-[10px] border-teal-500 text-teal-600">심평원</Badge>;
         }
-        if (source === 'nhis') {
+        if (analysis.source === 'nhis') {
             return <Badge variant="outline" className="text-[10px] border-emerald-500 text-emerald-600">건보공단</Badge>;
         }
         return <Badge variant="outline" className="text-[10px]">PDF</Badge>;
@@ -157,11 +140,11 @@ export default function HistoryPage() {
                 <div>
                     <h1 className="text-2xl font-bold">분석 이력</h1>
                     <p className="text-muted-foreground mt-1">
-                        이전 분석 결과를 확인하세요 ({analyses.length}건)
+                        이전 분석 결과를 확인하세요 (총 {totalCount}건)
                     </p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={fetchAnalyses} disabled={loading}>
+                    <Button variant="outline" size="sm" onClick={() => fetchAnalyses(page)} disabled={loading}>
                         <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
                         새로고침
                     </Button>
@@ -245,21 +228,21 @@ export default function HistoryPage() {
                                                             </Link>
                                                             {/* STEP 2 */}
                                                             <Link href={`/dashboard/products?analysisId=${analysis.id}`}>
-                                                                <Button variant="ghost" size="sm" title={analysis.product_eligibility ? "STEP 2 결과 보기" : "STEP 2 진행"} className={analysis.product_eligibility ? "text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950/30" : "text-muted-foreground"}>
+                                                                <Button variant="ghost" size="sm" title={analysis.has_product_eligibility ? "STEP 2 결과 보기" : "STEP 2 진행"} className={analysis.has_product_eligibility ? "text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950/30" : "text-muted-foreground"}>
                                                                     <span className="text-[10px] font-bold mr-1">S2</span>
-                                                                    {analysis.product_eligibility ? <Eye className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                                                                    {analysis.has_product_eligibility ? <Eye className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
                                                                 </Button>
                                                             </Link>
                                                             {/* STEP 3 */}
                                                             <Link href={`/dashboard/claims?analysisId=${analysis.id}`}>
-                                                                <Button variant="ghost" size="sm" title={analysis.claim_assessment ? "STEP 3 결과 보기" : "STEP 3 진행"} className={analysis.claim_assessment ? "text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/30" : "text-muted-foreground"}>
+                                                                <Button variant="ghost" size="sm" title={analysis.has_claim_assessment ? "STEP 3 결과 보기" : "STEP 3 진행"} className={analysis.has_claim_assessment ? "text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/30" : "text-muted-foreground"}>
                                                                     <span className="text-[10px] font-bold mr-1">S3</span>
-                                                                    {analysis.claim_assessment ? <Eye className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                                                                    {analysis.has_claim_assessment ? <Eye className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
                                                                 </Button>
                                                             </Link>
                                                             {/* 위험도 리포트 */}
                                                             <Link href={`/dashboard/risk-report?analysisId=${analysis.id}`}>
-                                                                <Button variant="ghost" size="sm" title={analysis.risk_report ? "위험도 리포트 보기" : "위험도 리포트 생성"} className={analysis.risk_report ? "text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30" : "text-muted-foreground"}>
+                                                                <Button variant="ghost" size="sm" title={analysis.has_risk_report ? "위험도 리포트 보기" : "위험도 리포트 생성"} className={analysis.has_risk_report ? "text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30" : "text-muted-foreground"}>
                                                                     <HeartPulse className="w-3.5 h-3.5" />
                                                                 </Button>
                                                             </Link>
@@ -291,6 +274,31 @@ export default function HistoryPage() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* 페이지네이션 */}
+            {!loading && totalCount > PAGE_SIZE && (
+                <div className="flex items-center justify-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!canPrev}
+                        onClick={() => fetchAnalyses(page - 1)}
+                    >
+                        이전
+                    </Button>
+                    <span className="text-sm text-muted-foreground px-3">
+                        {page + 1} / {totalPages}
+                    </span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!canNext}
+                        onClick={() => fetchAnalyses(page + 1)}
+                    >
+                        다음
+                    </Button>
+                </div>
+            )}
         </div>
     );
 }

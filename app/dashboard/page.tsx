@@ -25,10 +25,11 @@ interface RecentAnalysis {
     status: string;
     created_at: string;
     customer_id: string | null;
-    medical_history: { overallSummary?: string } | null;
-    product_eligibility: Record<string, unknown> | null;
-    claim_assessment: Record<string, unknown> | null;
-    risk_report: Record<string, unknown> | null;
+    overall_summary: string | null;
+    has_medical_history: boolean;
+    has_product_eligibility: boolean;
+    has_claim_assessment: boolean;
+    has_risk_report: boolean;
 }
 
 export default function DashboardPage() {
@@ -47,39 +48,40 @@ export default function DashboardPage() {
 
                 setUserName(user.user_metadata?.name || user.email?.split('@')[0] || '사용자');
 
-                // 최근 분석
-                const { data } = await supabase
-                    .from('analyses')
-                    .select('id, status, created_at, customer_id, medical_history, product_eligibility, claim_assessment')
-                    .eq('user_id', user.id)
-                    .order('created_at', { ascending: false })
-                    .limit(5);
+                // 최근 분석(RPC) + 전체 건수(count)를 병렬 실행 — JSON 컬럼 전송 없음
+                const [rpcResult, countResult] = await Promise.all([
+                    supabase.rpc('get_dashboard_recent_analyses', { p_user_id: user.id, p_limit: 5 }),
+                    supabase
+                        .from('analyses')
+                        .select('id', { count: 'exact', head: true })
+                        .eq('user_id', user.id),
+                ]);
 
-                if (data) {
-                    // risk_report 별도 조회 (컬럼 없을 수 있음)
-                    let enriched = data.map(d => ({ ...d, risk_report: null as Record<string, unknown> | null }));
-                    try {
-                        const { data: rr } = await supabase
-                            .from('analyses')
-                            .select('id, risk_report')
-                            .eq('user_id', user.id)
-                            .not('risk_report', 'is', null)
-                            .limit(5);
-                        if (rr) {
-                            const rrMap = new Map(rr.map((r: any) => [r.id, r.risk_report]));
-                            enriched = enriched.map(d => ({ ...d, risk_report: rrMap.get(d.id) || null }));
-                        }
-                    } catch { /* ignore */ }
-                    setRecentAnalyses(enriched as unknown as RecentAnalysis[]);
+                if (rpcResult.data) {
+                    setRecentAnalyses(rpcResult.data as RecentAnalysis[]);
+                } else if (rpcResult.error) {
+                    // RPC 배포 전 폴백: 슬림한 컬럼만 조회
+                    const { data: fallback } = await supabase
+                        .from('analyses')
+                        .select('id, status, created_at, customer_id')
+                        .eq('user_id', user.id)
+                        .order('created_at', { ascending: false })
+                        .limit(5);
+                    if (fallback) {
+                        setRecentAnalyses(
+                            fallback.map((d) => ({
+                                ...d,
+                                overall_summary: null,
+                                has_medical_history: false,
+                                has_product_eligibility: false,
+                                has_claim_assessment: false,
+                                has_risk_report: false,
+                            })) as RecentAnalysis[],
+                        );
+                    }
                 }
 
-                // 전체 분석 수
-                const { count } = await supabase
-                    .from('analyses')
-                    .select('id', { count: 'exact', head: true })
-                    .eq('user_id', user.id);
-
-                setTotalAnalyses(count || 0);
+                setTotalAnalyses(countResult.count || 0);
             } catch { /* ignore */ }
             finally { setRecentLoading(false); }
         };
@@ -92,10 +94,10 @@ export default function DashboardPage() {
         : 0;
 
     const getAnalysisType = (a: RecentAnalysis) => {
-        if (a.risk_report) return '질병 위험도 리포트';
-        if (a.claim_assessment) return '보험금 청구 안내';
-        if (a.product_eligibility) return '가입가능 상품 판단';
-        if (a.medical_history) return '고지사항 분석';
+        if (a.has_risk_report) return '질병 위험도 리포트';
+        if (a.has_claim_assessment) return '보험금 청구 안내';
+        if (a.has_product_eligibility) return '가입가능 상품 판단';
+        if (a.has_medical_history) return '고지사항 분석';
         return '분석 중';
     };
 
@@ -299,8 +301,8 @@ export default function DashboardPage() {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-medium truncate">
-                                                {a.medical_history?.overallSummary
-                                                    ? String(a.medical_history.overallSummary).substring(0, 40) + '...'
+                                                {a.overall_summary
+                                                    ? a.overall_summary.substring(0, 40) + '...'
                                                     : '분석 결과'}
                                             </p>
                                             <p className="text-[11px] text-muted-foreground">
