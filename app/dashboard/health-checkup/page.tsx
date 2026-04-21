@@ -2,7 +2,7 @@
 
 import { useState, Suspense, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +39,9 @@ const TELECOM_PROVIDERS = [
 ];
 
 function HealthCheckupContent() {
+    const searchParams = useSearchParams();
+    const customerIdFromQuery = searchParams.get('customerId');
+
     const [userName, setUserName] = useState('');
     const [identity, setIdentity] = useState('');
     const [phoneNo, setPhoneNo] = useState('');
@@ -48,6 +51,7 @@ function HealthCheckupContent() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [results, setResults] = useState<HealthCheckupResults | null>(null);
+    const [savedToCustomer, setSavedToCustomer] = useState<{ customerId: string; customerName?: string } | null>(null);
     const [step, setStep] = useState<'form' | 'auth-waiting' | 'results'>('form');
     const [twoWayData, setTwoWayData] = useState<Record<string, unknown> | null>(null);
     const [sessionId, setSessionId] = useState<string | null>(null);
@@ -67,6 +71,24 @@ function HealthCheckupContent() {
         })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [step]);
+
+    // 결과가 준비되고 customerId가 URL에 있으면 고객 프로필에 자동 저장 (1회성).
+    // 모든 분석·위험도·미래의나가 이 검진 데이터를 자동 참조하게 된다.
+    useEffect(() => {
+        if (!results || !customerIdFromQuery || savedToCustomer) return;
+        (async () => {
+            try {
+                await apiFetch(`/api/clients/${customerIdFromQuery}/health-checkup`, {
+                    method: 'POST',
+                    body: { results },
+                });
+                // 고객 이름은 엔드포인트에서 별도로 주지 않으므로 customers 조회는 생략, ID만 표시
+                setSavedToCustomer({ customerId: customerIdFromQuery });
+            } catch (err) {
+                console.warn('[HealthCheckup] 고객 프로필 저장 실패:', (err as Error).message);
+            }
+        })();
+    }, [results, customerIdFromQuery, savedToCustomer]);
 
     // 건강검진 데이터를 분석 리포트에 통합
     const handleIntegrateToReport = async (analysisId: string) => {
@@ -277,6 +299,28 @@ function HealthCheckupContent() {
                 {error && (
                     <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 px-4 py-2 rounded-lg">
                         <AlertCircle className="w-4 h-4" /> {error}
+                    </div>
+                )}
+
+                {/* 고객 프로필 자동 저장 안내 (URL에 customerId가 있었을 때) */}
+                {savedToCustomer && (
+                    <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                        <Shield className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                        <div className="flex-1 text-sm">
+                            <p className="font-semibold text-emerald-900">
+                                이 고객 프로필에 검진 데이터가 저장되었습니다
+                            </p>
+                            <p className="text-xs text-emerald-700 leading-relaxed mt-1">
+                                이제 이 고객의 위험도 리포트·미래의 나·보장 분석에서 자동으로 반영됩니다.
+                                다음 조회 시 재인증이 필요 없습니다. (최대 1년 유효)
+                            </p>
+                            <Link
+                                href={`/dashboard/customers/${savedToCustomer.customerId}`}
+                                className="inline-block text-xs font-semibold text-emerald-700 underline underline-offset-2 mt-1.5"
+                            >
+                                고객 프로필로 이동 →
+                            </Link>
+                        </div>
                     </div>
                 )}
 

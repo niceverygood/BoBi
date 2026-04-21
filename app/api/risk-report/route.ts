@@ -8,6 +8,7 @@ import { matchRisks, extractMedications, extractPatientProfile } from '@/lib/ris
 import { extractCheckupSnapshots, analyzeAllTrends, sortTrendsByPriority } from '@/lib/health/trend-analyzer';
 import { anonymizeAnalysis, saveAnonymizedRecord, isOptedOut } from '@/lib/privacy/anonymizer';
 import { getUserPlan, canAccessProFeature } from '@/lib/subscription/access';
+import { getLatestClientHealthCheckup, rowToResults } from '@/lib/health-checkup/storage';
 import type { AnalysisResult } from '@/types/analysis';
 import type { RiskReport } from '@/types/risk-report';
 
@@ -31,7 +32,9 @@ export async function POST(request: Request) {
             );
         }
 
-        const { analysisId, regenerate, healthCheckupData } = await request.json();
+        const body = await request.json();
+        const { analysisId, regenerate } = body;
+        let healthCheckupData = body.healthCheckupData;
 
         if (!analysisId) {
             return NextResponse.json({ error: '분석 ID가 필요합니다.' }, { status: 400 });
@@ -56,6 +59,15 @@ export async function POST(request: Request) {
         // 이미 리포트가 있고 재생성 요청이 아니면 반환
         if (analysis.risk_report && !regenerate) {
             return NextResponse.json({ report: analysis.risk_report });
+        }
+
+        // body로 checkup이 안 들어왔으면 고객 단위 저장소에서 자동 조회
+        if (!healthCheckupData && analysis.customer_id) {
+            const row = await getLatestClientHealthCheckup(supabase, analysis.customer_id);
+            if (row) {
+                healthCheckupData = rowToResults(row);
+                console.log('[RiskReport] 고객 단위 저장소에서 건강검진 자동 로드 — year:', row.checkup_year);
+            }
         }
 
         // medical_history에서 AnalysisResult 추출 (source 등 추가 필드 무시)
@@ -123,23 +135,13 @@ export async function POST(request: Request) {
         }
 
         // 건강검진 데이터 추가 (있는 경우)
+        // 중요: 검진 수치(BMI/혈압/혈당/콜레스테롤 등)는 NHIS 공단 실제 측정값
+        //       건강나이·뇌졸중·심뇌혈관 예측은 Claude AI 추정값 (CODEF 해당 API 프로덕션 미승인)
+        //       허위 표시 방지를 위해 라벨을 명확히 분리.
         if (healthCheckupData) {
-            summaryParts.push('\n[건강검진 결과 (건강보험공단)]');
-
-            // 건강나이
-            if (healthCheckupData.healthAge) {
-                const ha = healthCheckupData.healthAge;
-                summaryParts.push(`- 건강나이: ${ha.resAge}세 (실제 ${ha.resChronologicalAge}세)`);
-                if (ha.resNote1) summaryParts.push(`- 소견: ${ha.resNote1}`);
-                if (ha.resDetailList) {
-                    for (const d of ha.resDetailList) {
-                        summaryParts.push(`  · 위험요인 [${d.resRiskFactor}]: ${d.resState} → 권고: ${d.resRecommendValue}`);
-                    }
-                }
-            }
-
-            // 검진 수치
+            // ── NHIS 실제 측정 수치 ──
             if (healthCheckupData.checkup?.resPreviewList?.[0]) {
+                summaryParts.push('\n[NHIS 건강보험공단 측정 수치]');
                 const p = healthCheckupData.checkup.resPreviewList[0];
                 summaryParts.push(`- 검진일: ${p.resCheckupYear}년`);
                 if (p.resBMI) summaryParts.push(`- BMI: ${p.resBMI} (신장 ${p.resHeight}cm, 체중 ${p.resWeight}kg)`);
@@ -152,14 +154,29 @@ export async function POST(request: Request) {
                 if (p.resOpinion) summaryParts.push(`- 소견: ${p.resOpinion}`);
             }
 
-            // 뇌졸중 예측
-            if (healthCheckupData.stroke?.resRiskGrade) {
-                summaryParts.push(`- 뇌졸중 예측: ${healthCheckupData.stroke.resRiskGrade} (${healthCheckupData.stroke.resRatio || ''})`);
+            // ── AI 추정값 (위 수치를 기반으로 Claude가 예측) ──
+            const aiLines: string[] = [];
+            if (healthCheckupData.healthAge) {
+                const ha = healthCheckupData.healthAge;
+                if (ha.resAge && ha.resChronologicalAge) {
+                    aiLines.push(`- AI 추정 건강나이: ${ha.resAge}세 (실제 ${ha.resChronologicalAge}세)`);
+                }
+                if (ha.resNote1) aiLines.push(`  · 참고 소견: ${ha.resNote1}`);
+                if (ha.resDetailList) {
+                    for (const d of ha.resDetailList) {
+                        aiLines.push(`  · 위험요인 [${d.resRiskFactor}]: ${d.resState} → 권고: ${d.resRecommendValue}`);
+                    }
+                }
             }
-
-            // 심뇌혈관 예측
+            if (healthCheckupData.stroke?.resRiskGrade) {
+                aiLines.push(`- AI 추정 뇌졸중 10년 위험도: ${healthCheckupData.stroke.resRiskGrade} (${healthCheckupData.stroke.resRatio || ''})`);
+            }
             if (healthCheckupData.cardio?.resRiskGrade) {
-                summaryParts.push(`- 심뇌혈관 질환예측: ${healthCheckupData.cardio.resRiskGrade} (${healthCheckupData.cardio.resRatio || ''})`);
+                aiLines.push(`- AI 추정 심뇌혈관 10년 위험도: ${healthCheckupData.cardio.resRiskGrade} (${healthCheckupData.cardio.resRatio || ''})`);
+            }
+            if (aiLines.length > 0) {
+                summaryParts.push('\n[AI 추정 — NHIS 측정 수치 기반, 공식 예측 아님]');
+                summaryParts.push(...aiLines);
             }
 
             // 연도별 추이 분석 (2년 이상 데이터가 있을 때)

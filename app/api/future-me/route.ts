@@ -6,6 +6,7 @@ import { FUTURE_ME_PROMPT } from '@/lib/ai/prompts';
 import { parseAIResponse } from '@/lib/ai/parser';
 import { DISEASE_COST_DATA } from '@/lib/receipt/disease-cost-data';
 import { getUserPlan, canAccessProFeature } from '@/lib/subscription/access';
+import { getLatestClientHealthCheckup, rowToResults } from '@/lib/health-checkup/storage';
 import type { RiskReport } from '@/types/risk-report';
 import type {
     FutureMeResult,
@@ -41,19 +42,27 @@ function safeCategoryAmount(raw: unknown): CategoryAmount {
 }
 
 /**
- * NHIS 건강검진 원본(risk-report에 같이 저장된 healthCheckupData)을
- * AI 프롬프트에 넣을 짧은 문자열로 요약한다. 데이터가 없으면 "미연동".
- * 핵심 수치(BMI·혈압·공복혈당·콜레스테롤·GFR·간기능)와 NHIS 예측(건강나이·뇌졸중·심뇌혈관)만 추출.
+ * 건강검진 원본을 AI 프롬프트에 넣을 짧은 문자열로 요약한다. 없으면 "미연동".
+ *
+ * 데이터 출처 구분 (중요):
+ *   - 검진 수치(BMI/혈압/혈당/콜레스테롤/GFR/간기능/판정)
+ *       → NHIS 건강보험공단 실제 측정값 (CODEF 프로덕션 연동)
+ *   - 건강나이/뇌졸중/심뇌혈관 예측
+ *       → Claude AI 추정값 (해당 CODEF API 프로덕션 미승인 상태라
+ *         검진 수치를 기반으로 AI가 예측). NHIS 공식 예측 아님.
+ *
+ * 라벨은 허위 표시 리스크 방지를 위해 "NHIS 측정" vs "AI 추정"으로 명확히 분리.
  */
 function summarizeHealthCheckup(raw: unknown): string {
     if (!raw || typeof raw !== 'object') return '미연동';
     const d = raw as Record<string, unknown>;
     const lines: string[] = [];
 
-    // 검진 수치 최신값
+    // ── NHIS 실제 측정 수치 ──
     const checkup = d.checkup as Record<string, unknown> | undefined;
     const preview = (checkup?.resPreviewList as Array<Record<string, unknown>> | undefined)?.[0];
     if (preview) {
+        lines.push('[NHIS 공단 측정 수치]');
         if (preview.resCheckupYear) lines.push(`- 검진년도: ${preview.resCheckupYear}`);
         if (preview.resBMI) lines.push(`- BMI: ${preview.resBMI} (정상 18.5~24.9)`);
         if (preview.resBloodPressure) lines.push(`- 혈압: ${preview.resBloodPressure} mmHg (정상 <120/80)`);
@@ -72,22 +81,25 @@ function summarizeHealthCheckup(raw: unknown): string {
         if (preview.resJudgement) lines.push(`- 종합판정: ${preview.resJudgement}`);
     }
 
-    // 건강나이
+    // ── AI 추정값 (위 수치를 보고 Claude가 예측) ──
     const ha = d.healthAge as Record<string, unknown> | undefined;
-    if (ha?.resAge && ha?.resChronologicalAge) {
-        lines.push(`- 건강나이: ${ha.resAge}세 (실제 ${ha.resChronologicalAge}세)`);
-    }
-
-    // NHIS 예측
     const stroke = d.stroke as Record<string, unknown> | undefined;
-    if (stroke?.resRiskGrade) {
-        const ratio = stroke.resRatio ? ` (${stroke.resRatio})` : '';
-        lines.push(`- NHIS 뇌졸중 10년 예측: ${stroke.resRiskGrade}${ratio}`);
-    }
     const cardio = d.cardio as Record<string, unknown> | undefined;
-    if (cardio?.resRiskGrade) {
-        const ratio = cardio.resRatio ? ` (${cardio.resRatio})` : '';
-        lines.push(`- NHIS 심뇌혈관 10년 예측: ${cardio.resRiskGrade}${ratio}`);
+    const hasAiPred = (ha?.resAge && ha?.resChronologicalAge) || stroke?.resRiskGrade || cardio?.resRiskGrade;
+    if (hasAiPred) {
+        if (lines.length > 0) lines.push('');
+        lines.push('[AI 추정 — NHIS 측정 수치 기반, 공식 예측 아님]');
+        if (ha?.resAge && ha?.resChronologicalAge) {
+            lines.push(`- AI 추정 건강나이: ${ha.resAge}세 (실제 ${ha.resChronologicalAge}세)`);
+        }
+        if (stroke?.resRiskGrade) {
+            const ratio = stroke.resRatio ? ` (${stroke.resRatio})` : '';
+            lines.push(`- AI 추정 뇌졸중 10년 위험도: ${stroke.resRiskGrade}${ratio}`);
+        }
+        if (cardio?.resRiskGrade) {
+            const ratio = cardio.resRatio ? ` (${cardio.resRatio})` : '';
+            lines.push(`- AI 추정 심뇌혈관 10년 위험도: ${cardio.resRiskGrade}${ratio}`);
+        }
     }
 
     return lines.length > 0 ? lines.join('\n') : '미연동';
@@ -196,10 +208,18 @@ export async function POST(request: Request) {
                 `   - 상대위험도: ${item.relativeRisk}배 | 위험수준: ${item.riskLevel}`
             ).join('\n');
 
-        // 건강검진 데이터 추출 → 프롬프트 요약 문자열 생성
-        // analysis.risk_report.healthCheckupData에 저장된 NHIS 원본을 파싱한다.
-        const rawHealthCheckup = (analysis.risk_report as unknown as Record<string, unknown>)?.healthCheckupData
-            || (analysis.medical_history as unknown as Record<string, unknown>)?.healthCheckupData;
+        // 건강검진 데이터 추출
+        //   1순위: client_health_checkups 테이블 (고객 단위 영구 저장)
+        //   2순위: analysis.risk_report.healthCheckupData (과거 분석에 붙여 저장)
+        //   3순위: analysis.medical_history.healthCheckupData (레거시)
+        let rawHealthCheckup: unknown = null;
+        const clientCheckup = await getLatestClientHealthCheckup(svc, customerId);
+        if (clientCheckup) {
+            rawHealthCheckup = rowToResults(clientCheckup);
+        } else {
+            rawHealthCheckup = (analysis.risk_report as unknown as Record<string, unknown>)?.healthCheckupData
+                || (analysis.medical_history as unknown as Record<string, unknown>)?.healthCheckupData;
+        }
         const healthCheckupText = summarizeHealthCheckup(rawHealthCheckup);
         const hasHealthCheckup = healthCheckupText !== '미연동';
 

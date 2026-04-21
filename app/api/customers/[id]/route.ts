@@ -45,12 +45,21 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         // summary 계산은 최신 1건으로
         const latestAnalyses = latestRes.data || [];
 
+        // 고객 단위 건강검진 저장소 확인 (1건만)
+        const { data: clientCheckupRow } = await supabase
+            .from('client_health_checkups')
+            .select('id, checkup_year, checked_at, expires_at')
+            .eq('customer_id', id)
+            .order('checked_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
         // 최신 분석에서 데이터 추출
         const latest = latestAnalyses[0];
         const medicalHistory = latest?.medical_history as Record<string, any> | null;
         const productEligibility = latest?.product_eligibility as Record<string, any> | null;
         const riskReport = latest?.risk_report as Record<string, any> | null;
-        const hasHealthCheckup = !!(riskReport?.healthCheckupData || medicalHistory?.healthCheckupData);
+        const hasHealthCheckup = !!(clientCheckupRow || riskReport?.healthCheckupData || medicalHistory?.healthCheckupData);
 
         // 건강 점수 계산 (0~100)
         let healthScore = 100;
