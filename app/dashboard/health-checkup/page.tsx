@@ -372,6 +372,15 @@ function HealthCheckupContent() {
                 )}
 
                 {/* 건강검진 수치 */}
+                {(!results.checkup?.resPreviewList || results.checkup.resPreviewList.length === 0) && (
+                    <Card className="border-0 shadow-sm border-dashed">
+                        <CardContent className="py-6 text-center text-sm text-muted-foreground">
+                            <Stethoscope className="w-6 h-6 mx-auto mb-2 text-muted-foreground/60" />
+                            건강보험공단에 등록된 검진 기록이 없습니다.
+                            <p className="text-[11px] mt-1">(국가 일반건강검진을 받으신 적이 없거나 결과 등록 전일 수 있습니다)</p>
+                        </CardContent>
+                    </Card>
+                )}
                 {results.checkup?.resPreviewList && results.checkup.resPreviewList.length > 0 && (
                     <Card className="border-0 shadow-md">
                         <CardHeader className="pb-3">
