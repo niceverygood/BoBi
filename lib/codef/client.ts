@@ -973,36 +973,8 @@ export async function fetchMyMedicine(params: HiraMedicalRequest): Promise<{
 }
 
 // ═══════════════════════════════════════════════════════════
-// 건강보험공단 건강검진 API (데모 키 사용)
+// 건강보험공단 건강검진 API (프로덕션 승인 완료 — api.codef.io)
 // ═══════════════════════════════════════════════════════════
-
-const CODEF_DEMO_API_URL = 'https://development.codef.io';
-
-let cachedDemoToken: { token: string; expiresAt: number } | null = null;
-
-async function getDemoAccessToken(): Promise<string> {
-    if (cachedDemoToken && cachedDemoToken.expiresAt > Date.now()) {
-        return cachedDemoToken.token;
-    }
-    const clientId = process.env.CODEF_DEMO_CLIENT_ID;
-    const clientSecret = process.env.CODEF_DEMO_CLIENT_SECRET;
-    if (!clientId || !clientSecret) {
-        throw new Error('CODEF_DEMO_CLIENT_ID/SECRET 환경변수가 설정되지 않았습니다.');
-    }
-    const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-    const res = await fetch(CODEF_TOKEN_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': `Basic ${credentials}` },
-        body: 'grant_type=client_credentials&scope=read',
-    });
-    if (!res.ok) throw new Error(`CODEF 데모 토큰 발급 실패: ${res.status}`);
-    const data = await res.json();
-    cachedDemoToken = {
-        token: data.access_token,
-        expiresAt: Date.now() + (data.expires_in ? data.expires_in * 1000 - 300000 : 6 * 24 * 60 * 60 * 1000),
-    };
-    return cachedDemoToken.token;
-}
 
 /** 건강검진 공통 요청 파라미터 */
 export interface HealthCheckupRequest {
@@ -1086,20 +1058,14 @@ export interface DiseaseRiskPrediction {
     resCompareList: Array<{ resCheckupDate: string; resState: string }>;
 }
 
-/** 건강검진 API 공통 호출 */
+/** 건강검진 API 공통 호출 — 프로덕션 CODEF (api.codef.io + CODEF_CLIENT_ID/SECRET) */
 async function callHealthCheckupApi(
     endpoint: string,
     params: HealthCheckupRequest,
     apiName: string,
-    opts: { useProd?: boolean } = {},
 ): Promise<{ data: unknown; requires2Way?: boolean; twoWayData?: Record<string, unknown> }> {
-    // useProd=true: 프로덕션 CODEF (api.codef.io + CODEF_CLIENT_ID/SECRET)
-    // useProd=false: 데모 CODEF (development.codef.io + CODEF_DEMO_CLIENT_ID/SECRET)
-    // 환경변수 CODEF_HEALTH_CHECKUP_FORCE_DEMO=true 로 긴급 롤백 가능.
-    const forceDemo = process.env.CODEF_HEALTH_CHECKUP_FORCE_DEMO === 'true';
-    const useProd = forceDemo ? false : (opts.useProd ?? false);
-    const token = useProd ? await getAccessToken() : await getDemoAccessToken();
-    const baseUrl = useProd ? CODEF_API_URL : CODEF_DEMO_API_URL;
+    const token = await getAccessToken();
+    const baseUrl = CODEF_API_URL;
     const isSmsLogin = params.loginType === '2';
 
     // 건강보험공단(0002)은 identity를 생년월일(YYYYMMDD) 형식으로 요청
@@ -1159,14 +1125,14 @@ async function callHealthCheckupApi(
             body.secureNoRefresh = params.secureNoRefresh || '0';
         }
     }
-    console.log(`[CODEF] ${apiName} (${useProd ? 'prod' : 'demo'}) request:`, JSON.stringify(body, null, 2));
+    console.log(`[CODEF] ${apiName} (prod) request:`, JSON.stringify(body, null, 2));
     const res = await fetch(`${baseUrl}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(body),
     });
     const data = await parseCodefResponse<{ result: { code: string; message: string }; data: unknown }>(res);
-    console.log(`[CODEF] ${apiName} (${useProd ? 'prod' : 'demo'}) response:`, data.result?.code, data.result?.message);
+    console.log(`[CODEF] ${apiName} (prod) response:`, data.result?.code, data.result?.message);
     if (data.result?.code === 'CF-03002') {
         return { data: null, requires2Way: true, twoWayData: data.data as Record<string, unknown> };
     }
@@ -1182,36 +1148,32 @@ export async function fetchHealthCheckupResult(params: HealthCheckupRequest) {
         '/v1/kr/public/pp/nhis-health-checkup/result',
         params,
         '건강검진결과',
-        { useProd: true },
     );
 }
 
-/** 건강나이알아보기 — 프로덕션 미승인, 데모 경로 유지 */
+/** 건강나이알아보기 — 프로덕션 승인 완료 */
 export async function fetchHealthAge(params: HealthCheckupRequest) {
     return callHealthCheckupApi(
         '/v1/kr/public/pp/hi-nhis-list/review-health-age',
         params,
         '건강나이알아보기',
-        { useProd: false },
     );
 }
 
-/** 뇌졸중 예측 — 프로덕션 미승인, 데모 경로 유지 */
+/** 뇌졸중 예측 — 프로덕션 승인 완료 */
 export async function fetchStrokePrediction(params: HealthCheckupRequest) {
     return callHealthCheckupApi(
         '/v1/kr/public/pp/hi-nhis-list/stroke',
         params,
         '뇌졸중예측',
-        { useProd: false },
     );
 }
 
-/** 심뇌혈관 질환예측 — 프로덕션 미승인, 데모 경로 유지 */
+/** 심뇌혈관 질환예측 — 프로덕션 승인 완료 */
 export async function fetchCardioPrediction(params: HealthCheckupRequest) {
     return callHealthCheckupApi(
         '/v1/kr/public/pp/hi-nhis-list/cardio-cerebrovascular',
         params,
         '심뇌혈관질환예측',
-        { useProd: false },
     );
 }
