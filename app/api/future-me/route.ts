@@ -44,14 +44,13 @@ function safeCategoryAmount(raw: unknown): CategoryAmount {
 /**
  * 건강검진 원본을 AI 프롬프트에 넣을 짧은 문자열로 요약한다. 없으면 "미연동".
  *
- * 데이터 출처 구분 (중요):
+ * 데이터 출처 (2026-04 전체 프로덕션 승인 완료):
  *   - 검진 수치(BMI/혈압/혈당/콜레스테롤/GFR/간기능/판정)
- *       → NHIS 건강보험공단 실제 측정값 (CODEF 프로덕션 연동)
- *   - 건강나이/뇌졸중/심뇌혈관 예측
- *       → Claude AI 추정값 (해당 CODEF API 프로덕션 미승인 상태라
- *         검진 수치를 기반으로 AI가 예측). NHIS 공식 예측 아님.
+ *       → NHIS 건강보험공단 실제 측정값
+ *   - 건강나이/뇌졸중/심뇌혈관 10년 예측
+ *       → NHIS 건강보험공단 공식 예측 데이터 (각 CODEF API 프로덕션 승인)
  *
- * 라벨은 허위 표시 리스크 방지를 위해 "NHIS 측정" vs "AI 추정"으로 명확히 분리.
+ * 두 섹션 모두 NHIS 공식 데이터이며, 프롬프트에는 측정/예측 구분만 위해 분리.
  */
 function summarizeHealthCheckup(raw: unknown): string {
     if (!raw || typeof raw !== 'object') return '미연동';
@@ -81,24 +80,24 @@ function summarizeHealthCheckup(raw: unknown): string {
         if (preview.resJudgement) lines.push(`- 종합판정: ${preview.resJudgement}`);
     }
 
-    // ── AI 추정값 (위 수치를 보고 Claude가 예측) ──
+    // ── NHIS 공단 공식 예측 데이터 ──
     const ha = d.healthAge as Record<string, unknown> | undefined;
     const stroke = d.stroke as Record<string, unknown> | undefined;
     const cardio = d.cardio as Record<string, unknown> | undefined;
-    const hasAiPred = (ha?.resAge && ha?.resChronologicalAge) || stroke?.resRiskGrade || cardio?.resRiskGrade;
-    if (hasAiPred) {
+    const hasPred = (ha?.resAge && ha?.resChronologicalAge) || stroke?.resRiskGrade || cardio?.resRiskGrade;
+    if (hasPred) {
         if (lines.length > 0) lines.push('');
-        lines.push('[AI 추정 — NHIS 측정 수치 기반, 공식 예측 아님]');
+        lines.push('[NHIS 공단 공식 예측 데이터]');
         if (ha?.resAge && ha?.resChronologicalAge) {
-            lines.push(`- AI 추정 건강나이: ${ha.resAge}세 (실제 ${ha.resChronologicalAge}세)`);
+            lines.push(`- 건강나이: ${ha.resAge}세 (실제 ${ha.resChronologicalAge}세)`);
         }
         if (stroke?.resRiskGrade) {
             const ratio = stroke.resRatio ? ` (${stroke.resRatio})` : '';
-            lines.push(`- AI 추정 뇌졸중 10년 위험도: ${stroke.resRiskGrade}${ratio}`);
+            lines.push(`- 뇌졸중 10년 예측: ${stroke.resRiskGrade}${ratio}`);
         }
         if (cardio?.resRiskGrade) {
             const ratio = cardio.resRatio ? ` (${cardio.resRatio})` : '';
-            lines.push(`- AI 추정 심뇌혈관 10년 위험도: ${cardio.resRiskGrade}${ratio}`);
+            lines.push(`- 심뇌혈관 10년 예측: ${cardio.resRiskGrade}${ratio}`);
         }
     }
 
