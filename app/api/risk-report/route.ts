@@ -135,10 +135,9 @@ export async function POST(request: Request) {
         }
 
         // 건강검진 데이터 추가 (있는 경우)
-        // 2026-04 기준 CODEF 건강검진 4개 API 모두 프로덕션 승인 완료:
-        //   - 검진 수치(BMI/혈압/혈당/콜레스테롤 등) → NHIS 실제 측정값
-        //   - 건강나이·뇌졸중·심뇌혈관 예측 → NHIS 공식 예측 데이터
-        // 두 섹션 모두 NHIS 공식 데이터이며, 프롬프트 명료성을 위해 측정/예측만 분리.
+        //   - 검진 수치(BMI/혈압/혈당/콜레스테롤 등) → NHIS 건강보험공단 실제 측정값
+        //   - 뇌졸중·심뇌혈관 예측 → 검진 수치 기반 AI 보조 예측
+        // 건강나이(healthAge)는 데이터 품질 이슈로 2026-04 제거됨.
         if (healthCheckupData) {
             // ── NHIS 실제 측정 수치 ──
             if (healthCheckupData.checkup?.resPreviewList?.[0]) {
@@ -155,20 +154,8 @@ export async function POST(request: Request) {
                 if (p.resOpinion) summaryParts.push(`- 소견: ${p.resOpinion}`);
             }
 
-            // ── NHIS 공단 공식 예측 데이터 ──
+            // ── 질환별 10년 발병 예측 (검진 수치 기반 AI 보조) ──
             const predLines: string[] = [];
-            if (healthCheckupData.healthAge) {
-                const ha = healthCheckupData.healthAge;
-                if (ha.resAge && ha.resChronologicalAge) {
-                    predLines.push(`- 건강나이: ${ha.resAge}세 (실제 ${ha.resChronologicalAge}세)`);
-                }
-                if (ha.resNote1) predLines.push(`  · 참고 소견: ${ha.resNote1}`);
-                if (ha.resDetailList) {
-                    for (const d of ha.resDetailList) {
-                        predLines.push(`  · 위험요인 [${d.resRiskFactor}]: ${d.resState} → 권고: ${d.resRecommendValue}`);
-                    }
-                }
-            }
             if (healthCheckupData.stroke?.resRiskGrade) {
                 predLines.push(`- 뇌졸중 10년 예측: ${healthCheckupData.stroke.resRiskGrade} (${healthCheckupData.stroke.resRatio || ''})`);
             }
@@ -176,7 +163,7 @@ export async function POST(request: Request) {
                 predLines.push(`- 심뇌혈관 10년 예측: ${healthCheckupData.cardio.resRiskGrade} (${healthCheckupData.cardio.resRatio || ''})`);
             }
             if (predLines.length > 0) {
-                summaryParts.push('\n[NHIS 공단 공식 예측 데이터]');
+                summaryParts.push('\n[질환별 10년 발병 예측 — 검진 수치 기반]');
                 summaryParts.push(...predLines);
             }
 

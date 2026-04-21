@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { apiFetch } from '@/lib/api/client';
-import type { HealthCheckupPreview, HealthAgeResult, DiseaseRiskPrediction } from '@/lib/codef/client';
+import type { HealthCheckupPreview, DiseaseRiskPrediction } from '@/lib/codef/client';
 
 interface HealthCheckupResults {
     checkup?: {
@@ -20,7 +20,6 @@ interface HealthCheckupResults {
         resPreviewList: HealthCheckupPreview[];
         resResultList: unknown[];
     };
-    healthAge?: HealthAgeResult;
     stroke?: DiseaseRiskPrediction;
     cardio?: DiseaseRiskPrediction;
 }
@@ -388,53 +387,6 @@ function HealthCheckupContent() {
                     </Card>
                 )}
 
-                {/* 건강나이 */}
-                {results.healthAge && (
-                    <Card className="border-0 shadow-md">
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-base flex items-center gap-2">
-                                <Activity className="w-4 h-4 text-blue-600" />
-                                건강나이
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-2 gap-4 text-center">
-                                <div className="p-4 rounded-xl bg-blue-50">
-                                    <p className="text-xs text-muted-foreground">실제 나이</p>
-                                    <p className="text-3xl font-black text-blue-700">{results.healthAge.resChronologicalAge}세</p>
-                                </div>
-                                <div className="p-4 rounded-xl bg-primary/5">
-                                    <p className="text-xs text-muted-foreground">건강 나이</p>
-                                    <p className="text-3xl font-black text-primary">{results.healthAge.resAge}세</p>
-                                </div>
-                            </div>
-                            {results.healthAge.resChangeAfter && (
-                                <p className="text-sm text-muted-foreground mt-3">{results.healthAge.resChangeAfter}</p>
-                            )}
-                            {results.healthAge.resNote1 && (
-                                <div className="mt-3 p-3 bg-amber-50 rounded-lg text-sm text-amber-800">
-                                    <AlertCircle className="w-4 h-4 inline mr-1" />
-                                    {results.healthAge.resNote1}
-                                </div>
-                            )}
-                            {results.healthAge.resDetailList?.length > 0 && (
-                                <div className="mt-3 space-y-1">
-                                    <p className="text-xs font-semibold text-muted-foreground">위험요인</p>
-                                    {results.healthAge.resDetailList.map((d, i) => (
-                                        <div key={i} className="flex items-center justify-between text-sm py-1 border-b last:border-0">
-                                            <span>{d.resRiskFactor}</span>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-muted-foreground">{d.resState}</span>
-                                                <span className="text-xs text-primary">→ {d.resRecommendValue}</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                )}
-
                 {/* 건강검진 수치 */}
                 {(!results.checkup?.resPreviewList || results.checkup.resPreviewList.length === 0) && (
                     <Card className="border-0 shadow-sm border-dashed">
@@ -566,7 +518,7 @@ function HealthCheckupContent() {
                         <HeartPulse className="w-6 h-6 text-red-500" />
                         건강검진 조회
                     </h1>
-                    <p className="text-sm text-muted-foreground">건강보험공단 건강검진 결과 + 건강나이 + 질환예측</p>
+                    <p className="text-sm text-muted-foreground">건강보험공단 건강검진 결과 + 질환 예측</p>
                 </div>
             </div>
 

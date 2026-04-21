@@ -1,7 +1,10 @@
 // app/api/codef/health-checkup/route.ts
 // 건강보험공단 건강검진 데이터 조회 (프로덕션 CODEF — api.codef.io)
 // - 건강검진결과: CODEF API (간편인증 필요)
-// - 건강나이/뇌졸중/심뇌혈관: AI 예측 (건강검진 데이터 기반)
+// - 뇌졸중/심뇌혈관 10년 예측: AI 보조 예측 (건강검진 수치 기반)
+//
+// 건강나이(healthAge)는 데이터 품질 이슈로 2026-04 제거됨.
+// 대신 실측 수치(BMI·혈압·혈당·콜레스테롤 등)와 뇌졸중·심뇌혈관 예측만 제공.
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { fetchHealthCheckupResult, type HealthCheckupRequest } from '@/lib/codef/client';
@@ -9,19 +12,13 @@ import { callOpenAI } from '@/lib/ai/openai';
 
 export const maxDuration = 300;
 
-// AI로 건강나이/질병위험도 예측
+// AI로 뇌졸중/심뇌혈관 예측
 type PredictedSection = { resRiskGrade?: string; resRatio?: string; resNote?: string };
-type PredictedHealthAge = { resAge?: string; resChronologicalAge?: string; resNote?: string };
 interface AiPrediction {
-    healthAge?: PredictedHealthAge;
     stroke?: PredictedSection;
     cardio?: PredictedSection;
 }
 
-function hasHealthAge(v: unknown): v is PredictedHealthAge {
-    const o = v as PredictedHealthAge | undefined;
-    return !!(o && o.resAge && o.resChronologicalAge);
-}
 function hasRiskSection(v: unknown): v is PredictedSection {
     const o = v as PredictedSection | undefined;
     return !!(o && o.resRiskGrade);
@@ -31,26 +28,20 @@ async function predictHealthWithAI(checkupData: unknown): Promise<{
     result: AiPrediction;
     missing: string[];
 }> {
-    const systemPrompt = `당신은 건강검진 데이터를 분석하여 건강나이, 뇌졸중 위험도, 심뇌혈관 질환 위험도를 예측하는 의료 AI입니다.
-반드시 3개 섹션(healthAge, stroke, cardio) 모두를 포함한 유효한 JSON만 반환하세요. 어떤 경우에도 섹션을 생략하지 마세요.
+    const systemPrompt = `당신은 건강검진 데이터를 분석하여 뇌졸중 위험도와 심뇌혈관 질환 위험도를 예측하는 의료 AI입니다.
+반드시 2개 섹션(stroke, cardio) 모두를 포함한 유효한 JSON만 반환하세요. 어떤 경우에도 섹션을 생략하지 마세요.
 데이터가 부족하면 보수적으로 "보통" 등급으로 추정하고 resNote에 근거 부족을 명시하세요.`;
 
-    const buildPrompt = (extraInstruction = '') => `아래 건강검진 데이터를 분석하여 3가지 모두를 예측해주세요:
+    const buildPrompt = (extraInstruction = '') => `아래 건강검진 데이터를 분석하여 2가지를 예측해주세요:
 
-1. 건강나이 (healthAge): 실제 나이 대비 건강 상태를 나타내는 나이
-2. 뇌졸중 (stroke) 10년 발병 위험도 (%)
-3. 심뇌혈관 (cardio) 10년 발병 위험도 (%)
+1. 뇌졸중 (stroke) 10년 발병 위험도 (%)
+2. 심뇌혈관 (cardio) 10년 발병 위험도 (%)
 
 건강검진 데이터:
 ${JSON.stringify(checkupData, null, 2)}
 ${extraInstruction}
-아래 JSON 스키마로만 응답하세요. 세 섹션 모두 필수입니다:
+아래 JSON 스키마로만 응답하세요. 두 섹션 모두 필수입니다:
 {
-  "healthAge": {
-    "resAge": "건강나이 숫자만 (예: \\"55\\")",
-    "resChronologicalAge": "실제나이 숫자만 (예: \\"48\\")",
-    "resNote": "해석 1-2문장"
-  },
   "stroke": {
     "resRiskGrade": "낮음 | 보통 | 높음 | 매우높음 중 하나",
     "resRatio": "10년 발병확률 % (예: \\"3.2%\\")",
@@ -68,10 +59,9 @@ ${extraInstruction}
             prompt,
             systemMessage: systemPrompt,
             fast: false,
-            maxTokens: 1500,
+            maxTokens: 1200,
         });
         const cleaned = response.replace(/```json\s*|\s*```/g, '').trim();
-        // 모델이 앞뒤로 여분 텍스트를 섞더라도 JSON 본문만 추출
         const firstBrace = cleaned.indexOf('{');
         const lastBrace = cleaned.lastIndexOf('}');
         const jsonSlice = firstBrace >= 0 && lastBrace > firstBrace
@@ -88,21 +78,17 @@ ${extraInstruction}
             console.error('[HealthCheckup] AI 1차 예측 파싱 실패:', err);
         }
 
-        // 섹션이 누락됐으면 한 번 더 시도 — 어떤 섹션이 빠졌는지 명시해 재요청
+        // 섹션이 누락됐으면 한 번 더 시도
         const firstMissing: string[] = [];
-        if (!hasHealthAge(parsed.healthAge)) firstMissing.push('healthAge');
         if (!hasRiskSection(parsed.stroke)) firstMissing.push('stroke');
         if (!hasRiskSection(parsed.cardio)) firstMissing.push('cardio');
 
         if (firstMissing.length > 0) {
             try {
                 const retryPrompt = buildPrompt(
-                    `\n⚠️ 이전 응답에서 ${firstMissing.join(', ')} 섹션이 누락되었거나 필수 필드가 비어 있었습니다. 반드시 세 섹션 모두를 채워 주세요.\n`,
+                    `\n⚠️ 이전 응답에서 ${firstMissing.join(', ')} 섹션이 누락되었거나 필수 필드가 비어 있었습니다. 반드시 두 섹션 모두를 채워 주세요.\n`,
                 );
                 const retried = await callAndParse(retryPrompt);
-                if (!hasHealthAge(parsed.healthAge) && hasHealthAge(retried.healthAge)) {
-                    parsed.healthAge = retried.healthAge;
-                }
                 if (!hasRiskSection(parsed.stroke) && hasRiskSection(retried.stroke)) {
                     parsed.stroke = retried.stroke;
                 }
@@ -115,10 +101,6 @@ ${extraInstruction}
         }
 
         const missing: string[] = [];
-        if (!hasHealthAge(parsed.healthAge)) {
-            delete parsed.healthAge;
-            missing.push('건강나이');
-        }
         if (!hasRiskSection(parsed.stroke)) {
             delete parsed.stroke;
             missing.push('뇌졸중 위험도');
@@ -131,7 +113,7 @@ ${extraInstruction}
         return { result: parsed, missing };
     } catch (err) {
         console.error('[HealthCheckup] AI 예측 에러:', err);
-        return { result: {}, missing: ['건강나이', '뇌졸중 위험도', '심뇌혈관 위험도'] };
+        return { result: {}, missing: ['뇌졸중 위험도', '심뇌혈관 위험도'] };
     }
 }
 
@@ -196,12 +178,12 @@ export async function POST(request: Request) {
             }, { status: 500 });
         }
 
-        // 2단계: AI로 건강나이/뇌졸중/심뇌혈관 예측
+        // 2단계: AI로 뇌졸중/심뇌혈관 예측
         // (CODEF 추가 API는 2-way 세션 재사용 불가이므로 AI 대체)
+        // 건강나이는 데이터 품질 이슈로 제거 (2026-04).
         if (results.checkup) {
             try {
                 const { result: aiResults, missing } = await predictHealthWithAI(results.checkup);
-                if (aiResults.healthAge) results.healthAge = aiResults.healthAge;
                 if (aiResults.stroke) results.stroke = aiResults.stroke;
                 if (aiResults.cardio) results.cardio = aiResults.cardio;
                 if (missing.length > 0) {
