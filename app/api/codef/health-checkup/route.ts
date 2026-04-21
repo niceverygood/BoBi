@@ -1,5 +1,5 @@
 // app/api/codef/health-checkup/route.ts
-// 건강보험공단 건강검진 데이터 조회 (데모 키)
+// 건강보험공단 건강검진 데이터 조회 (프로덕션 CODEF — api.codef.io)
 // - 건강검진결과: CODEF API (간편인증 필요)
 // - 건강나이/뇌졸중/심뇌혈관: AI 예측 (건강검진 데이터 기반)
 import { NextResponse } from 'next/server';
