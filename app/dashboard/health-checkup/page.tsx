@@ -52,6 +52,7 @@ function HealthCheckupContent() {
     const [error, setError] = useState<string | null>(null);
     const [results, setResults] = useState<HealthCheckupResults | null>(null);
     const [savedToCustomer, setSavedToCustomer] = useState<{ customerId: string; customerName?: string } | null>(null);
+    const [targetCustomer, setTargetCustomer] = useState<{ id: string; name: string; birth_date: string | null; phone: string | null } | null>(null);
     const [step, setStep] = useState<'form' | 'auth-waiting' | 'results'>('form');
     const [twoWayData, setTwoWayData] = useState<Record<string, unknown> | null>(null);
     const [sessionId, setSessionId] = useState<string | null>(null);
@@ -59,6 +60,25 @@ function HealthCheckupContent() {
     const [integrating, setIntegrating] = useState<string | null>(null);
     const [integrateMsg, setIntegrateMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const router = useRouter();
+
+    // URL에 customerId가 있으면 고객 정보 자동 로드 → 폼 pre-fill (실수 방지)
+    useEffect(() => {
+        if (!customerIdFromQuery) return;
+        (async () => {
+            try {
+                const data = await apiFetch<{ customer: { id: string; name: string; birth_date: string | null; phone: string | null } }>(
+                    `/api/customers/${customerIdFromQuery}`,
+                );
+                if (data.customer) {
+                    setTargetCustomer(data.customer);
+                    if (data.customer.name) setUserName(data.customer.name);
+                    if (data.customer.phone) setPhoneNo(data.customer.phone);
+                }
+            } catch (err) {
+                console.warn('[HealthCheckup] 고객 정보 로드 실패:', (err as Error).message);
+            }
+        })();
+    }, [customerIdFromQuery]);
 
     // 결과 화면 진입 시 최근 분석 목록 로드
     useEffect(() => {
@@ -549,6 +569,27 @@ function HealthCheckupContent() {
                     <p className="text-sm text-muted-foreground">건강보험공단 건강검진 결과 + 건강나이 + 질환예측</p>
                 </div>
             </div>
+
+            {/* 고객 연동 대상 배너 — customerId 있을 때만 */}
+            {targetCustomer && (
+                <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 flex items-start gap-3">
+                    <Shield className="w-5 h-5 text-violet-600 shrink-0 mt-0.5" />
+                    <div className="flex-1 text-sm">
+                        <p className="font-semibold text-violet-900 mb-0.5">
+                            &ldquo;{targetCustomer.name}&rdquo; 고객의 건강검진 연동 중
+                        </p>
+                        <p className="text-xs text-violet-700 leading-relaxed">
+                            이름·전화번호를 자동으로 채웠습니다. 주민등록번호만 입력해주세요.
+                            아래 간편인증은 <strong>{targetCustomer.name}님 본인 휴대폰</strong>으로 진행되어야 합니다.
+                        </p>
+                        {targetCustomer.birth_date && (
+                            <p className="text-[11px] text-violet-600 mt-1">
+                                생년월일: {targetCustomer.birth_date}
+                            </p>
+                        )}
+                    </div>
+                </div>
+            )}
 
             <Card className="border-0 shadow-sm">
                 <CardHeader className="pb-3">
