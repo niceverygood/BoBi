@@ -48,14 +48,72 @@ export default function HistoryPage() {
                 p_offset: targetPage * PAGE_SIZE,
             });
 
-            if (error) {
-                console.error('History fetch error:', error);
+            if (!error && data && (data as unknown[]).length > 0) {
+                const rows = data as (AnalysisRecord & { total_count: number })[];
+                setAnalyses(rows);
+                setTotalCount(rows[0]?.total_count ?? 0);
+                setPage(targetPage);
                 return;
             }
 
-            const rows = (data ?? []) as (AnalysisRecord & { total_count: number })[];
+            // RPC 미배포·빈 결과 폴백 — analyses 테이블을 직접 조회
+            if (error) {
+                console.warn('get_analyses_list RPC 미사용, 폴백 조회:', error.message);
+            }
+
+            const [listResult, countResult] = await Promise.all([
+                supabase
+                    .from('analyses')
+                    .select('id, customer_id, status, created_at, updated_at, medical_history, product_eligibility, claim_assessment, risk_report, disclosure_summary')
+                    .eq('user_id', user.id)
+                    .order('created_at', { ascending: false })
+                    .range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE - 1),
+                supabase
+                    .from('analyses')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('user_id', user.id),
+            ]);
+
+            if (listResult.error) {
+                console.error('History fallback error:', listResult.error);
+                return;
+            }
+
+            type AnalysisRow = {
+                id: string;
+                customer_id: string | null;
+                status: string;
+                created_at: string;
+                updated_at: string;
+                medical_history: { overallSummary?: string; source?: string } | null;
+                product_eligibility: unknown;
+                claim_assessment: unknown;
+                risk_report: unknown;
+                disclosure_summary: { overallSummary?: string; source?: string } | null;
+            };
+
+            const rows: AnalysisRecord[] = (listResult.data as AnalysisRow[] ?? []).map((r) => ({
+                id: r.id,
+                customer_id: r.customer_id,
+                status: r.status,
+                created_at: r.created_at,
+                updated_at: r.updated_at,
+                overall_summary:
+                    r.disclosure_summary?.overallSummary
+                    ?? r.medical_history?.overallSummary
+                    ?? null,
+                source:
+                    r.medical_history?.source
+                    ?? r.disclosure_summary?.source
+                    ?? null,
+                has_medical_history: r.medical_history !== null,
+                has_product_eligibility: r.product_eligibility !== null,
+                has_claim_assessment: r.claim_assessment !== null,
+                has_risk_report: r.risk_report !== null,
+            }));
+
             setAnalyses(rows);
-            setTotalCount(rows[0]?.total_count ?? 0);
+            setTotalCount(countResult.count ?? rows.length);
             setPage(targetPage);
         } catch (err) {
             console.error('History error:', err);
