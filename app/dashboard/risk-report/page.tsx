@@ -206,7 +206,7 @@ function RiskReportContent() {
 
 export default function RiskReportPage() {
     return (
-        <FeatureGate feature="risk_report" title="질병 위험도 리포트">
+        <FeatureGate feature="risk_report" title="질병 위험도 리포트" redirectTo="/upgrade/risk-report">
             <Suspense fallback={
                 <div className="max-w-4xl mx-auto py-12">
                     <LoadingSpinner text="페이지 로딩 중..." size="lg" />

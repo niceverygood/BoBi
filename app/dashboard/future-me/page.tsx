@@ -878,7 +878,7 @@ function SelfPayCategoryCell({ label, amount }: { label: string; amount: number 
 
 export default function FutureMePage() {
     return (
-        <FeatureGate feature="future_me" title="미래의 나">
+        <FeatureGate feature="future_me" title="미래의 나" redirectTo="/upgrade/future-me">
             <Suspense fallback={
                 <div className="max-w-3xl mx-auto py-12">
                     <LoadingSpinner text="페이지 로딩 중..." size="lg" />

@@ -344,7 +344,7 @@ function AccidentReceiptContent() {
 
 export default function AccidentReceiptPage() {
     return (
-        <FeatureGate feature="virtual_receipt" title="가상 영수증">
+        <FeatureGate feature="virtual_receipt" title="가상 영수증" redirectTo="/upgrade/virtual-receipt">
             <Suspense fallback={
                 <div className="max-w-4xl mx-auto py-12">
                     <LoadingSpinner text="페이지 로딩 중..." size="lg" />
