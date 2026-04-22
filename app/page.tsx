@@ -1,11 +1,12 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { FileSearch, Package, Receipt, ArrowRight, CheckCircle2, Sparkles, Zap, Lock, LayoutDashboard, Database, Stethoscope, TrendingUp, Brain, ShieldCheck, Clock, Timer, Calculator, FileText } from 'lucide-react';
+import { FileSearch, Package, Receipt, ArrowRight, CheckCircle2, Sparkles, Zap, Lock, LayoutDashboard, Database, Stethoscope, TrendingUp, Brain, ShieldCheck, Clock, Timer, Calculator, FileText, Star } from 'lucide-react';
 import BobiLogo from '@/components/common/BobiLogo';
 import { createClient } from '@/lib/supabase/server';
 import { SocialProofStrip, TestimonialCards } from '@/components/common/SocialProof';
 import ROICalculator from '@/components/landing/ROICalculator';
 import ReportPreviewGallery from '@/components/landing/ReportPreviewGallery';
+import TestimonialMarquee from '@/components/landing/TestimonialMarquee';
 
 export default async function LandingPage() {
   const supabase = await createClient();
@@ -168,6 +169,22 @@ export default async function LandingPage() {
         <div className="max-w-5xl mx-auto">
           <SocialProofStrip />
         </div>
+      </section>
+
+      {/* 설계사 실제 후기 마키 — 가로 스크롤 카드뉴스 */}
+      <section className="py-12 sm:py-16 bg-background border-y">
+        <div className="max-w-6xl mx-auto mb-8 sm:mb-10 px-4">
+          <div className="text-center">
+            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary/10 text-primary text-xs sm:text-sm font-medium mb-3 sm:mb-4">
+              <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 fill-primary" />
+              <span>현장 설계사 실제 후기</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+              이미 보비로 실적을 바꾸고 있습니다
+            </h2>
+          </div>
+        </div>
+        <TestimonialMarquee />
       </section>
 
       {/* 신뢰 가능한 숫자 — 근거 기반 분석 */}
