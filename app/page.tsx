@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { FileSearch, Package, Receipt, ArrowRight, CheckCircle2, Sparkles, Zap, Lock, LayoutDashboard, Database, Stethoscope, TrendingUp, Brain, ShieldCheck } from 'lucide-react';
+import { FileSearch, Package, Receipt, ArrowRight, CheckCircle2, Sparkles, Zap, Lock, LayoutDashboard, Database, Stethoscope, TrendingUp, Brain, ShieldCheck, Clock, Timer, Calculator } from 'lucide-react';
 import BobiLogo from '@/components/common/BobiLogo';
 import { createClient } from '@/lib/supabase/server';
 import { SocialProofStrip, TestimonialCards } from '@/components/common/SocialProof';
+import ROICalculator from '@/components/landing/ROICalculator';
 
 export default async function LandingPage() {
   const supabase = await createClient();
@@ -317,6 +318,177 @@ export default async function LandingPage() {
             <p className="text-muted-foreground">이미 보비로 성과를 내고 있는 분들의 후기입니다</p>
           </div>
           <TestimonialCards />
+        </div>
+      </section>
+
+      {/* Before / After — 수작업 vs 보비 */}
+      <section className="py-16 sm:py-24 px-4 bg-muted/30">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-10 sm:mb-16">
+            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary/10 text-primary text-xs sm:text-sm font-medium mb-4 sm:mb-6">
+              <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <span>시간 절감 효과</span>
+            </div>
+            <h2 className="text-2xl sm:text-4xl font-bold mb-3 sm:mb-4 tracking-tight">
+              건당 <span className="text-muted-foreground line-through decoration-2">80분</span> → <span className="bg-gradient-to-r from-[oklch(0.35_0.07_250)] to-[oklch(0.55_0.15_230)] bg-clip-text text-transparent">1분 30초</span>
+            </h2>
+            <p className="text-muted-foreground text-sm sm:text-lg">
+              주 10건 분석 시 <span className="font-semibold text-foreground">월 52시간</span>이 다시 돌아옵니다
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
+            {/* Before — 수작업 */}
+            <div className="p-6 sm:p-8 rounded-2xl border-2 border-dashed border-muted-foreground/25 bg-background/50">
+              <div className="flex items-end justify-between mb-6 pb-4 border-b border-dashed border-muted-foreground/20">
+                <div>
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Before</div>
+                  <div className="text-lg font-bold text-muted-foreground">수작업</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-muted-foreground">건당 총 소요</div>
+                  <div className="text-3xl font-bold text-muted-foreground tabular-nums">80<span className="text-lg">분</span></div>
+                </div>
+              </div>
+
+              <ul className="space-y-3">
+                <li>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm text-muted-foreground">진료이력 PDF 스캔 & 읽기</span>
+                    <span className="text-sm font-semibold text-muted-foreground tabular-nums">30분</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted-foreground/10 overflow-hidden">
+                    <div className="h-full bg-muted-foreground/40" style={{ width: '37.5%' }} />
+                  </div>
+                </li>
+                <li>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm text-muted-foreground">고지사항 질병코드 분류</span>
+                    <span className="text-sm font-semibold text-muted-foreground tabular-nums">20분</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted-foreground/10 overflow-hidden">
+                    <div className="h-full bg-muted-foreground/40" style={{ width: '25%' }} />
+                  </div>
+                </li>
+                <li>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm text-muted-foreground">보험금 청구 가능 항목 조회</span>
+                    <span className="text-sm font-semibold text-muted-foreground tabular-nums">20분</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted-foreground/10 overflow-hidden">
+                    <div className="h-full bg-muted-foreground/40" style={{ width: '25%' }} />
+                  </div>
+                </li>
+                <li>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm text-muted-foreground">고객 상담 자료 정리</span>
+                    <span className="text-sm font-semibold text-muted-foreground tabular-nums">10분</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted-foreground/10 overflow-hidden">
+                    <div className="h-full bg-muted-foreground/40" style={{ width: '12.5%' }} />
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+            {/* After — 보비 */}
+            <div className="relative p-6 sm:p-8 rounded-2xl border-2 border-primary/40 bg-primary/5 shadow-lg">
+              <div className="absolute -top-3 left-6 px-3 py-1 rounded-full bg-gradient-primary text-white text-xs font-semibold shadow-md">
+                ⚡ 53배 빠름
+              </div>
+              <div className="flex items-end justify-between mb-6 pb-4 border-b border-primary/20">
+                <div>
+                  <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">After</div>
+                  <div className="text-lg font-bold">보비</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-muted-foreground">건당 총 소요</div>
+                  <div className="text-3xl font-bold tabular-nums bg-gradient-to-r from-[oklch(0.35_0.07_250)] to-[oklch(0.55_0.15_230)] bg-clip-text text-transparent">1분 30초</div>
+                </div>
+              </div>
+
+              <ul className="space-y-3">
+                <li>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm">PDF 업로드</span>
+                    <span className="text-sm font-semibold text-primary tabular-nums">5초</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-primary/10 overflow-hidden">
+                    <div className="h-full bg-gradient-primary" style={{ width: '6%' }} />
+                  </div>
+                </li>
+                <li>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm">AI 자동 분석 (고지·상품·청구)</span>
+                    <span className="text-sm font-semibold text-primary tabular-nums">30초</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-primary/10 overflow-hidden">
+                    <div className="h-full bg-gradient-primary" style={{ width: '33%' }} />
+                  </div>
+                </li>
+                <li>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm">리포트 확인 & 고객 전송</span>
+                    <span className="text-sm font-semibold text-primary tabular-nums">55초</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-primary/10 overflow-hidden">
+                    <div className="h-full bg-gradient-primary" style={{ width: '61%' }} />
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* 하단 임팩트 */}
+          <div className="mt-6 sm:mt-10 p-6 sm:p-10 rounded-2xl bg-gradient-primary text-white text-center shadow-xl">
+            <div className="inline-flex items-center gap-2 text-xs sm:text-sm opacity-90 mb-2 sm:mb-3">
+              <Timer className="w-4 h-4" />
+              <span>주 10건 분석 가정</span>
+            </div>
+            <div className="grid grid-cols-3 gap-4 sm:gap-8 mt-4">
+              <div>
+                <div className="text-3xl sm:text-5xl font-bold tabular-nums">52<span className="text-xl sm:text-2xl">시간</span></div>
+                <div className="text-xs sm:text-sm opacity-90 mt-1">월 절감 시간</div>
+              </div>
+              <div className="border-x border-white/20">
+                <div className="text-3xl sm:text-5xl font-bold tabular-nums">26<span className="text-xl sm:text-2xl">건</span></div>
+                <div className="text-xs sm:text-sm opacity-90 mt-1">추가 가능 미팅</div>
+              </div>
+              <div>
+                <div className="text-3xl sm:text-5xl font-bold tabular-nums">53<span className="text-xl sm:text-2xl">배</span></div>
+                <div className="text-xs sm:text-sm opacity-90 mt-1">분석 속도 향상</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ROI 계산기 */}
+      <section className="py-16 sm:py-24 px-4 bg-background">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-10 sm:mb-14">
+            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary/10 text-primary text-xs sm:text-sm font-medium mb-4 sm:mb-6">
+              <Calculator className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <span>수익 계산기</span>
+            </div>
+            <h2 className="text-2xl sm:text-4xl font-bold mb-3 sm:mb-4 tracking-tight">
+              보비로 얼마나 더 벌 수 있을까요?
+            </h2>
+            <p className="text-muted-foreground text-sm sm:text-lg">
+              당신의 평균 수수료와 기대 체결 건수를 입력해보세요
+            </p>
+          </div>
+
+          <ROICalculator />
+
+          <div className="mt-8 text-center">
+            <Link href="/auth/signup">
+              <Button size="lg" className="text-sm sm:text-base px-6 sm:px-8 h-11 sm:h-12 bg-gradient-primary hover:opacity-90 shadow-lg">
+                지금 바로 무료로 체험하기
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
 
