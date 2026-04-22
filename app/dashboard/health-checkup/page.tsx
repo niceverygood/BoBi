@@ -64,6 +64,10 @@ function HealthCheckupContent() {
     const [nhisSessionId, setNhisSessionId] = useState<string | null>(null);
     const [nhisUpgrading, setNhisUpgrading] = useState(false);
     const [nhisMsg, setNhisMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    // 질병 위험도 리포트 자동 연동 상태
+    const [autoSyncStatus, setAutoSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'no-analysis' | 'failed'>('idle');
+    const [syncedAnalysisId, setSyncedAnalysisId] = useState<string | null>(null);
+    const [autoSyncError, setAutoSyncError] = useState<string | null>(null);
     const router = useRouter();
 
     // URL에 customerId가 있으면 고객 정보 자동 로드 → 폼 pre-fill (실수 방지)
@@ -114,6 +118,64 @@ function HealthCheckupContent() {
             }
         })();
     }, [results, customerIdFromQuery, savedToCustomer]);
+
+    /**
+     * ⭐ 방법 A — 자동 연동
+     *
+     * 건강검진 결과가 고객 프로필에 저장된 순간:
+     *   1) 해당 고객의 "최신 완료된 분석" 1건을 조회
+     *   2) 그 분석의 질병위험도 리포트를 새 검진 데이터로 자동 재생성
+     *   3) 성공하면 바로가기 CTA 노출
+     *
+     * 설계사는 별도 버튼 클릭 없이 건강검진 1번 → 위험도 리포트가 바로 갱신됨.
+     */
+    useEffect(() => {
+        if (!savedToCustomer || !customerIdFromQuery || !results) return;
+        if (autoSyncStatus !== 'idle') return; // 1회성 실행 가드
+
+        (async () => {
+            setAutoSyncStatus('syncing');
+            setAutoSyncError(null);
+            try {
+                // 1. 고객의 최신 분석 조회
+                const customerData = await apiFetch<{
+                    analyses?: Array<{
+                        id: string;
+                        status: string;
+                        created_at: string;
+                        medical_history?: unknown;
+                    }>;
+                }>(`/api/customers/${customerIdFromQuery}`);
+
+                const analyses = customerData.analyses || [];
+                const latestCompleted = analyses.find(
+                    a => a.status === 'completed',
+                );
+
+                if (!latestCompleted) {
+                    setAutoSyncStatus('no-analysis');
+                    return;
+                }
+
+                // 2. 위험도 리포트 자동 재생성 (regenerate + healthCheckupData)
+                await apiFetch('/api/risk-report', {
+                    method: 'POST',
+                    body: {
+                        analysisId: latestCompleted.id,
+                        regenerate: true,
+                        healthCheckupData: results,
+                    },
+                });
+
+                setSyncedAnalysisId(latestCompleted.id);
+                setAutoSyncStatus('success');
+            } catch (err) {
+                console.error('[HealthCheckup] 자동 연동 실패:', err);
+                setAutoSyncError((err as Error).message);
+                setAutoSyncStatus('failed');
+            }
+        })();
+    }, [savedToCustomer, customerIdFromQuery, results, autoSyncStatus]);
 
     // 건강검진 데이터를 분석 리포트에 통합
     const handleIntegrateToReport = async (analysisId: string) => {
@@ -501,13 +563,82 @@ function HealthCheckupContent() {
                     </div>
                 )}
 
-                {/* 분석 리포트 통합 */}
-                {recentAnalyses.length > 0 && (
+                {/* ⭐ 자동 연동 상태 — 질병위험도 리포트 자동 갱신 */}
+                {customerIdFromQuery && autoSyncStatus === 'syncing' && (
+                    <div className="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4">
+                        <Loader2 className="w-5 h-5 text-blue-600 animate-spin shrink-0" />
+                        <div className="flex-1 text-sm">
+                            <p className="font-semibold text-blue-900">질병위험도 리포트에 자동 반영 중...</p>
+                            <p className="text-xs text-blue-700 mt-0.5">
+                                검진 데이터를 기존 분석에 통합해 위험도 리포트를 재생성합니다. (약 20초)
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {customerIdFromQuery && autoSyncStatus === 'success' && syncedAnalysisId && (
+                    <div className="flex items-start gap-3 rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50 to-indigo-50 p-4">
+                        <Sparkles className="w-5 h-5 text-violet-600 shrink-0 mt-0.5" />
+                        <div className="flex-1 text-sm">
+                            <p className="font-semibold text-violet-900">
+                                질병위험도 리포트에 자동 반영되었습니다 ✨
+                            </p>
+                            <p className="text-xs text-violet-700 leading-relaxed mt-1">
+                                이 고객의 최신 분석에 오늘 조회한 건강검진 수치가 통합되어
+                                질병 위험도·상대 위험도 예측이 재계산되었습니다.
+                            </p>
+                            <Link
+                                href={`/dashboard/risk-report?analysisId=${syncedAnalysisId}`}
+                                className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700 px-3 py-1.5 rounded-md mt-2"
+                            >
+                                <Sparkles className="w-3 h-3" />
+                                업데이트된 리포트 바로가기
+                            </Link>
+                        </div>
+                    </div>
+                )}
+
+                {customerIdFromQuery && autoSyncStatus === 'no-analysis' && (
+                    <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                        <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                        <div className="flex-1 text-sm">
+                            <p className="font-semibold text-amber-900">
+                                자동 연동 대기 — 이 고객의 분석 기록이 없습니다
+                            </p>
+                            <p className="text-xs text-amber-700 leading-relaxed mt-1">
+                                먼저 진료이력 PDF로 분석을 생성하면, 이후 분석에서 방금 조회한 검진 데이터가 자동 반영됩니다.
+                            </p>
+                            <Link
+                                href="/dashboard/analyze"
+                                className="inline-block text-xs font-semibold text-amber-700 underline underline-offset-2 mt-1.5"
+                            >
+                                분석 시작하기 →
+                            </Link>
+                        </div>
+                    </div>
+                )}
+
+                {customerIdFromQuery && autoSyncStatus === 'failed' && (
+                    <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
+                        <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                        <div className="flex-1 text-sm">
+                            <p className="font-semibold text-red-900">
+                                자동 연동에 실패했습니다
+                            </p>
+                            <p className="text-xs text-red-700 leading-relaxed mt-1">
+                                {autoSyncError || '일시적 오류입니다.'} 아래 &ldquo;질병위험리포트에 반영하기&rdquo; 에서 수동으로 재시도할 수 있습니다.
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {/* 분석 리포트 통합 — 자동 연동이 성공하거나 대기 중이 아닌 경우에만 수동 옵션 표시 */}
+                {recentAnalyses.length > 0 && autoSyncStatus !== 'success' && autoSyncStatus !== 'syncing' && (
                     <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-violet-50 border-blue-100">
                         <CardHeader className="pb-3">
                             <CardTitle className="text-base flex items-center gap-2">
                                 <Sparkles className="w-5 h-5 text-[#1a56db]" />
-                                질병위험리포트에 반영하기
+                                {customerIdFromQuery ? '다른 분석에도 반영하기' : '질병위험리포트에 반영하기'}
                             </CardTitle>
                             <CardDescription className="text-xs">
                                 건강검진 데이터를 기존 분석 리포트와 통합해 정확도를 높일 수 있습니다.
