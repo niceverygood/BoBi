@@ -154,16 +154,31 @@ export async function POST(request: Request) {
                 if (p.resOpinion) summaryParts.push(`- 소견: ${p.resOpinion}`);
             }
 
-            // ── 질환별 10년 발병 예측 (검진 수치 기반 AI 보조) ──
+            // ── 질환별 10년 발병 예측 ──
+            // _source='nhis' → NHIS 공단 공식 (CODEF 프로덕션), 없으면 AI 보조 예측.
             const predLines: string[] = [];
+            const strokeIsNhis = healthCheckupData.stroke?._source === 'nhis';
+            const cardioIsNhis = healthCheckupData.cardio?._source === 'nhis';
             if (healthCheckupData.stroke?.resRiskGrade) {
-                predLines.push(`- 뇌졸중 10년 예측: ${healthCheckupData.stroke.resRiskGrade} (${healthCheckupData.stroke.resRatio || ''})`);
+                const tag = strokeIsNhis ? ' · NHIS 공단 공식' : '';
+                predLines.push(`- 뇌졸중 10년 예측${tag}: ${healthCheckupData.stroke.resRiskGrade} (${healthCheckupData.stroke.resRatio || ''})`);
             }
             if (healthCheckupData.cardio?.resRiskGrade) {
-                predLines.push(`- 심뇌혈관 10년 예측: ${healthCheckupData.cardio.resRiskGrade} (${healthCheckupData.cardio.resRatio || ''})`);
+                const tag = cardioIsNhis ? ' · NHIS 공단 공식' : '';
+                predLines.push(`- 심뇌혈관 10년 예측${tag}: ${healthCheckupData.cardio.resRiskGrade} (${healthCheckupData.cardio.resRatio || ''})`);
             }
             if (predLines.length > 0) {
-                summaryParts.push('\n[질환별 10년 발병 예측 — 검진 수치 기반]');
+                const allNhis =
+                    (!healthCheckupData.stroke?.resRiskGrade || strokeIsNhis) &&
+                    (!healthCheckupData.cardio?.resRiskGrade || cardioIsNhis);
+                const anyNhis = strokeIsNhis || cardioIsNhis;
+                summaryParts.push(
+                    allNhis && anyNhis
+                        ? '\n[NHIS 공단 공식 10년 발병 예측]'
+                        : anyNhis
+                            ? '\n[질환별 10년 발병 예측 — 항목별 출처 상이]'
+                            : '\n[질환별 10년 발병 예측 — 검진 수치 기반]',
+                );
                 summaryParts.push(...predLines);
             }
 

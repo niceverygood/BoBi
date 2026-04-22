@@ -80,20 +80,34 @@ function summarizeHealthCheckup(raw: unknown): string {
         if (preview.resJudgement) lines.push(`- 종합판정: ${preview.resJudgement}`);
     }
 
-    // ── 질환별 10년 발병 예측 (AI 보조, 검진 수치 기반) ──
+    // ── 질환별 10년 발병 예측 ──
+    // 각 예측에 _source 필드가 있으면 NHIS 공단 공식 데이터(CODEF 프로덕션),
+    // 없거나 'ai'면 검진 수치 기반 AI 보조 예측. 라벨을 출처별로 분기.
     const stroke = d.stroke as Record<string, unknown> | undefined;
     const cardio = d.cardio as Record<string, unknown> | undefined;
     const hasPred = stroke?.resRiskGrade || cardio?.resRiskGrade;
     if (hasPred) {
         if (lines.length > 0) lines.push('');
-        lines.push('[질환별 10년 발병 예측 — 검진 수치 기반]');
+        const strokeIsNhis = stroke?._source === 'nhis';
+        const cardioIsNhis = cardio?._source === 'nhis';
+        const allNhis = (!stroke?.resRiskGrade || strokeIsNhis) && (!cardio?.resRiskGrade || cardioIsNhis);
+        const anyNhis = strokeIsNhis || cardioIsNhis;
+        lines.push(
+            allNhis && anyNhis
+                ? '[NHIS 공단 공식 10년 발병 예측]'
+                : anyNhis
+                    ? '[질환별 10년 발병 예측 — 항목별 출처 상이]'
+                    : '[질환별 10년 발병 예측 — 검진 수치 기반]',
+        );
         if (stroke?.resRiskGrade) {
             const ratio = stroke.resRatio ? ` (${stroke.resRatio})` : '';
-            lines.push(`- 뇌졸중 10년 예측: ${stroke.resRiskGrade}${ratio}`);
+            const tag = strokeIsNhis ? ' · NHIS 공단 공식' : '';
+            lines.push(`- 뇌졸중 10년 예측${tag}: ${stroke.resRiskGrade}${ratio}`);
         }
         if (cardio?.resRiskGrade) {
             const ratio = cardio.resRatio ? ` (${cardio.resRatio})` : '';
-            lines.push(`- 심뇌혈관 10년 예측: ${cardio.resRiskGrade}${ratio}`);
+            const tag = cardioIsNhis ? ' · NHIS 공단 공식' : '';
+            lines.push(`- 심뇌혈관 10년 예측${tag}: ${cardio.resRiskGrade}${ratio}`);
         }
     }
 

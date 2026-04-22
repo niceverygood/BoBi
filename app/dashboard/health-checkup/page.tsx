@@ -52,12 +52,18 @@ function HealthCheckupContent() {
     const [results, setResults] = useState<HealthCheckupResults | null>(null);
     const [savedToCustomer, setSavedToCustomer] = useState<{ customerId: string; customerName?: string } | null>(null);
     const [targetCustomer, setTargetCustomer] = useState<{ id: string; name: string; birth_date: string | null; phone: string | null } | null>(null);
-    const [step, setStep] = useState<'form' | 'auth-waiting' | 'results'>('form');
+    const [step, setStep] = useState<'form' | 'auth-waiting' | 'results' | 'nhis-upgrade-waiting'>('form');
     const [twoWayData, setTwoWayData] = useState<Record<string, unknown> | null>(null);
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [recentAnalyses, setRecentAnalyses] = useState<Array<{ id: string; created_at: string; customer_name?: string }>>([]);
     const [integrating, setIntegrating] = useState<string | null>(null);
     const [integrateMsg, setIntegrateMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    // NHIS 업그레이드 관련 상태
+    const [nhisTarget, setNhisTarget] = useState<'stroke' | 'cardio' | null>(null);
+    const [nhisTwoWayData, setNhisTwoWayData] = useState<Record<string, unknown> | null>(null);
+    const [nhisSessionId, setNhisSessionId] = useState<string | null>(null);
+    const [nhisUpgrading, setNhisUpgrading] = useState(false);
+    const [nhisMsg, setNhisMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const router = useRouter();
 
     // URL에 customerId가 있으면 고객 정보 자동 로드 → 폼 pre-fill (실수 방지)
@@ -236,6 +242,103 @@ function HealthCheckupContent() {
         return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
     };
 
+    /**
+     * NHIS 업그레이드 시작 — 해당 타깃(stroke|cardio)에 대해 2-way 간편인증을 요청한다.
+     * 사용자는 간편인증 앱에서 승인 후 handleNhisUpgradeComplete를 호출해 완료.
+     */
+    const handleNhisUpgradeStart = async (target: 'stroke' | 'cardio') => {
+        if (!userName || !identity || !phoneNo) {
+            setNhisMsg({ type: 'error', text: '처음 입력한 이름·주민번호·전화번호가 필요합니다. 페이지를 새로고침하고 다시 조회해주세요.' });
+            return;
+        }
+        setNhisTarget(target);
+        setNhisUpgrading(true);
+        setNhisMsg(null);
+        try {
+            const data = await apiFetch<{
+                success?: boolean;
+                target?: string;
+                data?: Record<string, unknown>;
+                requires2Way?: boolean;
+                twoWayData?: Record<string, unknown>;
+                sessionId?: string;
+            }>('/api/codef/health-checkup/nhis-upgrade', {
+                method: 'POST',
+                body: {
+                    target,
+                    customerId: customerIdFromQuery || undefined,
+                    userName: userName.trim(),
+                    identity: identity.replace(/\D/g, ''),
+                    phoneNo: phoneNo.replace(/-/g, ''),
+                    loginType: '5',
+                    loginTypeLevel: authProvider,
+                    telecom: needsTelecom ? telecom : '',
+                },
+            });
+            if (data.requires2Way) {
+                setNhisTwoWayData(data.twoWayData || null);
+                setNhisSessionId(data.sessionId || null);
+                setStep('nhis-upgrade-waiting');
+            } else if (data.success && data.data) {
+                // 즉시 성공 (드문 케이스)
+                setResults(prev => prev ? {
+                    ...prev,
+                    [target]: data.data as never,
+                } : prev);
+                setNhisMsg({ type: 'success', text: `${target === 'stroke' ? '뇌졸중' : '심뇌혈관'} NHIS 공식 예측으로 업그레이드되었습니다.` });
+                setNhisTarget(null);
+            }
+        } catch (err) {
+            setNhisMsg({ type: 'error', text: (err as Error).message });
+            setNhisTarget(null);
+        } finally {
+            setNhisUpgrading(false);
+        }
+    };
+
+    const handleNhisUpgradeComplete = async () => {
+        if (!nhisTarget) return;
+        setNhisUpgrading(true);
+        setNhisMsg(null);
+        try {
+            const data = await apiFetch<{
+                success?: boolean;
+                data?: Record<string, unknown>;
+            }>('/api/codef/health-checkup/nhis-upgrade', {
+                method: 'POST',
+                body: {
+                    target: nhisTarget,
+                    customerId: customerIdFromQuery || undefined,
+                    userName: userName.trim(),
+                    identity: identity.replace(/\D/g, ''),
+                    phoneNo: phoneNo.replace(/-/g, ''),
+                    loginType: '5',
+                    loginTypeLevel: authProvider,
+                    telecom: needsTelecom ? telecom : '',
+                    is2Way: true,
+                    twoWayInfo: nhisTwoWayData,
+                    sessionId: nhisSessionId,
+                },
+            });
+            if (data.success && data.data) {
+                const targetKey = nhisTarget;
+                setResults(prev => prev ? {
+                    ...prev,
+                    [targetKey]: data.data as never,
+                } : prev);
+                setNhisMsg({ type: 'success', text: `${targetKey === 'stroke' ? '뇌졸중' : '심뇌혈관'} NHIS 공식 예측으로 업그레이드되었습니다.` });
+            }
+        } catch (err) {
+            setNhisMsg({ type: 'error', text: (err as Error).message });
+        } finally {
+            setNhisUpgrading(false);
+            setNhisTarget(null);
+            setNhisTwoWayData(null);
+            setNhisSessionId(null);
+            setStep('results');
+        }
+    };
+
     const getRiskColor = (grade: string) => {
         if (grade.includes('높') || grade.includes('위험') || grade.includes('3')) return 'text-red-600 bg-red-50';
         if (grade.includes('보통') || grade.includes('주의') || grade.includes('2')) return 'text-amber-600 bg-amber-50';
@@ -295,6 +398,61 @@ function HealthCheckupContent() {
                         {error}
                     </div>
                 )}
+            </div>
+        );
+    }
+
+    // NHIS 업그레이드 2차 인증 대기 화면
+    if (step === 'nhis-upgrade-waiting') {
+        const providerName = AUTH_PROVIDERS.find(a => a.id === authProvider)?.name || '간편인증';
+        const targetLabel = nhisTarget === 'stroke' ? '뇌졸중' : '심뇌혈관';
+        return (
+            <div className="max-w-md mx-auto space-y-6 animate-fade-in text-center py-12">
+                <div className="w-20 h-20 rounded-full bg-violet-50 flex items-center justify-center mx-auto">
+                    <Shield className="w-10 h-10 text-violet-500 animate-pulse" />
+                </div>
+                <div>
+                    <h2 className="text-xl font-bold mb-2">NHIS 공식 {targetLabel} 예측 — 인증 요청</h2>
+                    <p className="text-muted-foreground">
+                        {providerName} 앱에서 인증을 승인한 뒤 완료 버튼을 눌러주세요.
+                    </p>
+                </div>
+                <Card className="border-0 shadow-sm">
+                    <CardContent className="p-6 space-y-4">
+                        <div className="flex items-center gap-3 p-4 rounded-lg bg-violet-50 border border-violet-200">
+                            <AlertCircle className="w-5 h-5 text-violet-600 shrink-0" />
+                            <p className="text-sm text-violet-700">
+                                {providerName} 앱에서 NHIS {targetLabel} 예측 조회 요청을 승인해주세요.
+                            </p>
+                        </div>
+                        <Button
+                            onClick={handleNhisUpgradeComplete}
+                            disabled={nhisUpgrading}
+                            className="w-full bg-violet-600 hover:bg-violet-700"
+                            size="lg"
+                        >
+                            {nhisUpgrading ? (
+                                <><Loader2 className="w-5 h-5 mr-2 animate-spin" />조회 중...</>
+                            ) : (
+                                <><Shield className="w-5 h-5 mr-2" />인증 완료 · NHIS 예측 받기</>
+                            )}
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                                setStep('results');
+                                setNhisTarget(null);
+                                setNhisTwoWayData(null);
+                                setNhisSessionId(null);
+                                setNhisMsg({ type: 'error', text: 'NHIS 업그레이드를 취소했습니다.' });
+                            }}
+                            className="w-full text-muted-foreground"
+                        >
+                            업그레이드 취소
+                        </Button>
+                    </CardContent>
+                </Card>
             </div>
         );
     }
@@ -450,6 +608,11 @@ function HealthCheckupContent() {
                             <CardTitle className="text-base flex items-center gap-2">
                                 <Brain className="w-4 h-4 text-purple-600" />
                                 뇌졸중 위험도
+                                {(results.stroke as unknown as { _source?: string })._source === 'nhis' ? (
+                                    <Badge className="bg-emerald-600 text-white text-[10px] ml-1">NHIS 공단 공식</Badge>
+                                ) : (
+                                    <Badge variant="outline" className="text-[10px] ml-1 border-amber-300 text-amber-700">AI 보조</Badge>
+                                )}
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -478,6 +641,11 @@ function HealthCheckupContent() {
                             <CardTitle className="text-base flex items-center gap-2">
                                 <HeartPulse className="w-4 h-4 text-red-600" />
                                 심뇌혈관 질환 위험도
+                                {(results.cardio as unknown as { _source?: string })._source === 'nhis' ? (
+                                    <Badge className="bg-emerald-600 text-white text-[10px] ml-1">NHIS 공단 공식</Badge>
+                                ) : (
+                                    <Badge variant="outline" className="text-[10px] ml-1 border-amber-300 text-amber-700">AI 보조</Badge>
+                                )}
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -495,6 +663,65 @@ function HealthCheckupContent() {
                                     ))}
                                 </div>
                             )}
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* NHIS 공식 예측으로 업그레이드 */}
+                {((results.stroke && (results.stroke as unknown as { _source?: string })._source !== 'nhis')
+                  || (results.cardio && (results.cardio as unknown as { _source?: string })._source !== 'nhis')) && (
+                    <Card className="border-0 shadow-sm bg-gradient-to-br from-violet-50 to-indigo-50 border-violet-100">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <Shield className="w-4 h-4 text-violet-600" />
+                                NHIS 공단 공식 예측으로 업그레이드
+                            </CardTitle>
+                            <CardDescription className="text-xs">
+                                현재 표시된 AI 보조 예측을 건강보험공단의 공식 예측 데이터로 교체합니다.
+                                각 항목당 간편인증 1회(약 30초) + CODEF 과금 50원이 추가됩니다.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                            {nhisMsg && (
+                                <p className={`text-xs px-3 py-2 rounded-lg ${nhisMsg.type === 'success' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                                    {nhisMsg.text}
+                                </p>
+                            )}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {results.stroke && (results.stroke as unknown as { _source?: string })._source !== 'nhis' && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={nhisUpgrading}
+                                        onClick={() => handleNhisUpgradeStart('stroke')}
+                                        className="border-violet-300 text-violet-700 hover:bg-violet-50"
+                                    >
+                                        {nhisUpgrading && nhisTarget === 'stroke' ? (
+                                            <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />요청 중...</>
+                                        ) : (
+                                            <><Brain className="w-3.5 h-3.5 mr-1.5" />뇌졸중 NHIS 업그레이드</>
+                                        )}
+                                    </Button>
+                                )}
+                                {results.cardio && (results.cardio as unknown as { _source?: string })._source !== 'nhis' && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={nhisUpgrading}
+                                        onClick={() => handleNhisUpgradeStart('cardio')}
+                                        className="border-violet-300 text-violet-700 hover:bg-violet-50"
+                                    >
+                                        {nhisUpgrading && nhisTarget === 'cardio' ? (
+                                            <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />요청 중...</>
+                                        ) : (
+                                            <><HeartPulse className="w-3.5 h-3.5 mr-1.5" />심뇌혈관 NHIS 업그레이드</>
+                                        )}
+                                    </Button>
+                                )}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-2">
+                                업그레이드된 예측은 위험도 리포트·미래의 나에서 자동으로 &ldquo;NHIS 공단 공식&rdquo; 라벨로 반영됩니다.
+                            </p>
                         </CardContent>
                     </Card>
                 )}
