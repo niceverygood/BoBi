@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { fetchHealthCheckupResult, type HealthCheckupRequest } from '@/lib/codef/client';
 import { callOpenAI } from '@/lib/ai/openai';
+import { getUserPlan, canAccessCodef } from '@/lib/subscription/access';
 
 export const maxDuration = 300;
 
@@ -124,6 +125,18 @@ export async function POST(request: Request) {
 
         if (authError || !user) {
             return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
+        }
+
+        const plan = await getUserPlan(supabase, user.id);
+        if (!canAccessCodef(plan)) {
+            return NextResponse.json(
+                {
+                    error: '건강검진 자동 조회는 베이직 플랜 이상에서 이용 가능합니다.',
+                    requiresPlan: 'basic',
+                    feature: 'codef_health_checkup',
+                },
+                { status: 403 },
+            );
         }
 
         const body = await request.json();
