@@ -66,12 +66,13 @@ export function useSubscription() {
                 return;
             }
 
-            // Fetch active subscription with plan (최신 1건만, 중복 active 방지)
+            // Fetch active/trialing subscription with plan (최신 1건만)
+            // 7일 무료체험(trialing) 사용자도 체험 중인 플랜으로 취급한다.
             const { data: subList } = await supabase
                 .from('subscriptions')
                 .select('*, plan:subscription_plans(*)')
                 .eq('user_id', user.id)
-                .eq('status', 'active')
+                .in('status', ['active', 'trialing'])
                 .order('updated_at', { ascending: false })
                 .limit(1);
 

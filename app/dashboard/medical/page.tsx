@@ -14,6 +14,7 @@ import { apiFetch } from '@/lib/api/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { HiraMedicalRecord, HiraBasicTreatRecord, HiraCarInsuranceRecord, HiraCarBasicTreatRecord, HiraPrescribeDrugRecord, MyMedicineRecord } from '@/lib/codef/client';
+import { useSubscription } from '@/hooks/useSubscription';
 
 // 인증 방식 (간편인증 + SMS)
 const AUTH_METHODS = [
@@ -51,6 +52,16 @@ type QueryType = 'medical' | 'car' | 'both';
 
 function MedicalInfoContent() {
     const router = useRouter();
+    const { plan, loading: planLoading } = useSubscription();
+
+    // 무료 플랜은 업그레이드 페이지로 리다이렉트 (진료정보는 베이직 이상 전용).
+    // trialing(체험 중)은 useSubscription에서 체험 플랜으로 해석되므로 통과.
+    useEffect(() => {
+        if (!planLoading && plan.slug === 'free') {
+            router.replace('/upgrade/medical-info');
+        }
+    }, [planLoading, plan.slug, router]);
+
     const [step, setStep] = useState<Step>('form');
     const [loading, setLoading] = useState(false);
     const [loadingPhase, setLoadingPhase] = useState('');
@@ -743,6 +754,15 @@ function MedicalInfoContent() {
     const totalMedical = medicalTreatRecords.length;
     const totalCar = carTreatRecords.length;
     const totalAmount = medicalTreatRecords.reduce((sum, r) => sum + (parseInt(r.resTotalAmount?.replace(/\D/g, '') || '0', 10) || 0), 0);
+
+    // 플랜 조회 중이거나 무료 플랜(리다이렉트 대기 중)은 빈 로더 표시
+    if (planLoading || plan.slug === 'free') {
+        return (
+            <div className="flex justify-center py-20">
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">

@@ -12,7 +12,7 @@ export default function ReportPreviewGallery() {
 }
 
 /* ─────────── Card 1: 미래의 나 · 5년 시나리오 ─────────── */
-function FutureMePreviewCard() {
+export function FutureMePreviewCard() {
     return (
         <div className="p-5 sm:p-6 rounded-2xl border bg-card shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
             <div className="flex items-start justify-between mb-4">
@@ -70,7 +70,7 @@ function FutureMePreviewCard() {
 }
 
 /* ─────────── Card 2: 질병 위험도 리포트 ─────────── */
-function RiskReportPreviewCard() {
+export function RiskReportPreviewCard() {
     const rows: Array<{ name: string; level: string; levelColor: string; multi: string; pct: number; barFrom: string; barTo: string; bg: string }> = [
         { name: '제2형 당뇨병', level: '높음', levelColor: 'bg-red-100 text-red-700', multi: '3.2배', pct: 75, barFrom: 'from-red-400', barTo: 'to-red-600', bg: 'bg-red-100' },
         { name: '뇌졸중', level: '보통', levelColor: 'bg-amber-100 text-amber-700', multi: '2.4배', pct: 58, barFrom: 'from-amber-400', barTo: 'to-amber-600', bg: 'bg-amber-100' },
@@ -115,7 +115,7 @@ function RiskReportPreviewCard() {
 }
 
 /* ─────────── Card 3: 고지사항 자동 정리 ─────────── */
-function DisclosurePreviewCard() {
+export function DisclosurePreviewCard() {
     const items: Array<{ label: string; applicable: boolean; count?: string }> = [
         { label: '3개월 이내 투약', applicable: true, count: '3건' },
         { label: '5년 이내 입원', applicable: false },
@@ -167,7 +167,7 @@ function DisclosurePreviewCard() {
 }
 
 /* ─────────── Card 4: 가상 영수증 ─────────── */
-function ReceiptPreviewCard() {
+export function ReceiptPreviewCard() {
     return (
         <div className="rounded-2xl border bg-card shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
             <div className="bg-gradient-to-r from-slate-800 to-slate-900 text-white p-4 sm:p-5">
