@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { FileSearch, Package, Receipt, ArrowRight, CheckCircle2, Sparkles, Zap, Lock, LayoutDashboard, Database, Stethoscope, TrendingUp, Brain, ShieldCheck, Clock, Timer, Calculator } from 'lucide-react';
+import { FileSearch, Package, Receipt, ArrowRight, CheckCircle2, Sparkles, Zap, Lock, LayoutDashboard, Database, Stethoscope, TrendingUp, Brain, ShieldCheck, Clock, Timer, Calculator, FileText } from 'lucide-react';
 import BobiLogo from '@/components/common/BobiLogo';
 import { createClient } from '@/lib/supabase/server';
 import { SocialProofStrip, TestimonialCards } from '@/components/common/SocialProof';
 import ROICalculator from '@/components/landing/ROICalculator';
+import ReportPreviewGallery from '@/components/landing/ReportPreviewGallery';
 
 export default async function LandingPage() {
   const supabase = await createClient();
@@ -267,6 +268,32 @@ export default async function LandingPage() {
                 고객에게 안전하게 직송하는 서명 링크, 만료 후 자동 차단됩니다
               </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 리포트 미리보기 갤러리 — 고객이 받는 실제 아웃풋 */}
+      <section className="py-16 sm:py-24 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-10 sm:mb-16">
+            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary/10 text-primary text-xs sm:text-sm font-medium mb-4 sm:mb-6">
+              <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <span>고객이 받는 실제 리포트</span>
+            </div>
+            <h2 className="text-2xl sm:text-4xl font-bold mb-3 sm:mb-4 tracking-tight">
+              설계사가 <span className="bg-gradient-to-r from-[oklch(0.35_0.07_250)] to-[oklch(0.55_0.15_230)] bg-clip-text text-transparent">의사처럼</span> 보이는 유일한 도구
+            </h2>
+            <p className="text-muted-foreground text-sm sm:text-lg max-w-2xl mx-auto">
+              고객이 받아보는 리포트의 품질이 설계사의 전문성을 증명합니다. 이런 분석을 30초 만에 만들 수 있습니다
+            </p>
+          </div>
+
+          <ReportPreviewGallery />
+
+          <div className="mt-8 sm:mt-10 text-center">
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              ↑ 위 4가지 리포트를 PDF · 카카오 알림톡 · 공유 링크로 고객에게 즉시 전달합니다
+            </p>
           </div>
         </div>
       </section>
