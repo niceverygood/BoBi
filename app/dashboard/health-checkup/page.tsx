@@ -798,9 +798,17 @@ function HealthCheckupContent() {
                     </Card>
                 )}
 
-                {/* NHIS 공식 예측으로 업그레이드 */}
-                {((results.stroke && (results.stroke as unknown as { _source?: string })._source !== 'nhis')
-                  || (results.cardio && (results.cardio as unknown as { _source?: string })._source !== 'nhis')) && (
+                {/* NHIS 공식 예측으로 업그레이드
+                 *
+                 * ⚠️ 현재 CODEF 계정에 해당 API(hi-nhis-list/stroke, cardio-cerebrovascular)
+                 * 승인이 안 되어 있어 CF-00401(권한 없음) 오류가 발생한다. CODEF 측
+                 * 추가 승인이 완료되면 Vercel 환경변수에
+                 *   NEXT_PUBLIC_ENABLE_NHIS_PREDICTION_UPGRADE=true
+                 * 설정 후 재배포만 하면 다시 노출됨. 기본값은 off.
+                 */}
+                {process.env.NEXT_PUBLIC_ENABLE_NHIS_PREDICTION_UPGRADE === 'true'
+                  && ((results.stroke && (results.stroke as unknown as { _source?: string })._source !== 'nhis')
+                      || (results.cardio && (results.cardio as unknown as { _source?: string })._source !== 'nhis')) && (
                     <Card className="border-0 shadow-sm bg-gradient-to-br from-violet-50 to-indigo-50 border-violet-100">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-base flex items-center gap-2">

@@ -1151,7 +1151,7 @@ export async function fetchHealthCheckupResult(params: HealthCheckupRequest) {
     );
 }
 
-/** 건강나이알아보기 — 프로덕션 승인 완료 */
+/** 건강나이알아보기 — ⚠️ 프로덕션 승인 미완료 (CF-00401 반환) */
 export async function fetchHealthAge(params: HealthCheckupRequest) {
     return callHealthCheckupApi(
         '/v1/kr/public/pp/hi-nhis-list/review-health-age',
@@ -1160,7 +1160,8 @@ export async function fetchHealthAge(params: HealthCheckupRequest) {
     );
 }
 
-/** 뇌졸중 예측 — 프로덕션 승인 완료 */
+/** 뇌졸중 예측 — ⚠️ 프로덕션 승인 미완료. CODEF 대시보드에서
+ *  "공공>국민건강보험공단>의료건강내역>뇌졸중예측" API 추가 신청 필요 */
 export async function fetchStrokePrediction(params: HealthCheckupRequest) {
     return callHealthCheckupApi(
         '/v1/kr/public/pp/hi-nhis-list/stroke',
@@ -1169,7 +1170,8 @@ export async function fetchStrokePrediction(params: HealthCheckupRequest) {
     );
 }
 
-/** 심뇌혈관 질환예측 — 프로덕션 승인 완료 */
+/** 심뇌혈관 질환예측 — ⚠️ 프로덕션 승인 미완료. CODEF 대시보드에서
+ *  "공공>국민건강보험공단>의료건강내역>심뇌혈관질환예측" API 추가 신청 필요 */
 export async function fetchCardioPrediction(params: HealthCheckupRequest) {
     return callHealthCheckupApi(
         '/v1/kr/public/pp/hi-nhis-list/cardio-cerebrovascular',
