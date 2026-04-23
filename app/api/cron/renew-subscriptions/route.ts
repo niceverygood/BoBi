@@ -18,10 +18,35 @@ export async function GET(request: Request) {
 
     const supabase = await createServiceClient();
     const now = new Date();
-    const results = { renewed: 0, failed: 0, pastDue: 0, errors: [] as string[] };
+    const results = { renewed: 0, failed: 0, pastDue: 0, cancelledAtPeriodEnd: 0, errors: [] as string[] };
 
     try {
-        // 1. 갱신 대상 조회: 만료된 active 구독 (빌링키 없는 provider 제외)
+        // 0. 해지 예약된 구독 중 기간 만료된 것부터 정리 (갱신 결제 대신 cancelled 로 전환)
+        const { data: expiredCancelScheduled } = await supabase
+            .from('subscriptions')
+            .select('id, user_id')
+            .eq('status', 'active')
+            .eq('cancel_at_period_end', true)
+            .lt('current_period_end', now.toISOString());
+
+        if (expiredCancelScheduled && expiredCancelScheduled.length > 0) {
+            for (const sub of expiredCancelScheduled) {
+                await supabase
+                    .from('subscriptions')
+                    .update({
+                        status: 'cancelled',
+                        cancelled_at: now.toISOString(),
+                        cancelled_by: 'user',
+                        updated_at: now.toISOString(),
+                    })
+                    .eq('id', sub.id);
+
+                await resetUsageForNewPeriod(supabase, sub.user_id, 5);
+                results.cancelledAtPeriodEnd++;
+            }
+        }
+
+        // 1. 갱신 대상 조회: 만료된 active 구독 (해지 예약 안 된 것만, 빌링키 없는 provider 제외)
         const { data: expiredSubs, error: fetchError } = await supabase
             .from('subscriptions')
             .select(`
@@ -29,6 +54,7 @@ export async function GET(request: Request) {
                 plan:subscription_plans(*)
             `)
             .eq('status', 'active')
+            .eq('cancel_at_period_end', false)
             // cron에서 갱신 가능한 provider
             .in('payment_provider', [
                 'portone_inicis', 'portone_kakaopay', 'kakaopay',
@@ -433,7 +459,7 @@ export async function GET(request: Request) {
         }
 
         return NextResponse.json({
-            message: `갱신 완료: ${results.renewed}건 성공, ${results.pastDue}건 결제실패, ${results.failed}건 오류`,
+            message: `갱신 완료: ${results.renewed}건 성공, ${results.pastDue}건 결제실패, ${results.failed}건 오류, ${results.cancelledAtPeriodEnd}건 해지만료`,
             results,
             processedAt: now.toISOString(),
         });

@@ -134,7 +134,8 @@ export default function TermsPage() {
                     <section className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-6">
                         <h2 className="text-xl font-bold mb-3">제7조 (취소 및 환불 규정)</h2>
                         <ul className="list-decimal pl-5 space-y-2 text-muted-foreground">
-                            <li><strong>구독 해지:</strong> 이용자는 언제든지 유료 서비스의 구독을 해지할 수 있습니다. 해지 시 이미 결제된 기간의 남은 기간 동안 서비스 이용이 가능합니다.</li>
+                            <li><strong>구독 해지:</strong> 이용자는 언제든지 설정 &gt; 구독 관리 페이지에서 유료 서비스의 구독을 해지할 수 있습니다. 해지 신청 시 즉시 서비스가 중단되는 것이 아니라 <strong>현재 결제 기간이 만료되는 시점에 자동 갱신이 해지</strong>되며, 만료일까지는 계속해서 동일한 플랜을 이용하실 수 있습니다. 만료 전까지는 &quot;해지 취소&quot; 기능을 통해 자동 갱신을 재개하실 수 있습니다.</li>
+                            <li><strong>무료 체험 기간 중 해지:</strong> 3일 무료 체험 기간 중에 해지하시는 경우에는 <strong>즉시 무료 플랜으로 전환</strong>되며, 체험 등록 시 청구된 임시 금액(100원)은 이미 환불 처리되어 추가 청구는 발생하지 않습니다. 체험 중 해지 시 남은 체험 기간은 소멸됩니다.</li>
                             <li><strong>환불 기준:</strong>
                                 <ul className="list-disc pl-5 mt-1 space-y-1">
                                     <li>결제일로부터 7일 이내이고, 서비스를 이용(분석 실행)하지 않은 경우: 전액 환불</li>

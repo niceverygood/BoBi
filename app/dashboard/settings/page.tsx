@@ -7,7 +7,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { User, Users, Building, Crown, CheckCircle2, X, Zap, Loader2, Sparkles, LogOut, Gift, Copy } from 'lucide-react';
+import { User, Users, Building, Crown, CheckCircle2, X, Zap, Loader2, Sparkles, LogOut, Gift, Copy, AlertTriangle } from 'lucide-react';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { PLAN_LIMITS, type PlanSlug } from '@/lib/utils/constants';
 import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
@@ -45,7 +53,7 @@ export default function SettingsPage() {
     const [company, setCompany] = useState('');
     const [customCompany, setCustomCompany] = useState('');
     const [isCustom, setIsCustom] = useState(false);
-    const { plan, usage, loading, remainingAnalyses } = useSubscription();
+    const { plan, usage, loading, remainingAnalyses, subscription, refresh } = useSubscription();
     const currentSlug = (plan.slug || 'free') as PlanSlug;
     const planLimits = PLAN_LIMITS[currentSlug];
 
@@ -245,6 +253,13 @@ export default function SettingsPage() {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* 구독 해지 / 해지 취소 */}
+            <SubscriptionCancelSection
+                subscription={subscription}
+                currentSlug={currentSlug}
+                onChanged={refresh}
+            />
 
             <Separator />
 
@@ -805,5 +820,190 @@ function StatisticsOptOutSection() {
                 </p>
             </CardContent>
         </Card>
+    );
+}
+
+// ── 구독 해지 / 해지 취소 섹션 ──
+//
+// 표시 규칙:
+//   - free 또는 구독 없음 → 섹션 자체를 렌더링하지 않음
+//   - trialing → "체험 중단" 버튼 (즉시 해지)
+//   - active + cancel_at_period_end=false → "구독 해지" 버튼 (기간 만료 시 해지 예약)
+//   - active + cancel_at_period_end=true → 해지 예약 배너 + "해지 취소" 버튼
+function SubscriptionCancelSection({
+    subscription,
+    currentSlug,
+    onChanged,
+}: {
+    subscription: import('@/types/subscription').Subscription | null;
+    currentSlug: PlanSlug;
+    onChanged: () => void | Promise<void>;
+}) {
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // free 플랜이거나 구독 정보가 아직 없는 경우 숨김
+    if (currentSlug === 'free' || !subscription) return null;
+    if (subscription.status !== 'active' && subscription.status !== 'trialing') return null;
+
+    const isTrialing = subscription.status === 'trialing';
+    const isScheduledCancel = !isTrialing && subscription.cancel_at_period_end === true;
+    // 기간 만료일 (trialing 은 trial_ends_at, active 는 current_period_end)
+    const endsAtIso = isTrialing
+        ? (subscription.trial_ends_at || subscription.current_period_end)
+        : subscription.current_period_end;
+    const endsAtLabel = endsAtIso
+        ? new Date(endsAtIso).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
+        : '-';
+
+    const handleCancel = async () => {
+        setSubmitting(true);
+        setError(null);
+        try {
+            const res = await fetch('/api/billing/cancel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+            });
+            const result = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                setError(result.error || '해지 처리에 실패했습니다.');
+                return;
+            }
+            setConfirmOpen(false);
+            await onChanged();
+        } catch (err) {
+            setError((err as Error).message || '네트워크 오류가 발생했습니다.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleResume = async () => {
+        setSubmitting(true);
+        setError(null);
+        try {
+            const res = await fetch('/api/billing/resume', { method: 'POST' });
+            const result = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                setError(result.error || '해지 취소에 실패했습니다.');
+                return;
+            }
+            await onChanged();
+        } catch (err) {
+            setError((err as Error).message || '네트워크 오류가 발생했습니다.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    // 해지 예약 상태: 배너 + 해지 취소
+    if (isScheduledCancel) {
+        return (
+            <Card className="border-amber-200 bg-amber-50/40 shadow-sm">
+                <CardContent className="pt-6">
+                    <div className="flex items-start gap-3">
+                        <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                            <p className="text-sm font-semibold text-amber-900">해지 예약됨</p>
+                            <p className="text-xs text-amber-800 mt-1">
+                                <strong>{endsAtLabel}</strong>까지 현재 플랜을 계속 이용하실 수 있고,
+                                이후 자동으로 무료 플랜으로 전환됩니다.
+                            </p>
+                            {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+                        </div>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-amber-300 text-amber-900 hover:bg-amber-100"
+                            onClick={handleResume}
+                            disabled={submitting}
+                        >
+                            {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : '해지 취소'}
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    // 활성 / 체험 중 → 해지 버튼
+    return (
+        <>
+            <Card className="border-0 shadow-sm">
+                <CardContent className="pt-6">
+                    <div className="flex items-center justify-between gap-3">
+                        <div>
+                            <p className="text-sm font-semibold">
+                                {isTrialing ? '체험 중단' : '구독 해지'}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                {isTrialing
+                                    ? '지금 중단하면 즉시 무료 플랜으로 전환됩니다. 체험 100원은 이미 환불되어 추가 청구 없음.'
+                                    : `${endsAtLabel}까지 이용 후 자동 갱신이 해지됩니다.`}
+                            </p>
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 border-red-200 hover:bg-red-50 shrink-0"
+                            onClick={() => { setError(null); setConfirmOpen(true); }}
+                        >
+                            {isTrialing ? '체험 중단' : '해지하기'}
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {isTrialing ? '체험을 중단하시겠습니까?' : '구독을 해지하시겠습니까?'}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {isTrialing
+                                ? '체험이 즉시 중단되며 무료 플랜으로 전환됩니다.'
+                                : `${endsAtLabel}까지 현재 플랜을 이용 후 자동 갱신이 해지됩니다.`}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-2 text-sm py-2">
+                        {isTrialing ? (
+                            <>
+                                <p>중단 즉시 체험 중이던 기능은 사용할 수 없으며, 다시 체험을 시작할 수는 없습니다.</p>
+                                <p className="text-xs text-muted-foreground">
+                                    체험 등록 시 청구된 100원은 이미 환불 처리되어 추가 청구는 없습니다.
+                                </p>
+                            </>
+                        ) : (
+                            <>
+                                <p><strong>{endsAtLabel}</strong>까지는 현재 플랜을 계속 이용하실 수 있습니다. 기간 만료 후 자동으로 무료 플랜으로 전환되며, 추가 결제는 이루어지지 않습니다.</p>
+                                <p className="text-xs text-muted-foreground">
+                                    만료 전까지 언제든 &quot;해지 취소&quot; 버튼으로 자동 갱신을 재개하실 수 있습니다.
+                                </p>
+                            </>
+                        )}
+                        {error && <p className="text-xs text-red-600">{error}</p>}
+                    </div>
+
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={submitting}>
+                            취소
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleCancel}
+                            disabled={submitting}
+                        >
+                            {submitting
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : (isTrialing ? '체험 중단' : '구독 해지')}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }
