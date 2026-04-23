@@ -249,6 +249,21 @@ export async function GET(request: Request) {
             );
         }
 
+        // 리퍼럴 리워드: 체험이 아닌 실결제(active로 생성된 경우)에 한해
+        // 해당 사용자가 invitee인 referral 이 있으면 인바이터에게 Pro 1개월 지급.
+        // 실패해도 결제 플로우는 영향받지 않도록 try/catch로 감싼다.
+        if (!isTrial) {
+            try {
+                const { processReferralReward } = await import('@/lib/referral/reward');
+                const result = await processReferralReward(svc, pending.user_id);
+                if (result.ok) {
+                    console.log('[referral] reward result:', result);
+                }
+            } catch (refErr) {
+                console.error('[referral] reward error:', refErr);
+            }
+        }
+
         // billing_keys 업서트 (cron용)
         try {
             await svc.from('billing_keys').upsert(

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, FileSearch, History, Settings, Menu, X as XIcon, ShieldCheck, ShieldPlus, Stethoscope, Receipt, HeartPulse, Users, MessageCircle, Sparkles } from 'lucide-react';
+import { LayoutDashboard, FileSearch, History, Settings, Menu, X as XIcon, ShieldCheck, ShieldPlus, Stethoscope, Receipt, HeartPulse, Users, MessageCircle, Sparkles, Gift } from 'lucide-react';
 import BobiLogo from '@/components/common/BobiLogo';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -42,11 +42,17 @@ export default function MobileNav() {
     const pathname = usePathname();
     const [open, setOpen] = useState(false);
     const { hasAdminAccess } = useAdmin();
-    const { isFeatureEnabled, loading } = useSubscription();
+    const { isFeatureEnabled, loading, plan } = useSubscription();
 
-    const allNavItems: NavItem[] = hasAdminAccess
-        ? [...navItems, { title: '관리자', href: '/admin', icon: ShieldCheck }]
-        : navItems;
+    const paidOnlyItems: NavItem[] = plan.slug !== 'free'
+        ? [{ title: '친구 초대', href: '/dashboard/referral', icon: Gift }]
+        : [];
+
+    const allNavItems: NavItem[] = [
+        ...navItems,
+        ...paidOnlyItems,
+        ...(hasAdminAccess ? [{ title: '관리자', href: '/admin', icon: ShieldCheck } as NavItem] : []),
+    ];
 
     return (
         <div className="lg:hidden">

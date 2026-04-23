@@ -7,6 +7,8 @@ import { SocialProofStrip, TestimonialCards } from '@/components/common/SocialPr
 import ROICalculator from '@/components/landing/ROICalculator';
 import ReportPreviewGallery from '@/components/landing/ReportPreviewGallery';
 import TestimonialMarquee from '@/components/landing/TestimonialMarquee';
+import ReferralCapture from '@/components/common/ReferralCapture';
+import { Suspense } from 'react';
 
 export default async function LandingPage() {
   const supabase = await createClient();
@@ -14,6 +16,10 @@ export default async function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* 초대 링크(?ref=XXX) 캡처 — sessionStorage 저장 후 가입 완료 시 자동 적용 */}
+      <Suspense fallback={null}>
+        <ReferralCapture />
+      </Suspense>
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">

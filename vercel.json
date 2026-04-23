@@ -11,6 +11,10 @@
         {
             "path": "/api/cron/search-trends",
             "schedule": "0 22,3,6 * * *"
+        },
+        {
+            "path": "/api/cron/expire-pro-grants",
+            "schedule": "0 2 * * *"
         }
     ]
 }

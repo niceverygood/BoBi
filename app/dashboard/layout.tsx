@@ -3,10 +3,12 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { Suspense } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import MobileNav from '@/components/layout/MobileNav';
 import BusinessFooter from '@/components/layout/BusinessFooter';
+import ReferralCapture from '@/components/common/ReferralCapture';
 import { User } from 'lucide-react';
 
 export default function DashboardLayout({
@@ -58,6 +60,10 @@ export default function DashboardLayout({
 
     return (
         <div className="flex min-h-screen bg-background">
+            {/* 신규 가입자의 저장된 ref 코드를 대시보드 진입 시점에 자동 적용 */}
+            <Suspense fallback={null}>
+                <ReferralCapture />
+            </Suspense>
             <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
             <div className="flex-1 flex flex-col min-w-0">
                 <div className="lg:hidden sticky top-0 z-40 border-b bg-background/80 backdrop-blur-md flex items-center justify-between px-4" style={{ paddingTop: 'env(safe-area-inset-top, 0px)', minHeight: 'calc(4rem + env(safe-area-inset-top, 0px))' }}>

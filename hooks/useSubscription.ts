@@ -85,6 +85,26 @@ export function useSubscription() {
                 }
             }
 
+            // 활성 Pro grant(리퍼럴 리워드 등) 체크 → 있으면 Pro로 승격
+            const { data: activeGrant } = await supabase
+                .from('pro_grants')
+                .select('id')
+                .eq('user_id', user.id)
+                .is('revoked_at', null)
+                .gt('expires_at', new Date().toISOString())
+                .limit(1);
+
+            if (activeGrant && activeGrant.length > 0) {
+                const { data: proPlan } = await supabase
+                    .from('subscription_plans')
+                    .select('*')
+                    .eq('slug', 'pro')
+                    .maybeSingle();
+                if (proPlan) {
+                    setPlan(proPlan as unknown as SubscriptionPlan);
+                }
+            }
+
             // Fetch current month usage (use local date to avoid timezone issues)
             const now = new Date();
             const year = now.getFullYear();

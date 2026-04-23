@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Shield, LayoutDashboard, FileSearch, History, Settings, ChevronLeft, Crown, ShieldCheck, ShieldPlus, Stethoscope, Receipt, HeartPulse, Users, MessageCircle, Sparkles } from 'lucide-react';
+import { Shield, LayoutDashboard, FileSearch, History, Settings, ChevronLeft, Crown, ShieldCheck, ShieldPlus, Stethoscope, Receipt, HeartPulse, Users, MessageCircle, Sparkles, Gift } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -47,9 +47,16 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
     const { plan, remainingAnalyses, loading, isFeatureEnabled } = useSubscription();
     const { hasAdminAccess } = useAdmin();
 
-    const allNavItems: NavItem[] = hasAdminAccess
-        ? [...navItems, { title: '관리자', href: '/admin', icon: ShieldCheck }]
-        : navItems;
+    // 유료 사용자만 "친구 초대" 메뉴 표시 (초대 리워드 시스템)
+    const paidOnlyItems: NavItem[] = plan.slug !== 'free'
+        ? [{ title: '친구 초대', href: '/dashboard/referral', icon: Gift }]
+        : [];
+
+    const allNavItems: NavItem[] = [
+        ...navItems,
+        ...paidOnlyItems,
+        ...(hasAdminAccess ? [{ title: '관리자', href: '/admin', icon: ShieldCheck } as NavItem] : []),
+    ];
 
     const displayRemaining = remainingAnalyses === -1 ? '무제한' : `${remainingAnalyses}건`;
 

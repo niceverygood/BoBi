@@ -169,6 +169,18 @@ export async function GET(request: Request) {
                     // non-critical
                 }
 
+                // 리퍼럴 리워드: 체험이 첫 결제로 전환된 이 시점에 트리거.
+                // 결제 성공 후 수행 (실결제 확정). 실패해도 배치 흐름은 지속.
+                try {
+                    const { processReferralReward } = await import('@/lib/referral/reward');
+                    const refResult = await processReferralReward(svc, sub.user_id);
+                    if (refResult.ok) {
+                        console.log('[cron/trial-end] referral reward:', refResult);
+                    }
+                } catch (refErr) {
+                    console.error('[cron/trial-end] referral reward error:', refErr);
+                }
+
                 results.charged++;
             } catch (err) {
                 results.failed++;
