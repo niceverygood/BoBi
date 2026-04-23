@@ -101,7 +101,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
   }
 
-  const { platform, receipt, productId, purchaseToken } = await request.json();
+  const { platform, receipt, productId, purchaseToken, restore } = await request.json();
 
   // 영수증 검증
   let verification;
@@ -131,16 +131,30 @@ export async function POST(request: Request) {
 
   const serviceClient = await createServiceClient();
 
-  // 영수증 replay attack 방지: 동일 transactionId 중복 체크
+  // 동일 transactionId 중복 체크
+  //   - 같은 user이면 멱등(이미 sync된 상태 → 200 success 반환)
+  //   - 다른 user이면 replay attack → 409 거부
   if (verification.transactionId) {
     const { data: existingTx } = await serviceClient
       .from('subscriptions')
-      .select('id')
+      .select('id, user_id, status')
       .eq('payment_key', verification.transactionId)
       .maybeSingle();
 
     if (existingTx) {
-      return NextResponse.json({ error: '이미 처리된 영수증입니다.' }, { status: 409 });
+      if (existingTx.user_id !== user.id) {
+        return NextResponse.json(
+          { error: '이 영수증은 다른 계정에 귀속되어 있습니다.' },
+          { status: 409 },
+        );
+      }
+      // 같은 user + 같은 transactionId → 이미 sync됨. 복원 케이스도 이 경로로 들어와 성공 처리.
+      return NextResponse.json({
+        ok: true,
+        alreadySynced: true,
+        subscriptionId: existingTx.id,
+        status: existingTx.status,
+      });
     }
   }
 
