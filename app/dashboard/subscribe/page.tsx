@@ -656,6 +656,9 @@ function SubscribeContent() {
 
     if (success) {
         const isTrialSuccess = searchParams.get('trial') === '1';
+        // 카카오페이로 체험 시작한 경우 (status=success) — 100원 환불 안내를 보여줌
+        // (토스페이먼츠는 toss_status=success 를 사용하므로 구분 가능)
+        const isKakaoPayTrial = isTrialSuccess && searchParams.get('status') === 'success';
         return (
             <div className="max-w-lg mx-auto mt-12 animate-fade-in">
                 <Card className="border-0 shadow-xl text-center">
@@ -688,6 +691,14 @@ function SubscribeContent() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
+                        {isKakaoPayTrial && (
+                            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-left">
+                                <p className="text-xs text-amber-900 dark:text-amber-200 leading-relaxed">
+                                    <strong>카카오페이 알림:</strong> 정기결제 등록을 위해 <strong>100원이 결제 후 즉시 환불</strong>되었습니다.
+                                    카카오페이 앱에서 결제·환불 이력이 함께 보일 수 있으며, 실제 청구 금액은 <strong>0원</strong>입니다.
+                                </p>
+                            </div>
+                        )}
                         <Button
                             onClick={() => router.push('/dashboard')}
                             className="w-full h-11 bg-gradient-primary hover:opacity-90"
@@ -1099,18 +1110,9 @@ function SubscribeContent() {
                                             </label>
                                         </div>
                                         {useTrial && (
-                                            <div className="text-[11px] text-violet-600 dark:text-violet-400 leading-relaxed pl-6 space-y-1">
-                                                <p>
-                                                    💳 체험 가능 결제수단: <strong>카카오페이</strong> 또는 <strong>토스 카드</strong>
-                                                </p>
-                                                <p>
-                                                    오늘은 0원, {trialDays}일 후 {planInfo.priceMonthly.toLocaleString()}원이 청구됩니다.
-                                                </p>
-                                                {paymentMethod === 'kakaopay' && (
-                                                    <p className="text-[10px] opacity-80">
-                                                        * 카카오페이는 SID 등록을 위해 100원이 임시 청구 후 즉시 환불됩니다 (순 결제 0원).
-                                                    </p>
-                                                )}
+                                            <div className="text-[11px] text-violet-600 dark:text-violet-400 leading-relaxed pl-6">
+                                                💳 체험 가능 결제수단: <strong>카카오페이</strong> 또는 <strong>토스 카드</strong>
+                                                {' '}· 상세 결제 흐름은 아래 결제 요약에서 확인하세요.
                                             </div>
                                         )}
                                     </div>
@@ -1163,6 +1165,15 @@ function SubscribeContent() {
                                             {paymentMethod === 'tosspayments' && '토스페이먼츠 안전결제 · 카드번호 + 휴대폰 본인인증만으로 등록 (공동인증서 불필요)'}
                                             {paymentMethod === 'card' && 'KG이니시스를 통한 안전결제 (국내 주요 카드사 지원)'}
                                         </p>
+                                        {/* 카카오페이 + 체험 시 100원 임시결제/즉시환불 고지 (결제수단 선택 영역) */}
+                                        {paymentMethod === 'kakaopay' && useTrial && trialEligible && (
+                                            <div className="mt-2 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40">
+                                                <p className="text-[11px] text-amber-800 dark:text-amber-200 leading-relaxed">
+                                                    <strong>알림:</strong> 카카오페이 정기결제 등록 방식상 <strong>100원이 먼저 결제</strong>되었다가
+                                                    {' '}<strong>즉시 자동 환불</strong>됩니다. (실제 순 결제 금액 0원 · 카카오페이 앱에서 결제/환불 이력 확인 가능)
+                                                </p>
+                                            </div>
+                                        )}
                                         {billingCycle === 'yearly' && (
                                             <p className="text-[11px] text-amber-600">연간 결제는 신용카드(토스·이니시스)만 가능합니다.</p>
                                         )}
@@ -1199,6 +1210,31 @@ function SubscribeContent() {
                                         <div className="space-y-1">
                                             <label className="text-xs text-muted-foreground">휴대폰 번호 (필수)</label>
                                             <input type="tel" value={userPhone} onChange={(e) => setUserPhone(e.target.value)} placeholder="010-1234-5678" className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* 최종 결제 요약 — 체험 시 오늘 청구 금액 명확 고지 */}
+                                {trialActive && (
+                                    <div className="p-4 rounded-xl bg-violet-50 dark:bg-violet-950/20 border-2 border-violet-300 dark:border-violet-800">
+                                        <p className="text-sm font-semibold text-violet-900 dark:text-violet-200 mb-2">
+                                            📋 오늘 결제 안내
+                                        </p>
+                                        <div className="space-y-1.5 text-xs text-violet-800 dark:text-violet-200">
+                                            {paymentMethod === 'kakaopay' ? (
+                                                <>
+                                                    <p>• 카카오페이 승인 시 <strong>100원</strong>이 먼저 결제됩니다.</p>
+                                                    <p>• 승인 직후 해당 <strong>100원은 자동으로 전액 환불</strong>됩니다. (순 결제 0원)</p>
+                                                    <p>• {trialDays}일 뒤 <strong>{planInfo.priceMonthly.toLocaleString()}원</strong>이 등록된 결제수단으로 자동 청구됩니다.</p>
+                                                    <p>• {trialDays}일 이내 설정 &gt; 구독 관리에서 해지 시 <strong>결제 0원</strong>.</p>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <p>• 오늘은 <strong>결제 0원</strong> (카드 등록만 진행).</p>
+                                                    <p>• {trialDays}일 뒤 <strong>{planInfo.priceMonthly.toLocaleString()}원</strong>이 등록된 카드로 자동 청구됩니다.</p>
+                                                    <p>• {trialDays}일 이내 설정 &gt; 구독 관리에서 해지 시 <strong>결제 0원</strong>.</p>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 )}

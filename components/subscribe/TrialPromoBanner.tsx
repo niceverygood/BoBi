@@ -57,7 +57,7 @@ export default function TrialPromoBanner() {
             })
             .catch(() => {
                 if (cancelled) return;
-                setEligibility({ checked: true, eligible: false, trialDays: 7 });
+                setEligibility({ checked: true, eligible: false, trialDays: 3 });
             });
         return () => {
             cancelled = true;
