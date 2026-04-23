@@ -51,9 +51,9 @@ function SubscribeContent() {
     const [iapReady, setIapReady] = useState(false);
     const [enterpriseDialogOpen, setEnterpriseDialogOpen] = useState(false);
 
-    // 7일 무료 체험
+    // 3일 무료 체험
     const [trialEligible, setTrialEligible] = useState(false);
-    const [trialDays, setTrialDays] = useState(7);
+    const [trialDays, setTrialDays] = useState(3);
     const [useTrial, setUseTrial] = useState(false);
     const [trialChecked, setTrialChecked] = useState(false);
 
@@ -117,7 +117,7 @@ function SubscribeContent() {
         }
     }, [useTrial, trialEligible, paymentMethod]);
 
-    // 선택 플랜에 대한 7일 무료 체험 자격 체크
+    // 선택 플랜에 대한 3일 무료 체험 자격 체크
     useEffect(() => {
         if (subLoading) return;
         const fetchEligibility = async () => {
@@ -1064,7 +1064,7 @@ function SubscribeContent() {
                                     </div>
                                 )}
 
-                                {/* 7일 무료 체험 — 베이직 선택 + 자격 있음 + 월간일 때만 노출 */}
+                                {/* 3일 무료 체험 — 베이직 선택 + 자격 있음 + 월간일 때만 노출 */}
                                 {trialChecked && trialEligible && selectedPlan === 'basic' && billingCycle === 'monthly' && platform === 'web' && (
                                     <div className="rounded-xl border-2 border-violet-200 bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/20 dark:to-violet-900/10 p-4 space-y-3">
                                         <div className="flex items-start gap-3">

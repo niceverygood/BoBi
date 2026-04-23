@@ -105,7 +105,7 @@ export async function POST(request: Request) {
             partnerOrderId,
             partnerUserId: user.id,
             itemName: useTrial
-                ? `보비 ${plan.display_name} 7일 체험 등록 (실제 결제는 7일 후)`
+                ? `보비 ${plan.display_name} 3일 체험 등록 (실제 결제는 3일 후)`
                 : `보비 ${plan.display_name} 플랜 (${cycleLabel})`,
             totalAmount: chargeAmount,
         });

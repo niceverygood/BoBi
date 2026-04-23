@@ -10,7 +10,7 @@ type FetchedPlan = {
 
 /**
  * 사용자의 활성 플랜을 조회한다. 없으면 무료로 간주.
- * 7일 무료체험(status='trialing') 사용자는 체험 중인 플랜(보통 basic)으로 취급한다.
+ * 3일 무료체험(status='trialing') 사용자는 체험 중인 플랜(보통 basic)으로 취급한다.
  */
 export async function getUserPlan(supabase: SupabaseClient, userId: string): Promise<FetchedPlan> {
     const { data } = await supabase

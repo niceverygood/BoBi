@@ -119,7 +119,7 @@ export default function DashboardPage() {
                 </p>
             </div>
 
-            {/* 🎁 베이직 7일 무료 체험 프로모션 (무료 유저 + 자격 있을 때만) */}
+            {/* 🎁 베이직 3일 무료 체험 프로모션 (무료 유저 + 자격 있을 때만) */}
             <TrialPromoBanner />
 
             {/* 📊 사회적 증거 — 무료 유저에게 집중 노출 */}

@@ -24,7 +24,7 @@ export default function FeatureGate({ feature, title, description, children, red
     const router = useRouter();
     const { isFeatureEnabled, plan, loading } = useSubscription();
     const [trialEligible, setTrialEligible] = useState(false);
-    const [trialDays, setTrialDays] = useState(7);
+    const [trialDays, setTrialDays] = useState(3);
 
     // 접근 불가 + 리다이렉트 지정 시 즉시 이동 (마중물 페이지)
     useEffect(() => {

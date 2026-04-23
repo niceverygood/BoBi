@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Calculate period
-        //   - 체험: current_period_end = trial_ends_at (+7일)
+        //   - 체험: current_period_end = trial_ends_at (+3일)
         //   - 일반: 월/연 주기
         const periodEnd = new Date(now);
         if (isTrial) {

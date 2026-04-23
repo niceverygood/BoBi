@@ -25,7 +25,7 @@ function readDismissed(): boolean {
 type EligibilityState = { checked: boolean; eligible: boolean; trialDays: number };
 
 /**
- * 무료 유저에게 "베이직 7일 무료 체험" 을 CTA로 홍보하는 배너.
+ * 무료 유저에게 "베이직 3일 무료 체험" 을 CTA로 홍보하는 배너.
  * - 현재 플랜이 free이고, 베이직 체험 자격이 있을 때만 표시
  * - X 버튼으로 닫으면 24시간 동안 숨김 (localStorage)
  */
@@ -35,7 +35,7 @@ export default function TrialPromoBanner() {
     const [eligibility, setEligibility] = useState<EligibilityState>({
         checked: false,
         eligible: false,
-        trialDays: 7,
+        trialDays: 3,
     });
 
     useEffect(() => {
@@ -52,7 +52,7 @@ export default function TrialPromoBanner() {
                 setEligibility({
                     checked: true,
                     eligible: !!data.eligible,
-                    trialDays: data.trialDays ?? 7,
+                    trialDays: data.trialDays ?? 3,
                 });
             })
             .catch(() => {

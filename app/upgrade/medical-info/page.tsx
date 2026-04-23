@@ -20,7 +20,7 @@ const VALUE_BULLETS: ValueBullet[] = [
 const STATS: [StatItem, StatItem, StatItem] = [
     { value: '14,283', unit: '개', label: 'KCD 질병코드' },
     { value: '1', unit: '분 이내', label: '자동 조회 완료' },
-    { value: '7', unit: '일', label: '무료 체험' },
+    { value: '3', unit: '일', label: '무료 체험' },
 ];
 
 export default function MedicalInfoUpgradePage() {
@@ -42,7 +42,7 @@ export default function MedicalInfoUpgradePage() {
             stats={STATS}
             testimonialsSubcopy="통원 7회 누락으로 고민하던 설계사들의 이야기"
             finalCtaTitle="지금 고객 상담이 있으세요?"
-            finalCtaSubcopy="7일 무료 체험을 시작하면 오늘 바로 진료정보 조회부터 모든 기능을 쓸 수 있습니다"
+            finalCtaSubcopy="3일 무료 체험을 시작하면 오늘 바로 진료정보 조회부터 모든 기능을 쓸 수 있습니다"
         />
     );
 }

@@ -10,7 +10,7 @@ import { apiFetch } from '@/lib/api/client';
 const SHOWN_KEY = 'bobi:trial-upsell-modal-shown';
 
 /**
- * 무료 유저가 분석 한도에 도달한 순간 자동으로 뜨는 "7일 무료 체험" 업셀 모달.
+ * 무료 유저가 분석 한도에 도달한 순간 자동으로 뜨는 "3일 무료 체험" 업셀 모달.
  * - 한도 도달 + 무료 유저 + 체험 자격 있음 + 처음 보는 경우에만 1회 노출
  * - localStorage에 "shown" 기록 → 재방문 시 중복 노출 방지
  * - analyze 페이지, dashboard 어디든 마운트되면 자동 판정
@@ -18,7 +18,7 @@ const SHOWN_KEY = 'bobi:trial-upsell-modal-shown';
 export default function TrialUpsellModal() {
     const { plan, usage, canAnalyze, loading } = useSubscription();
     const [eligible, setEligible] = useState(false);
-    const [trialDays, setTrialDays] = useState(7);
+    const [trialDays, setTrialDays] = useState(3);
     const [open, setOpen] = useState(false);
     const [alreadyShown, setAlreadyShown] = useState<boolean>(() => {
         if (typeof window === 'undefined') return true;

@@ -541,7 +541,7 @@ export default async function LandingPage() {
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">지금 바로 시작하세요</h2>
           <p className="text-muted-foreground text-lg mb-8">
-            무료로 3건 분석을 체험해보고, 베이직은 <strong>7일 무료</strong>로 시작하세요
+            무료로 3건 분석을 체험해보고, 베이직은 <strong>3일 무료</strong>로 시작하세요
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/auth/signup">

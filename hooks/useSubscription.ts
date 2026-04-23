@@ -67,7 +67,7 @@ export function useSubscription() {
             }
 
             // Fetch active/trialing subscription with plan (최신 1건만)
-            // 7일 무료체험(trialing) 사용자도 체험 중인 플랜으로 취급한다.
+            // 3일 무료체험(trialing) 사용자도 체험 중인 플랜으로 취급한다.
             const { data: subList } = await supabase
                 .from('subscriptions')
                 .select('*, plan:subscription_plans(*)')

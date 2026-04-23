@@ -128,7 +128,7 @@ export default function PricingPage() {
                                         <CardTitle className="text-xl">{plan.name}</CardTitle>
                                         {slug === 'basic' && (
                                             <Badge className="bg-violet-600 text-white text-[10px] px-2 py-0.5">
-                                                7일 무료 체험
+                                                3일 무료 체험
                                             </Badge>
                                         )}
                                     </div>
@@ -144,7 +144,7 @@ export default function PricingPage() {
                                                 </p>
                                                 {slug === 'basic' && (
                                                     <p className="text-xs text-violet-600 font-semibold mt-1">
-                                                        ✨ 첫 7일 무료 · 언제든 해지 가능
+                                                        ✨ 첫 3일 무료 · 언제든 해지 가능
                                                     </p>
                                                 )}
                                             </>
@@ -178,7 +178,7 @@ export default function PricingPage() {
                                             className={`w-full ${isRecommended ? 'bg-gradient-primary hover:opacity-90' : ''}`}
                                             variant={isRecommended ? 'default' : 'outline'}
                                         >
-                                            {slug === 'free' ? '무료로 시작' : slug === 'basic' ? '7일 무료 체험 시작' : '구독 시작하기'}
+                                            {slug === 'free' ? '무료로 시작' : slug === 'basic' ? '3일 무료 체험 시작' : '구독 시작하기'}
                                         </Button>
                                     </Link>
                                 </CardContent>

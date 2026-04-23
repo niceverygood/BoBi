@@ -52,7 +52,7 @@ const PLAN_META: Record<PlanTier, { displayName: string; priceMonthly: string; c
     basic: {
         displayName: '베이직',
         priceMonthly: '19,900',
-        ctaLabel: '7일 무료로 시작하기',
+        ctaLabel: '3일 무료로 시작하기',
     },
     pro: {
         displayName: 'Pro',
@@ -78,9 +78,9 @@ export default function FeatureUpgradeLayout(props: FeatureUpgradeLayoutProps) {
     } = props;
 
     const plan = PLAN_META[planTier];
-    // Pro 기능은 Pro 플랜 필요. 단, 저항을 낮추기 위해 Basic 7일 체험 유입 경로도 별도 제공.
+    // Pro 기능은 Pro 플랜 필요. 단, 저항을 낮추기 위해 Basic 3일 체험 유입 경로도 별도 제공.
     const primaryHref = planTier === 'pro' ? '/dashboard/subscribe?plan=pro' : '/dashboard/subscribe?plan=basic';
-    const primaryLabel = planTier === 'pro' ? 'Pro 플랜으로 시작하기' : '7일 무료로 시작하기';
+    const primaryLabel = planTier === 'pro' ? 'Pro 플랜으로 시작하기' : '3일 무료로 시작하기';
     const showBasicTrialFallback = planTier === 'pro';
 
     return (
@@ -166,7 +166,7 @@ export default function FeatureUpgradeLayout(props: FeatureUpgradeLayoutProps) {
                                     <div className="flex items-baseline justify-between mb-1">
                                         <span className="text-xs sm:text-sm text-muted-foreground">{plan.displayName} 플랜</span>
                                         {planTier === 'basic' && (
-                                            <span className="text-xs text-muted-foreground">7일간 <span className="font-bold text-emerald-600">무료</span></span>
+                                            <span className="text-xs text-muted-foreground">3일간 <span className="font-bold text-emerald-600">무료</span></span>
                                         )}
                                         {planTier === 'pro' && (
                                             <span className="text-xs text-muted-foreground">모든 기능 <span className="font-bold text-emerald-600">무제한</span></span>
@@ -179,7 +179,7 @@ export default function FeatureUpgradeLayout(props: FeatureUpgradeLayoutProps) {
                                     </div>
                                     {planTier === 'basic' && (
                                         <div className="text-[11px] sm:text-xs text-muted-foreground mt-1.5">
-                                            카드 등록 후 7일 내 해지 시 결제 0원
+                                            카드 등록 후 3일 내 해지 시 결제 0원
                                         </div>
                                     )}
                                     {planTier === 'pro' && (
@@ -202,7 +202,7 @@ export default function FeatureUpgradeLayout(props: FeatureUpgradeLayoutProps) {
                                 {showBasicTrialFallback && (
                                     <Link href="/dashboard/subscribe?plan=basic" className="block mt-3">
                                         <Button variant="outline" size="sm" className="w-full h-10 text-xs sm:text-sm">
-                                            먼저 7일 무료 체험부터 (베이직)
+                                            먼저 3일 무료 체험부터 (베이직)
                                         </Button>
                                     </Link>
                                 )}
@@ -286,7 +286,7 @@ export default function FeatureUpgradeLayout(props: FeatureUpgradeLayoutProps) {
                     </Link>
                     {planTier === 'basic' && (
                         <p className="text-[11px] sm:text-xs text-muted-foreground mt-4">
-                            카드 등록 후 7일 내 해지 시 결제 0원 · 언제든 해지 가능
+                            카드 등록 후 3일 내 해지 시 결제 0원 · 언제든 해지 가능
                         </p>
                     )}
                     {planTier === 'pro' && (
