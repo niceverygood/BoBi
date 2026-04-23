@@ -360,6 +360,52 @@ function SubscribeContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedPlan, billingCycle]);
 
+    // 기존 Apple/Google 구독 복원 — StoreKit이 "이미 구독 중"을 반환하거나
+    // 과거에 결제됐지만 서버 sync가 실패한 상태를 수동 복구할 때 사용.
+    const handleIAPRestore = async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const { restorePurchases } = await import('@/lib/iap/store');
+            const result = await restorePurchases();
+
+            if (!result.success) {
+                setError(result.error || '구매 복원에 실패했습니다.');
+                setLoading(false);
+                return;
+            }
+
+            if (!result.receipt && !result.transactionId) {
+                setError('복원된 구독 정보를 찾지 못했습니다. 고객센터로 문의해주세요.');
+                setLoading(false);
+                return;
+            }
+
+            // 서버에 영수증 전송 — /api/iap/verify는 restore에도 멱등적으로 동작
+            const productId = result.productId
+                || `kr.bobi.app.${selectedPlan}.${billingCycle}`;
+
+            await apiFetch('/api/iap/verify', {
+                method: 'POST',
+                body: {
+                    platform,
+                    receipt: result.receipt,
+                    productId,
+                    purchaseToken: result.transactionId || result.receipt,
+                    restore: true,
+                },
+            });
+
+            setSuccess(true);
+        } catch (err) {
+            console.error('[IAP] Restore error:', err);
+            setError((err as Error).message || '구매 복원 중 오류가 발생했습니다.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // 인앱결제 (iOS / Android)
     const handleIAPSubscribe = async () => {
         setLoading(true);
@@ -1258,6 +1304,18 @@ function SubscribeContent() {
                                         </>
                                     )}
                                 </Button>
+                                )}
+
+                                {/* iOS/Android — 기존 구독이 있는데 앱에 반영 안 됐을 때 복원 */}
+                                {platform !== 'web' && (
+                                    <button
+                                        type="button"
+                                        onClick={handleIAPRestore}
+                                        disabled={loading || subLoading || !iapReady}
+                                        className="w-full text-xs text-primary underline underline-offset-4 py-2 disabled:opacity-50"
+                                    >
+                                        이미 구독 중이신가요? 구매 복원
+                                    </button>
                                 )}
 
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
