@@ -8,6 +8,7 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { chargeBillingKey, generateOrderId } from '@/lib/tosspayments/server';
+import { kakaoPaySubscription } from '@/lib/kakaopay/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,47 +65,79 @@ export async function GET(request: Request) {
                     continue;
                 }
 
-                // 2. Provider별 분기 (현재는 토스페이먼츠만 체험 지원)
-                if (sub.payment_provider !== 'tosspayments_direct') {
+                // 2. Provider별 분기 — 토스페이먼츠 / 카카오페이 모두 체험 지원
+                if (sub.payment_provider !== 'tosspayments_direct' && sub.payment_provider !== 'kakaopay') {
                     results.skipped++;
                     continue;
                 }
 
-                // customerKey 조회
-                const { data: ck } = await svc
-                    .from('tosspayments_customer_keys')
-                    .select('customer_key')
-                    .eq('user_id', sub.user_id)
-                    .maybeSingle();
-                const customerKey = ck?.customer_key;
-                if (!customerKey || !sub.payment_key) {
+                if (!sub.payment_key) {
                     results.failed++;
-                    results.errors.push(`user=${sub.user_id}: customerKey 또는 billingKey 누락`);
+                    results.errors.push(`user=${sub.user_id}: billingKey/SID 누락`);
                     continue;
                 }
 
-                // buyer 정보 — profiles에서 best effort
+                // buyer 정보 — profiles에서 best effort (토스 측 사용)
                 const { data: profile } = await svc
                     .from('profiles')
                     .select('email, name')
                     .eq('id', sub.user_id)
                     .maybeSingle();
 
-                // 3. 첫 결제 실행
+                // 3. Provider별 첫 결제 실행
                 const orderId = generateOrderId(`trial-end-${plan.slug}`);
                 const orderName = `보비 ${plan.display_name} (${sub.billing_cycle === 'yearly' ? '연간' : '월간'}) 체험 전환`;
 
-                const charge = await chargeBillingKey({
-                    billingKey: sub.payment_key,
-                    customerKey,
-                    amount,
-                    orderId,
-                    orderName,
-                    customerEmail: profile?.email,
-                    customerName: profile?.name,
-                });
+                let chargeOk = false;
+                let chargeErrorCode: string | undefined;
+                let chargeErrorMessage: string | undefined;
+                let chargePaymentId: string | undefined;
 
-                if (!charge.success) {
+                if (sub.payment_provider === 'tosspayments_direct') {
+                    const { data: ck } = await svc
+                        .from('tosspayments_customer_keys')
+                        .select('customer_key')
+                        .eq('user_id', sub.user_id)
+                        .maybeSingle();
+                    const customerKey = ck?.customer_key;
+                    if (!customerKey) {
+                        results.failed++;
+                        results.errors.push(`user=${sub.user_id}: customerKey 누락`);
+                        continue;
+                    }
+
+                    const charge = await chargeBillingKey({
+                        billingKey: sub.payment_key,
+                        customerKey,
+                        amount,
+                        orderId,
+                        orderName,
+                        customerEmail: profile?.email,
+                        customerName: profile?.name,
+                    });
+                    chargeOk = charge.success;
+                    chargeErrorCode = charge.errorCode;
+                    chargeErrorMessage = charge.errorMessage;
+                } else {
+                    // 카카오페이: SID로 정기결제 실행
+                    try {
+                        const resp = await kakaoPaySubscription({
+                            sid: sub.payment_key,
+                            partnerOrderId: orderId,
+                            partnerUserId: sub.user_id,
+                            itemName: orderName,
+                            totalAmount: amount,
+                        });
+                        chargeOk = true;
+                        chargePaymentId = resp.tid;
+                    } catch (err) {
+                        chargeOk = false;
+                        chargeErrorCode = 'kakaopay_error';
+                        chargeErrorMessage = (err as Error).message;
+                    }
+                }
+
+                if (!chargeOk) {
                     // 결제 실패 → past_due
                     await svc
                         .from('subscriptions')
@@ -116,21 +149,21 @@ export async function GET(request: Request) {
 
                     results.failed++;
                     results.errors.push(
-                        `user=${sub.user_id} (${plan.slug}): ${charge.errorCode} ${charge.errorMessage?.slice(0, 100) || ''}`,
+                        `user=${sub.user_id} (${plan.slug}, ${sub.payment_provider}): ${chargeErrorCode} ${chargeErrorMessage?.slice(0, 100) || ''}`,
                     );
 
                     try {
                         const { captureError } = await import('@/lib/monitoring/sentry-helpers');
-                        captureError(new Error(`Trial charge failed: ${charge.errorCode}`), {
+                        captureError(new Error(`Trial charge failed: ${chargeErrorCode}`), {
                             area: 'billing',
                             level: 'warning',
-                            tags: { stage: 'trial_end_charge', provider: 'tosspayments_direct' },
+                            tags: { stage: 'trial_end_charge', provider: sub.payment_provider },
                             metadata: {
                                 userId: sub.user_id,
                                 subscriptionId: sub.id,
                                 planSlug: plan.slug,
-                                errorCode: charge.errorCode,
-                                errorMessage: charge.errorMessage?.slice(0, 200),
+                                errorCode: chargeErrorCode,
+                                errorMessage: chargeErrorMessage?.slice(0, 200),
                             },
                         });
                     } catch {
@@ -138,6 +171,7 @@ export async function GET(request: Request) {
                     }
                     continue;
                 }
+                void chargePaymentId; // payment_history 기록은 선택적 — 여기서는 생략
 
                 // 4. 결제 성공 → active 전환, period 갱신
                 const periodStart = now.toISOString();

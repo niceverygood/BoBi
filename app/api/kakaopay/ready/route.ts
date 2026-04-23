@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { kakaoPayReady } from '@/lib/kakaopay/client';
+import { checkTrialEligibility, isTrialEligiblePlan } from '@/lib/subscription/trial';
+
+// 카카오페이 최소 결제 금액 (정기결제 SID 발급 시 required)
+// 체험 모드에서는 이 금액으로 임시 결제 후 approve 직후 즉시 환불.
+const TRIAL_MINI_CHARGE_AMOUNT = 100;
 
 export async function POST(request: Request) {
     const supabase = await createClient();
@@ -10,10 +15,21 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
     }
 
-    const { planSlug, billingCycle, upgradePlanSlug, couponCode } = await request.json();
+    const { planSlug, billingCycle, upgradePlanSlug, couponCode, intent } = await request.json();
 
     if (!planSlug || !billingCycle) {
         return NextResponse.json({ error: '필수 파라미터가 누락되었습니다.' }, { status: 400 });
+    }
+
+    // 체험 모드 검증 — 자격 없으면 일반 결제로 다운그레이드
+    let useTrial = intent === 'trial';
+    if (useTrial) {
+        if (!isTrialEligiblePlan(planSlug) || billingCycle !== 'monthly') {
+            useTrial = false;
+        } else {
+            const eligibility = await checkTrialEligibility(supabase, user.id, planSlug);
+            if (!eligibility.eligible) useTrial = false;
+        }
     }
 
     if (billingCycle === 'yearly') {
@@ -72,7 +88,7 @@ export async function POST(request: Request) {
         }
     }
 
-    if (amount <= 0) {
+    if (amount <= 0 && !useTrial) {
         return NextResponse.json({ error: '결제 금액이 0원입니다. 무료 쿠폰은 결제 없이 적용됩니다.' }, { status: 400 });
     }
 
@@ -80,16 +96,22 @@ export async function POST(request: Request) {
     const emailPrefix = (user.email || '').split('@')[0].slice(0, 20);
     const partnerOrderId = `bobi-${emailPrefix}-${planSlug}-${Date.now()}`;
 
+    // 체험 모드: 실제 카카오페이에는 100원만 청구(SID 발급용) — approve 후 즉시 환불.
+    // 일반 모드: 계산된 amount 그대로 청구.
+    const chargeAmount = useTrial ? TRIAL_MINI_CHARGE_AMOUNT : amount;
+
     try {
         const readyResponse = await kakaoPayReady({
             partnerOrderId,
             partnerUserId: user.id,
-            itemName: `보비 ${plan.display_name} 플랜 (${cycleLabel})`,
-            totalAmount: amount,
+            itemName: useTrial
+                ? `보비 ${plan.display_name} 7일 체험 등록 (실제 결제는 7일 후)`
+                : `보비 ${plan.display_name} 플랜 (${cycleLabel})`,
+            totalAmount: chargeAmount,
         });
 
         // TID를 세션에 저장 (approve 시 필요)
-        // Supabase에 임시 저장
+        // amount에는 "체험 종료 후 자동결제할 원래 금액"을 저장해 approve에서 참고.
         await serviceClient
             .from('kakaopay_sessions')
             .upsert({
@@ -98,9 +120,10 @@ export async function POST(request: Request) {
                 partner_order_id: partnerOrderId,
                 plan_slug: planSlug,
                 billing_cycle: billingCycle,
-                amount,
+                amount, // 정가 — 체험 종료 시 이 금액이 자동결제됨
                 upgrade_plan_slug: upgradePlanSlug || null,
                 coupon_code: couponCode || null,
+                intent: useTrial ? 'trial' : 'subscribe',
                 created_at: new Date().toISOString(),
             }, { onConflict: 'user_id' });
 

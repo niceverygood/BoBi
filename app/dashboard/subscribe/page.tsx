@@ -109,9 +109,10 @@ function SubscribeContent() {
         }
     }, [planParam]);
 
-    // 체험 모드일 때 결제 수단을 토스로 강제 (현재 토스만 지원)
+    // 체험 모드일 때 결제 수단 제한:
+    //   토스·카카오페이는 체험 지원. 신용카드(이니시스)는 미지원 → 토스로 강제.
     useEffect(() => {
-        if (useTrial && trialEligible && paymentMethod !== 'tosspayments') {
+        if (useTrial && trialEligible && paymentMethod === 'card') {
             setPaymentMethod('tosspayments');
         }
     }, [useTrial, trialEligible, paymentMethod]);
@@ -422,6 +423,9 @@ function SubscribeContent() {
                     billingCycle,
                     ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
                     ...(appliedCoupon?.upgradeToPlan ? { upgradePlanSlug: appliedCoupon.upgradeToPlan } : {}),
+                    // 체험 자격 + 베이직 월간일 때만 체험 의도 전달.
+                    // 서버에서도 재검증되므로 클라이언트 조작 안전.
+                    ...(useTrial && trialEligible ? { intent: 'trial' } : {}),
                 },
             });
 
@@ -708,7 +712,10 @@ function SubscribeContent() {
         );
     }
 
-    const trialActive = useTrial && trialEligible && paymentMethod === 'tosspayments' && platform === 'web';
+    // 체험 가능 결제수단: 토스·카카오페이 (신용카드는 체험 미지원 → 일반 결제)
+    const trialActive = useTrial && trialEligible
+        && (paymentMethod === 'tosspayments' || paymentMethod === 'kakaopay')
+        && platform === 'web';
 
     const paymentLabel = trialActive
         ? `✨ ${trialDays}일 무료 체험 시작`
@@ -1092,9 +1099,19 @@ function SubscribeContent() {
                                             </label>
                                         </div>
                                         {useTrial && (
-                                            <p className="text-[11px] text-violet-600 dark:text-violet-400 leading-relaxed pl-6">
-                                                💳 결제 수단은 <strong>토스 카드</strong>로 자동 설정됩니다. 오늘은 0원, {trialDays}일 후 {planInfo.priceMonthly.toLocaleString()}원이 청구됩니다.
-                                            </p>
+                                            <div className="text-[11px] text-violet-600 dark:text-violet-400 leading-relaxed pl-6 space-y-1">
+                                                <p>
+                                                    💳 체험 가능 결제수단: <strong>카카오페이</strong> 또는 <strong>토스 카드</strong>
+                                                </p>
+                                                <p>
+                                                    오늘은 0원, {trialDays}일 후 {planInfo.priceMonthly.toLocaleString()}원이 청구됩니다.
+                                                </p>
+                                                {paymentMethod === 'kakaopay' && (
+                                                    <p className="text-[10px] opacity-80">
+                                                        * 카카오페이는 SID 등록을 위해 100원이 임시 청구 후 즉시 환불됩니다 (순 결제 0원).
+                                                    </p>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
                                 )}
