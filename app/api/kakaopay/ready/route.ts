@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { kakaoPayReady } from '@/lib/kakaopay/client';
 import { checkTrialEligibility, isTrialEligiblePlan } from '@/lib/subscription/trial';
+import { getPlanPrice } from '@/lib/utils/pricing';
 
 // 카카오페이 최소 결제 금액 (정기결제 SID 발급 시 required)
 // 체험 모드에서는 이 금액으로 임시 결제 후 approve 직후 즉시 환불.
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: '존재하지 않는 플랜입니다.' }, { status: 400 });
     }
 
-    let amount = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
+    let amount = getPlanPrice(plan.slug, billingCycle);
 
     // 쿠폰 할인 적용 (검증 포함)
     if (couponCode) {

@@ -14,6 +14,7 @@ import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { issueBillingKey, chargeBillingKey, generateOrderId } from '@/lib/tosspayments/server';
 import { TRIAL_DAYS, computeTrialEndsAt, isTrialEligiblePlan } from '@/lib/subscription/trial';
+import { getPlanPrice } from '@/lib/utils/pricing';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,7 +106,7 @@ export async function GET(request: Request) {
             );
         }
 
-        let amount = pending.billing_cycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
+        let amount = getPlanPrice(plan.slug, pending.billing_cycle);
         let actualPlan = plan;
         let validatedCouponId: string | null = null;
 

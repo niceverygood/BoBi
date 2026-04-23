@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { buildBillingKeyForm, getInipayScriptUrl } from '@/lib/inicis/server';
+import { getPlanPrice } from '@/lib/utils/pricing';
 
 export async function POST(request: Request) {
     try {
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
 
         const { data: plan } = await supabase
             .from('subscription_plans')
-            .select('slug, display_name, price_monthly, price_yearly')
+            .select('slug, display_name')
             .eq('slug', planSlug)
             .maybeSingle();
         if (!plan) {
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
         }
 
         // 결제창 표시용 금액 계산 (실제 청구는 return 콜백에서 다시 계산)
-        let displayAmount = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
+        let displayAmount = getPlanPrice(plan.slug, billingCycle);
         if (couponCode) {
             const { data: coupon } = await supabase
                 .from('promo_codes')

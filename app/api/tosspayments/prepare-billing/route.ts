@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { generateCustomerKey } from '@/lib/tosspayments/server';
 import { checkTrialEligibility, isTrialEligiblePlan } from '@/lib/subscription/trial';
+import { getPlanPrice } from '@/lib/utils/pricing';
 
 export async function POST(request: Request) {
     try {
@@ -49,14 +50,14 @@ export async function POST(request: Request) {
         // 플랜 금액 조회
         const { data: plan } = await supabase
             .from('subscription_plans')
-            .select('slug, display_name, price_monthly, price_yearly')
+            .select('slug, display_name')
             .eq('slug', planSlug)
             .maybeSingle();
         if (!plan) {
             return NextResponse.json({ error: '플랜을 찾을 수 없습니다.' }, { status: 404 });
         }
 
-        let amount = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
+        let amount = getPlanPrice(plan.slug, billingCycle);
 
         // 쿠폰 할인 (display용 — 실제 청구는 billing-success에서 재검증)
         if (couponCode) {

@@ -4,6 +4,7 @@ import { payWithBillingKey } from '@/lib/portone/server';
 import { kakaoPaySubscription } from '@/lib/kakaopay/client';
 import { chargeBillkey as inicisDirectCharge } from '@/lib/inicis/server';
 import { chargeBillingKey as tossDirectCharge, generateOrderId as tossOrderId } from '@/lib/tosspayments/server';
+import { getPlanPrice } from '@/lib/utils/pricing';
 
 // Vercel Cron에서 호출 — CRON_SECRET으로 인증
 export async function GET(request: Request) {
@@ -72,10 +73,15 @@ export async function GET(request: Request) {
 
                 const billingKey = billingKeyData?.billing_key || sub.payment_key;
 
-                // 결제 금액 계산
-                const amount = sub.billing_cycle === 'yearly'
-                    ? plan.price_yearly
-                    : plan.price_monthly;
+                // 결제 금액 계산 — 코드 상수(PLAN_LIMITS)가 SSOT
+                let amount: number;
+                try {
+                    amount = getPlanPrice(plan.slug, sub.billing_cycle);
+                } catch {
+                    results.errors.push(`구독 ${sub.id}: 알 수 없는 플랜 슬러그 ${plan.slug}`);
+                    results.failed++;
+                    continue;
+                }
 
                 if (!amount || amount <= 0) {
                     results.errors.push(`구독 ${sub.id}: 결제 금액 0원`);
@@ -285,7 +291,7 @@ export async function GET(request: Request) {
 
                 // 3일 이내: 결제 재시도
                 try {
-                    const plan = sub.plan as { price_monthly: number; price_yearly: number; slug: string; display_name: string; max_analyses: number } | null;
+                    const plan = sub.plan as { slug: string; display_name: string; max_analyses: number } | null;
                     if (!plan) continue;
 
                     const { data: billingKeyData } = await supabase
@@ -297,7 +303,10 @@ export async function GET(request: Request) {
                     const bk = billingKeyData?.billing_key || sub.payment_key;
                     if (!bk) continue;
 
-                    const retryAmount = sub.billing_cycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
+                    let retryAmount: number;
+                    try {
+                        retryAmount = getPlanPrice(plan.slug, sub.billing_cycle);
+                    } catch { continue; }
                     if (!retryAmount || retryAmount <= 0) continue;
 
                     const provider = billingKeyData?.provider || sub.payment_provider || 'portone';
