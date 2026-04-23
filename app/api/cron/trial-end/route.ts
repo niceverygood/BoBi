@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { chargeBillingKey, generateOrderId } from '@/lib/tosspayments/server';
 import { kakaoPaySubscription } from '@/lib/kakaopay/client';
+import { getPlanPrice } from '@/lib/utils/pricing';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,7 +60,14 @@ export async function GET(request: Request) {
                     continue;
                 }
 
-                const amount = sub.billing_cycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
+                let amount: number;
+                try {
+                    amount = getPlanPrice(plan.slug, sub.billing_cycle);
+                } catch {
+                    // 알 수 없는 플랜 슬러그(레거시) — 결제 스킵
+                    results.skipped++;
+                    continue;
+                }
                 if (!amount || amount <= 0) {
                     results.skipped++;
                     continue;

@@ -11,6 +11,7 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { approveBillingKeyIssue, chargeBillkey } from '@/lib/inicis/server';
+import { getPlanPrice } from '@/lib/utils/pricing';
 
 export const dynamic = 'force-dynamic';
 
@@ -128,7 +129,7 @@ export async function POST(request: Request) {
             );
         }
 
-        let amount = pending.billing_cycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
+        let amount = getPlanPrice(plan.slug, pending.billing_cycle);
 
         // 쿠폰 재검증
         let actualPlan = plan;
