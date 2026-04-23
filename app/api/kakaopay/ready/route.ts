@@ -112,7 +112,9 @@ export async function POST(request: Request) {
 
         // TID를 세션에 저장 (approve 시 필요)
         // amount에는 "체험 종료 후 자동결제할 원래 금액"을 저장해 approve에서 참고.
-        await serviceClient
+        // upsert 에러를 반드시 확인 — 세션 저장 실패 상태로 카카오페이 redirect를 반환하면
+        // 결제 후 approve가 세션을 못 찾아 "결제됐는데 플랜 미적용" 사고로 직결됨.
+        const { error: sessionUpsertError } = await serviceClient
             .from('kakaopay_sessions')
             .upsert({
                 user_id: user.id,
@@ -126,6 +128,28 @@ export async function POST(request: Request) {
                 intent: useTrial ? 'trial' : 'subscribe',
                 created_at: new Date().toISOString(),
             }, { onConflict: 'user_id' });
+
+        if (sessionUpsertError) {
+            try {
+                const { captureError } = await import('@/lib/monitoring/sentry-helpers');
+                captureError(new Error(`kakaopay_sessions upsert failed: ${sessionUpsertError.message}`), {
+                    area: 'billing',
+                    level: 'error',
+                    tags: { provider: 'kakaopay', stage: 'ready_session_upsert' },
+                    metadata: {
+                        userId: user.id,
+                        planSlug,
+                        partnerOrderId,
+                        intent: useTrial ? 'trial' : 'subscribe',
+                        supabaseError: sessionUpsertError.message,
+                    },
+                });
+            } catch { /* sentry 실패는 무시 */ }
+            return NextResponse.json(
+                { error: '결제 세션 저장에 실패했습니다. 잠시 후 다시 시도해주세요.' },
+                { status: 500 }
+            );
+        }
 
         return NextResponse.json({
             success: true,
