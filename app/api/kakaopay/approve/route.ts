@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
         // Create new subscription
         //   - 체험: status='trialing', trial_ends_at 설정, trial_used=true
         //   - 일반: status='active'
-        const { data: subscription } = await serviceClient
+        const { data: subscription, error: subscriptionInsertError } = await serviceClient
             .from('subscriptions')
             .insert({
                 user_id: partnerUserId,
@@ -146,6 +146,40 @@ export async function GET(request: NextRequest) {
             })
             .select()
             .single();
+
+        // 카카오페이는 이미 승인된 상태 — 구독 생성 실패 시 사용자에게 돈만 빠지므로
+        // 일반 모드는 즉시 전액 환불 시도, 체험 모드는 100원이 이미 환불됨.
+        // 실패 케이스에서는 세션 삭제도 건너뛰어 수동 복구가 가능하도록 둠.
+        if (subscriptionInsertError || !subscription) {
+            if (!isTrial) {
+                try {
+                    await kakaoPayCancel({
+                        tid: approveResponse.tid,
+                        cancelAmount: session.amount,
+                    });
+                } catch (refundErr) {
+                    console.error('[kakaopay/approve] subscription 생성 실패 후 자동환불 실패:', refundErr);
+                }
+            }
+            try {
+                const { captureError } = await import('@/lib/monitoring/sentry-helpers');
+                captureError(subscriptionInsertError ?? new Error('subscription insert returned null'), {
+                    area: 'billing',
+                    level: 'error',
+                    tags: { provider: 'kakaopay', stage: 'approve_subscription_insert' },
+                    metadata: {
+                        userId: partnerUserId,
+                        tid: approveResponse.tid,
+                        planSlug: actualPlan.slug,
+                        amount: session.amount,
+                        isTrial,
+                    },
+                });
+            } catch { /* sentry 실패는 무시 */ }
+            return NextResponse.redirect(
+                new URL('/dashboard/subscribe?status=fail&error=subscription_create_failed', request.url)
+            );
+        }
 
         // Update usage tracking
         const year = now.getFullYear();
