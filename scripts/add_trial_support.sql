@@ -64,9 +64,23 @@ CREATE POLICY "trial_history_service_write"
     WITH CHECK (true);
 
 -- ── 3) tosspayments_pending_billing 확장 ────────────────────────
-ALTER TABLE public.tosspayments_pending_billing
-    ADD COLUMN IF NOT EXISTS intent text NOT NULL DEFAULT 'normal'
-    CHECK (intent IN ('normal', 'trial'));
+-- 토스페이먼츠가 아직 승인 전이라 미배포된 환경에선 테이블이 없을 수 있음.
+-- 테이블이 있을 때만 intent 컬럼을 추가하도록 가드. (없으면 전체 트랜잭션이
+-- 롤백되어 subscriptions/trial_history 변경까지 무효가 되는 것을 방지)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name = 'tosspayments_pending_billing'
+    ) THEN
+        EXECUTE $sql$
+            ALTER TABLE public.tosspayments_pending_billing
+                ADD COLUMN IF NOT EXISTS intent text NOT NULL DEFAULT 'normal'
+                CHECK (intent IN ('normal', 'trial'))
+        $sql$;
+    END IF;
+END $$;
 
 COMMIT;
 
