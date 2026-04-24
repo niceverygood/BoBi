@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
     FileSearch, ArrowRight, HeartPulse, Receipt, Stethoscope,
-    Users, Star, Clock, TrendingUp, Eye, HelpCircle,
+    Users, Star, Clock, TrendingUp, Eye, HelpCircle, Sparkles,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -195,8 +195,34 @@ export default function DashboardPage() {
             {/* 🎁 베이직 3일 무료 체험 프로모션 (무료 유저 + 자격 있을 때만) */}
             <TrialPromoBanner />
 
-            {/* 📊 사회적 증거 — 무료 유저에게 집중 노출 */}
-            {plan.slug === 'free' && !loading && <SocialProofStrip compact />}
+            {/* 📊 사회적 증거 — 무료 유저에게 집중 노출 + 튜토리얼 CTA */}
+            {plan.slug === 'free' && !loading && (
+                <SocialProofStrip
+                    compact
+                    leadingAction={
+                        <button
+                            type="button"
+                            onClick={startTour}
+                            aria-label="튜토리얼 이용해보기 — 30초 간접 체험"
+                            className="group relative overflow-hidden rounded-xl bg-[#1a56db] text-white shadow-sm hover:bg-[#1a56db]/90 transition-colors text-left p-3"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                                    <Sparkles className="w-4 h-4" />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="font-bold text-base leading-tight">
+                                        튜토리얼 이용해보기
+                                    </p>
+                                    <p className="text-[11px] text-white/80 mt-0.5 truncate">
+                                        30초 간접 체험 →
+                                    </p>
+                                </div>
+                            </div>
+                        </button>
+                    }
+                />
+            )}
 
             {/* ⭐ 팔로업 필요 고객 (리텐션 핵심 — 최상단 배치) */}
             <FollowupsWidget />
