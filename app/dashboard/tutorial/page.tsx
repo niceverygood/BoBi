@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { track } from '@/lib/analytics/events';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -40,6 +41,28 @@ export default function TutorialPage() {
     const step = STEPS[stepIndex];
     const isLast = stepIndex === STEPS.length - 1;
     const isFirst = stepIndex === 0;
+    const shownStepsRef = useRef<Set<string>>(new Set());
+    const viewedRef = useRef(false);
+    const completedRef = useRef(false);
+
+    // 튜토리얼 페이지 진입 — 1회만
+    useEffect(() => {
+        if (viewedRef.current) return;
+        viewedRef.current = true;
+        track('tutorial_viewed');
+    }, []);
+
+    // 스텝 변경 시 노출 이벤트 — 스텝별 1회만
+    useEffect(() => {
+        if (!shownStepsRef.current.has(step.id)) {
+            shownStepsRef.current.add(step.id);
+            track('tutorial_step_shown', { step_id: step.id, step_index: stepIndex });
+        }
+        if (step.id === 'complete' && !completedRef.current) {
+            completedRef.current = true;
+            track('tutorial_completed', { total_steps: STEPS.length });
+        }
+    }, [step.id, stepIndex]);
 
     return (
         <div className="max-w-5xl mx-auto space-y-6 animate-fade-in">
@@ -126,7 +149,10 @@ export default function TutorialPage() {
                     {stepIndex + 1} / {STEPS.length}
                 </span>
                 {isLast ? (
-                    <Link href="/dashboard/analyze">
+                    <Link
+                        href="/dashboard/analyze"
+                        onClick={() => track('tutorial_cta_clicked', { cta_location: 'footer_final' })}
+                    >
                         <Button className="text-sm bg-[#1a56db] hover:bg-[#1a56db]/90">
                             실제 분석 시작하기
                             <ArrowRight className="w-4 h-4 ml-1" />
@@ -724,7 +750,10 @@ function CompleteStep() {
             </Card>
 
             <div className="grid md:grid-cols-2 gap-3">
-                <Link href="/dashboard/analyze">
+                <Link
+                    href="/dashboard/analyze"
+                    onClick={() => track('tutorial_cta_clicked', { cta_location: 'completion_card' })}
+                >
                     <Card className="border-0 shadow-sm bg-[#1a56db] text-white hover:bg-[#1a56db]/90 transition-colors cursor-pointer">
                         <CardContent className="p-5">
                             <FileSearch className="w-6 h-6 mb-2" />

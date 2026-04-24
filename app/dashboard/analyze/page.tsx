@@ -17,6 +17,7 @@ import { apiFetch } from '@/lib/api/client';
 import type { AnalysisResult } from '@/types/analysis';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { track } from '@/lib/analytics/events';
 
 interface UploadedFile {
     id?: string;
@@ -46,6 +47,16 @@ function AnalyzeContent() {
     const { canAnalyze, remainingAnalyses, plan, credits, needsCredit, planLimitReached, isFeatureEnabled, loading: subLoading, refresh } = useSubscription();
     const [showCreditShop, setShowCreditShop] = useState(false);
     const [buyingCredit, setBuyingCredit] = useState<string | null>(null);
+
+    // 한도 소진 감지 — 결제 전환 퍼널의 핵심 지점
+    useEffect(() => {
+        if (!subLoading && planLimitReached && !canAnalyze) {
+            track('analysis_limit_reached', {
+                plan_slug: plan.slug,
+                has_credits: credits > 0,
+            });
+        }
+    }, [subLoading, planLimitReached, canAnalyze, plan.slug, credits]);
 
     // 크레딧 구매 핸들러 (플랫폼별 분기)
     const handleBuyCredit = async (packId: string) => {
@@ -178,8 +189,16 @@ function AnalyzeContent() {
         const successFiles = uploadedFiles.filter((f) => f.status === 'success' && f.id);
         if (successFiles.length === 0) return;
 
+        const startedAt = Date.now();
+        const fileCount = successFiles.length;
+
         setAnalyzing(true);
         setError(null);
+
+        track('analysis_started', {
+            file_count: fileCount,
+            plan_slug: plan.slug,
+        });
 
         try {
             const data = await apiFetch<{ result: AnalysisResult; analysisId: string }>('/api/analyze', {
@@ -199,6 +218,16 @@ function AnalyzeContent() {
 
             setAnalysisResult(result);
             setAnalysisId(data.analysisId);
+
+            track('analysis_completed', {
+                analysis_id: data.analysisId,
+                file_count: fileCount,
+                duration_ms: Date.now() - startedAt,
+                disease_count: result.diseaseSummary?.length ?? 0,
+                risk_flag_count: result.riskFlags?.length ?? 0,
+                plan_slug: plan.slug,
+            });
+
             refresh(); // Refresh usage count
         } catch (err) {
             console.error('[Analyze] Error:', err);
@@ -206,6 +235,13 @@ function AnalyzeContent() {
             // 디버깅: uploadIds 로깅
             console.error('[Analyze] uploadIds:', successFiles.map((f) => f.id));
             setError(msg);
+
+            track('analysis_failed', {
+                file_count: fileCount,
+                duration_ms: Date.now() - startedAt,
+                error_message: msg.slice(0, 200),
+                plan_slug: plan.slug,
+            });
         } finally {
             setAnalyzing(false);
         }

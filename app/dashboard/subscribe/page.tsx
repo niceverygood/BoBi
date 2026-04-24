@@ -16,6 +16,7 @@ import { getPlatform, isNative, type AppPlatform } from '@/lib/iap/platform';
 import { openExternal } from '@/lib/open-external';
 import EnterpriseInquiryDialog from '@/components/subscribe/EnterpriseInquiryDialog';
 import { SocialProofInline } from '@/components/common/SocialProof';
+import { track } from '@/lib/analytics/events';
 
 // 개인 플랜 아이콘 (팀 플랜은 엔터프라이즈 문의로 대체됨)
 const PLAN_ICONS: Record<string, typeof Zap> = {
@@ -77,6 +78,22 @@ function SubscribeContent() {
     useEffect(() => {
         const detectedPlatform = getPlatform();
         setPlatform(detectedPlatform);
+
+        track('subscribe_page_viewed', {
+            plan_param: planParam || null,
+            coupon_param: couponParam || null,
+            platform: detectedPlatform,
+            current_plan: currentPlan?.slug || null,
+        });
+
+        // 카카오페이 체험 성공 후 돌아온 URL 감지 → 체험 시작 이벤트
+        if (searchParams.get('trial') === '1') {
+            const provider = searchParams.get('status') === 'success' ? 'kakaopay' : 'tosspayments';
+            track('trial_started', {
+                provider,
+                plan_slug: planParam || 'basic',
+            });
+        }
 
         // 네이티브 앱이면 인앱결제 초기화
         if (detectedPlatform !== 'web') {
@@ -685,6 +702,15 @@ function SubscribeContent() {
 
     // 웹 결제: 금액 0원이면 무료 쿠폰 처리, 아니면 결제 수단별 분기
     const handleWebSubscribe = async () => {
+        track('checkout_started', {
+            plan_slug: selectedPlan,
+            billing_cycle: billingCycle,
+            payment_method: paymentMethod,
+            amount,
+            use_trial: useTrial && trialEligible,
+            has_coupon: !!appliedCoupon,
+        });
+
         // 쿠폰 적용으로 0원인 경우 결제 없이 바로 구독 생성
         if (amount === 0 && appliedCoupon) {
             return handleFreeCouponSubscribe();
@@ -832,7 +858,10 @@ function SubscribeContent() {
                                 return (
                                     <button
                                         key={slug}
-                                        onClick={() => setSelectedPlan(slug)}
+                                        onClick={() => {
+                                            setSelectedPlan(slug);
+                                            track('subscribe_plan_selected', { plan_slug: slug });
+                                        }}
                                         className={cn(
                                             'w-full p-4 rounded-xl border-2 text-left transition-all',
                                             selectedPlan === slug
@@ -1170,7 +1199,10 @@ function SubscribeContent() {
                                         <p className="text-sm font-medium">결제 수단</p>
                                         <div className="grid grid-cols-3 gap-2">
                                             <button
-                                                onClick={() => setPaymentMethod('kakaopay')}
+                                                onClick={() => {
+                                                    setPaymentMethod('kakaopay');
+                                                    track('subscribe_method_selected', { method: 'kakaopay' });
+                                                }}
                                                 disabled={billingCycle === 'yearly'}
                                                 className={cn(
                                                     'p-2.5 rounded-lg border-2 text-center text-xs transition-all',
@@ -1183,7 +1215,10 @@ function SubscribeContent() {
                                                 카카오페이
                                             </button>
                                             <button
-                                                onClick={() => setPaymentMethod('tosspayments')}
+                                                onClick={() => {
+                                                    setPaymentMethod('tosspayments');
+                                                    track('subscribe_method_selected', { method: 'tosspayments' });
+                                                }}
                                                 className={cn(
                                                     'p-2.5 rounded-lg border-2 text-center text-xs transition-all relative',
                                                     paymentMethod === 'tosspayments'
@@ -1195,7 +1230,10 @@ function SubscribeContent() {
                                                 <span className="absolute -top-1.5 -right-1 bg-blue-500 text-white text-[9px] px-1 rounded font-semibold">쉬움</span>
                                             </button>
                                             <button
-                                                onClick={() => setPaymentMethod('card')}
+                                                onClick={() => {
+                                                    setPaymentMethod('card');
+                                                    track('subscribe_method_selected', { method: 'card' });
+                                                }}
                                                 className={cn(
                                                     'p-2.5 rounded-lg border-2 text-center text-xs transition-all',
                                                     paymentMethod === 'card'

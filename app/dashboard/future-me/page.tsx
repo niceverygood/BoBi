@@ -17,6 +17,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner';
 import FeatureGate from '@/components/common/FeatureGate';
 import { apiFetch } from '@/lib/api/client';
 import type { FutureMeResult, FutureMeScenario, CategoryAmount } from '@/types/future-me';
+import TrackFeatureUse from '@/components/analytics/TrackFeatureUse';
 
 interface CustomerCardData {
     customer: { id: string; name: string; birth_date: string | null; gender: string | null; phone?: string | null };
@@ -201,6 +202,7 @@ function FutureMeContent() {
 
     return (
         <div className="max-w-3xl mx-auto space-y-5 animate-fade-in pb-8">
+            <TrackFeatureUse feature="future_me" />
             {/* 헤더 */}
             <div className="flex items-center gap-2">
                 <Link href={`/dashboard/customers/${customerId}`}>

@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { HiraMedicalRecord, HiraBasicTreatRecord, HiraCarInsuranceRecord, HiraCarBasicTreatRecord, HiraPrescribeDrugRecord, MyMedicineRecord } from '@/lib/codef/client';
 import { useSubscription } from '@/hooks/useSubscription';
+import TrackFeatureUse from '@/components/analytics/TrackFeatureUse';
 
 // 인증 방식 (간편인증 + SMS)
 const AUTH_METHODS = [
@@ -766,6 +767,7 @@ function MedicalInfoContent() {
 
     return (
         <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
+            <TrackFeatureUse feature="medical" />
             {/* 헤더 */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">

@@ -13,6 +13,7 @@ import FeatureGate from '@/components/common/FeatureGate';
 import { DISEASE_COST_DATA, getDiseaseCostByCategory, type DiseaseCostInfo } from '@/lib/receipt/disease-cost-data';
 import { apiFetch } from '@/lib/api/client';
 import type { AccidentReceipt } from '@/types/accident-receipt';
+import TrackFeatureUse from '@/components/analytics/TrackFeatureUse';
 
 const CATEGORY_COLORS: Record<string, string> = {
     '암': 'bg-rose-100 text-rose-700 border-rose-200',
@@ -132,6 +133,7 @@ function AccidentReceiptContent() {
 
     return (
         <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+            <TrackFeatureUse feature="accident_receipt" />
             {/* 헤더 */}
             <div className="flex items-center gap-3">
                 <Link href={fromRiskReport ? '/dashboard/risk-report' : '/dashboard'}>
