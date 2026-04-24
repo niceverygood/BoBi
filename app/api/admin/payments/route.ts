@@ -199,7 +199,7 @@ export async function GET(request: Request) {
             }
         }
 
-        let enrichedPayments = allPayments.map(p => {
+        let enrichedPayments: Record<string, any>[] = allPayments.map(p => {
             const inferred = p.payment_method || subProviderByUser.get(p.user_id) || 'card';
             return {
                 ...p,
@@ -225,7 +225,7 @@ export async function GET(request: Request) {
         }));
 
         // 4. provider별 집계 (필터 적용 전 전체 기준)
-        const allEnrichedForSummary = allPayments.map(p => ({
+        const allEnrichedForSummary: Record<string, any>[] = allPayments.map(p => ({
             ...p,
             payment_method: p.payment_method || subProviderByUser.get(p.user_id) || 'card',
             provider: normalizeProvider({ payment_method: p.payment_method || subProviderByUser.get(p.user_id) || 'card' }),
