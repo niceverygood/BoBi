@@ -210,11 +210,11 @@ export default function DashboardPage() {
                                 <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
                                     <Sparkles className="w-4 h-4" />
                                 </div>
-                                <div className="min-w-0">
-                                    <p className="font-bold text-base leading-tight">
+                                <div className="min-w-0 flex-1">
+                                    <p className="font-bold text-sm leading-tight break-keep">
                                         튜토리얼 이용해보기
                                     </p>
-                                    <p className="text-[11px] text-white/80 mt-0.5 truncate">
+                                    <p className="text-[11px] text-white/80 mt-0.5 break-keep">
                                         30초 간접 체험 →
                                     </p>
                                 </div>
