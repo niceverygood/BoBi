@@ -89,7 +89,20 @@ export async function POST(request: Request) {
     }
 }
 
-export async function GET() {
+// payment_method 값을 provider 버킷으로 정규화.
+// 여러 코드 경로에서 들어오는 표기를 관리자 대시보드용으로 통일한다.
+function normalizeProvider(p: Record<string, any>): string {
+    const raw = String(p.payment_method || p.provider || '').toLowerCase();
+    if (raw.includes('apple') || raw === 'ios' || raw === 'app_store') return 'apple_iap';
+    if (raw.includes('google') || raw === 'android' || raw === 'play_store') return 'google_play';
+    if (raw.includes('kakao')) return 'kakaopay';
+    if (raw.includes('toss')) return 'tosspayments';
+    if (raw.includes('inicis')) return 'inicis';
+    if (!raw || raw === 'card') return 'card';
+    return raw;
+}
+
+export async function GET(request: Request) {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -101,36 +114,50 @@ export async function GET() {
         return NextResponse.json({ error: '관리자 권한이 필요합니다.' }, { status: 403 });
     }
 
+    const url = new URL(request.url);
+    const providerFilter = url.searchParams.get('provider'); // apple_iap | google_play | kakaopay | tosspayments | inicis | card
+    const statusFilter = url.searchParams.get('status');     // paid | cancelled | refunded
+
     try {
         const serviceClient = await createServiceClient();
 
-        // 1. payments 테이블 조회 (실제 결제 기록)
-        let allPayments: Record<string, any>[] = [];
-
-        const { data: paymentsData } = await serviceClient
-            .from('payments')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(100);
-
-        if (paymentsData && paymentsData.length > 0) {
-            allPayments = paymentsData;
-        } else {
-            // fallback: payment_history 테이블
-            const { data: historyData } = await serviceClient
+        // 1. payments + payment_history UNION — KakaoPay 구 레코드처럼 payments에 없는 것도 병합
+        const [{ data: paymentsData }, { data: historyData }] = await Promise.all([
+            serviceClient
+                .from('payments')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(500),
+            serviceClient
                 .from('payment_history')
                 .select('*')
                 .order('created_at', { ascending: false })
-                .limit(100);
-            allPayments = historyData || [];
+                .limit(500),
+        ]);
+
+        // payment_id 기준 중복 제거 (payments 테이블 우선)
+        const merged = new Map<string, Record<string, any>>();
+        for (const p of paymentsData || []) {
+            const key = String(p.payment_id || p.portone_payment_id || p.id);
+            merged.set(key, { ...p, _source: 'payments' });
+        }
+        for (const h of historyData || []) {
+            const key = String(h.payment_id || h.id);
+            if (!merged.has(key)) {
+                merged.set(key, { ...h, _source: 'payment_history' });
+            }
         }
 
-        // 2. 모든 구독 이력 (active + cancelled)
+        let allPayments = [...merged.values()].sort((a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        );
+
+        // 2. 모든 구독 이력 (active + cancelled) — IAP 구독도 여기에서 provider 확인 가능
         const { data: subscriptions } = await serviceClient
             .from('subscriptions')
             .select('*, plan:subscription_plans(slug, display_name)')
             .order('created_at', { ascending: false })
-            .limit(100);
+            .limit(200);
 
         // 3. user_id → email/name 매핑
         const allUserIds = new Set<string>();
@@ -141,7 +168,6 @@ export async function GET() {
         let userMap = new Map<string, { email: string; name: string }>();
 
         if (userIds.length > 0) {
-            // profiles 테이블에서 조회
             const { data: profiles } = await serviceClient
                 .from('profiles')
                 .select('id, email, name')
@@ -151,7 +177,6 @@ export async function GET() {
                 userMap = new Map(profiles.map(p => [p.id, { email: p.email || '-', name: p.name || '-' }]));
             }
 
-            // profiles에 없는 유저는 auth에서 가져오기
             const missingIds = userIds.filter(id => !userMap.has(id));
             if (missingIds.length > 0) {
                 const { data: authData } = await serviceClient.auth.admin.listUsers({ perPage: 200 });
@@ -166,11 +191,32 @@ export async function GET() {
             }
         }
 
-        const enrichedPayments = allPayments.map(p => ({
-            ...p,
-            user_email: userMap.get(p.user_id)?.email || '-',
-            user_name: userMap.get(p.user_id)?.name || '-',
-        }));
+        // payments에 method가 비어있으면 같은 user의 subscription.payment_provider에서 유추
+        const subProviderByUser = new Map<string, string>();
+        for (const s of subscriptions || []) {
+            if (s.payment_provider && !subProviderByUser.has(s.user_id)) {
+                subProviderByUser.set(s.user_id, s.payment_provider);
+            }
+        }
+
+        let enrichedPayments = allPayments.map(p => {
+            const inferred = p.payment_method || subProviderByUser.get(p.user_id) || 'card';
+            return {
+                ...p,
+                payment_method: inferred,
+                provider: normalizeProvider({ payment_method: inferred }),
+                user_email: userMap.get(p.user_id)?.email || '-',
+                user_name: userMap.get(p.user_id)?.name || '-',
+            };
+        });
+
+        // 필터 적용
+        if (providerFilter && providerFilter !== 'all') {
+            enrichedPayments = enrichedPayments.filter(p => p.provider === providerFilter);
+        }
+        if (statusFilter && statusFilter !== 'all') {
+            enrichedPayments = enrichedPayments.filter(p => p.status === statusFilter);
+        }
 
         const enrichedSubs = (subscriptions || []).map(s => ({
             ...s,
@@ -178,11 +224,35 @@ export async function GET() {
             user_name: userMap.get(s.user_id)?.name || '-',
         }));
 
+        // 4. provider별 집계 (필터 적용 전 전체 기준)
+        const allEnrichedForSummary = allPayments.map(p => ({
+            ...p,
+            payment_method: p.payment_method || subProviderByUser.get(p.user_id) || 'card',
+            provider: normalizeProvider({ payment_method: p.payment_method || subProviderByUser.get(p.user_id) || 'card' }),
+        }));
+
+        const summary: Record<string, { count: number; paidCount: number; paidAmount: number; refundedAmount: number }> = {};
+        for (const p of allEnrichedForSummary) {
+            const key = p.provider;
+            if (!summary[key]) summary[key] = { count: 0, paidCount: 0, paidAmount: 0, refundedAmount: 0 };
+            summary[key].count++;
+            const amount = Number(p.amount) || 0;
+            if (p.status === 'paid' || p.status === 'success') {
+                summary[key].paidCount++;
+                summary[key].paidAmount += amount;
+            } else if (p.status === 'refunded' || p.status === 'cancelled') {
+                summary[key].refundedAmount += amount;
+            }
+        }
+
         return NextResponse.json({
             payments: enrichedPayments,
             subscriptions: enrichedSubs,
+            summary,
+            total: allPayments.length,
+            filtered: enrichedPayments.length,
         });
     } catch (error) {
-        return NextResponse.json({ payments: [], subscriptions: [], error: (error as Error).message });
+        return NextResponse.json({ payments: [], subscriptions: [], summary: {}, error: (error as Error).message });
     }
 }

@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
     Shield, Users, FileText, CreditCard, Activity, BarChart3,
     TrendingUp, AlertCircle, Search, CheckCircle2, ArrowUpDown,
-    ChevronDown, Tag, Building2
+    ChevronDown, Tag, Building2, Terminal
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -307,6 +307,9 @@ export default function AdminPage() {
 
                     {/* 결제내역 - 총괄관리자만 */}
                     {isAdmin && <PaymentHistory />}
+
+                    {/* 시스템 로그 - 총괄관리자만 */}
+                    {isAdmin && <SystemLogs />}
 
                     {/* User Management - 관리자 + 중간관리자 */}
                     {hasAdminAccess && (
@@ -1446,25 +1449,51 @@ function PromoSubCleanup() {
 }
 
 // ─── 결제내역 컴포넌트 ──────────────────────
+const PROVIDER_META: Record<string, { label: string; className: string }> = {
+    all: { label: '전체', className: 'bg-slate-100 text-slate-700 border-slate-200' },
+    kakaopay: { label: '카카오페이', className: 'bg-yellow-100 text-yellow-800 border-yellow-300' },
+    tosspayments: { label: '토스페이먼츠', className: 'bg-blue-100 text-blue-700 border-blue-200' },
+    inicis: { label: 'KG이니시스', className: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+    apple_iap: { label: 'Apple 앱결제', className: 'bg-slate-900 text-white border-slate-900' },
+    google_play: { label: 'Google 앱결제', className: 'bg-green-100 text-green-700 border-green-200' },
+    card: { label: '신용카드', className: 'bg-gray-100 text-gray-700 border-gray-200' },
+};
+
+type ProviderSummary = Record<string, { count: number; paidCount: number; paidAmount: number; refundedAmount: number }>;
+
 function PaymentHistory() {
     const [payments, setPayments] = useState<Record<string, unknown>[]>([]);
     const [subs, setSubs] = useState<Record<string, unknown>[]>([]);
+    const [summary, setSummary] = useState<ProviderSummary>({});
     const [loading, setLoading] = useState(true);
     const [tab, setTab] = useState<'payments' | 'active' | 'cancelled'>('payments');
+    const [providerFilter, setProviderFilter] = useState<string>('all');
     const [cancelling, setCancelling] = useState<string | null>(null);
     const [actionMsg, setActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await apiFetch<{ payments: Record<string, unknown>[]; subscriptions: Record<string, unknown>[] }>('/api/admin/payments');
+            const qs = providerFilter !== 'all' ? `?provider=${providerFilter}` : '';
+            const data = await apiFetch<{
+                payments: Record<string, unknown>[];
+                subscriptions: Record<string, unknown>[];
+                summary?: ProviderSummary;
+            }>(`/api/admin/payments${qs}`);
             setPayments(data.payments || []);
             setSubs(data.subscriptions || []);
+            setSummary(data.summary || {});
         } catch { /* */ }
         setLoading(false);
-    };
+    }, [providerFilter]);
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => { fetchData(); }, [fetchData]);
+
+    const providerBadge = (provider: unknown) => {
+        const key = String(provider || 'card');
+        const meta = PROVIDER_META[key] || { label: key, className: 'bg-slate-100 text-slate-700 border-slate-200' };
+        return <Badge variant="outline" className={`${meta.className} text-[10px]`}>{meta.label}</Badge>;
+    };
 
     const activeSubs = subs.filter(s => s.status === 'active');
     const cancelledSubs = subs.filter(s => s.status === 'cancelled');
@@ -1526,6 +1555,45 @@ function PaymentHistory() {
                         취소/해지 ({cancelledSubs.length + cancelledPayments.length})
                     </Button>
                 </div>
+
+                {/* 결제수단별 집계 카드 — 카카오페이/토스/애플/구글 한 눈에 */}
+                {tab === 'payments' && Object.keys(summary).length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mt-3">
+                        {(['kakaopay', 'tosspayments', 'inicis', 'apple_iap', 'google_play', 'card'] as const).map(key => {
+                            const s = summary[key];
+                            if (!s || s.count === 0) return null;
+                            const meta = PROVIDER_META[key];
+                            return (
+                                <div key={key} className={`border rounded-lg p-2 ${meta.className}`}>
+                                    <div className="text-[10px] opacity-80">{meta.label}</div>
+                                    <div className="text-sm font-semibold">{s.paidAmount.toLocaleString()}원</div>
+                                    <div className="text-[10px] opacity-70">{s.paidCount}건 결제 · 전체 {s.count}건</div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {/* Provider 필터 칩 */}
+                {tab === 'payments' && (
+                    <div className="flex gap-1 mt-3 flex-wrap">
+                        {(['all', 'kakaopay', 'tosspayments', 'inicis', 'apple_iap', 'google_play', 'card'] as const).map(key => {
+                            const meta = PROVIDER_META[key];
+                            const active = providerFilter === key;
+                            return (
+                                <button
+                                    key={key}
+                                    onClick={() => setProviderFilter(key)}
+                                    className={`px-2.5 py-1 rounded-full text-[11px] border transition ${
+                                        active ? 'bg-primary text-primary-foreground border-primary' : `${meta.className} hover:opacity-80`
+                                    }`}
+                                >
+                                    {meta.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
             </CardHeader>
             <CardContent>
                 {loading ? <p className="text-sm text-muted-foreground text-center py-8">로딩 중...</p>
@@ -1534,6 +1602,7 @@ function PaymentHistory() {
                     payments.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">결제 내역이 없습니다.</p> : (
                     <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b bg-muted/30">
                         <th className="text-left p-2">일시</th><th className="text-left p-2">이메일</th><th className="text-left p-2">이름</th>
+                        <th className="text-left p-2">수단</th>
                         <th className="text-left p-2">플랜</th><th className="text-left p-2">주기</th><th className="text-right p-2">금액</th>
                         <th className="text-left p-2">상태</th><th className="text-left p-2">결제ID</th>
                     </tr></thead><tbody>{payments.map((p, i) => (
@@ -1541,6 +1610,7 @@ function PaymentHistory() {
                             <td className="p-2 whitespace-nowrap">{fmtDate(String(p.created_at))}</td>
                             <td className="p-2">{String(p.user_email || '-')}</td>
                             <td className="p-2">{String(p.user_name || '-')}</td>
+                            <td className="p-2">{providerBadge(p.provider || p.payment_method)}</td>
                             <td className="p-2"><Badge variant="outline" className="text-[10px]">{String(p.plan_slug || p.plan_id || '-')}</Badge></td>
                             <td className="p-2">{p.billing_cycle === 'yearly' ? '연간' : '월간'}</td>
                             <td className={`p-2 text-right font-mono ${p.status === 'cancelled' ? 'line-through text-red-500' : ''}`}>{(Number(p.amount) || 0).toLocaleString()}원</td>
@@ -1621,6 +1691,199 @@ function PaymentHistory() {
                         </div>
                         )}
                     </div>)
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
+// ─── 시스템 로그 컴포넌트 ──────────────────────
+const LOG_AREA_LABELS: Record<string, string> = {
+    all: '전체',
+    billing: '결제',
+    iap: '앱내결제',
+    kakaopay: '카카오페이',
+    tosspayments: '토스',
+    inicis: 'INICIS',
+    webhook: '웹훅',
+    auth: '인증',
+    subscription: '구독',
+    coupon: '쿠폰',
+    admin: '관리자',
+};
+
+interface SystemLog {
+    id: string;
+    level: 'info' | 'warn' | 'error' | 'debug';
+    area: string;
+    event: string;
+    user_id: string | null;
+    user_email: string | null;
+    message: string | null;
+    metadata: Record<string, unknown> | null;
+    created_at: string;
+}
+
+function SystemLogs() {
+    const [logs, setLogs] = useState<SystemLog[]>([]);
+    const [summary, setSummary] = useState<Record<string, number>>({});
+    const [loading, setLoading] = useState(true);
+    const [tableMissing, setTableMissing] = useState(false);
+    const [areaFilter, setAreaFilter] = useState<string>('all');
+    const [levelFilter, setLevelFilter] = useState<string>('all');
+    const [search, setSearch] = useState('');
+    const [expandedId, setExpandedId] = useState<string | null>(null);
+
+    const fetchLogs = useCallback(async () => {
+        setLoading(true);
+        try {
+            const params = new URLSearchParams();
+            if (areaFilter !== 'all') params.set('area', areaFilter);
+            if (levelFilter !== 'all') params.set('level', levelFilter);
+            if (search.trim()) params.set('q', search.trim());
+            const qs = params.toString() ? `?${params.toString()}` : '';
+            const data = await apiFetch<{
+                logs: SystemLog[];
+                summary: Record<string, number>;
+                tableMissing?: boolean;
+            }>(`/api/admin/logs${qs}`);
+            setLogs(data.logs || []);
+            setSummary(data.summary || {});
+            setTableMissing(!!data.tableMissing);
+        } catch { /* */ }
+        setLoading(false);
+    }, [areaFilter, levelFilter, search]);
+
+    useEffect(() => { fetchLogs(); }, [fetchLogs]);
+
+    const fmtDate = (d: string) => new Date(d).toLocaleString('ko-KR', {
+        month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+    });
+
+    const levelBadge = (level: string) => {
+        const cls =
+            level === 'error' ? 'bg-red-100 text-red-700 border-red-300' :
+            level === 'warn' ? 'bg-amber-100 text-amber-700 border-amber-300' :
+            'bg-slate-100 text-slate-700 border-slate-300';
+        return <Badge variant="outline" className={`${cls} text-[10px] uppercase`}>{level}</Badge>;
+    };
+
+    return (
+        <Card className="border-0 shadow-md mb-8">
+            <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <Terminal className="w-5 h-5" />
+                        시스템 로그
+                        <span className="text-xs font-normal text-muted-foreground ml-2">
+                            최근 24시간: info {summary.info || 0} · warn {summary.warn || 0} · error {summary.error || 0}
+                        </span>
+                    </CardTitle>
+                    <Button size="sm" variant="ghost" onClick={fetchLogs} className="text-xs">새로고침</Button>
+                </div>
+
+                {tableMissing && (
+                    <p className="text-xs text-amber-600 mt-2">
+                        system_logs 테이블이 없습니다. <code className="px-1 bg-amber-50">scripts/create_system_logs_table.sql</code>을 Supabase에 실행해주세요.
+                    </p>
+                )}
+
+                {/* 필터 — 영역 */}
+                <div className="flex gap-1 mt-3 flex-wrap">
+                    {Object.entries(LOG_AREA_LABELS).map(([key, label]) => (
+                        <button
+                            key={key}
+                            onClick={() => setAreaFilter(key)}
+                            className={`px-2.5 py-1 rounded-full text-[11px] border transition ${
+                                areaFilter === key
+                                    ? 'bg-primary text-primary-foreground border-primary'
+                                    : 'bg-background hover:bg-muted'
+                            }`}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* 필터 — 레벨 + 검색 */}
+                <div className="flex gap-2 mt-2 items-center flex-wrap">
+                    <div className="flex gap-1">
+                        {(['all', 'info', 'warn', 'error'] as const).map(lv => (
+                            <button
+                                key={lv}
+                                onClick={() => setLevelFilter(lv)}
+                                className={`px-2 py-1 rounded text-[11px] border transition ${
+                                    levelFilter === lv
+                                        ? 'bg-primary text-primary-foreground border-primary'
+                                        : 'bg-background hover:bg-muted'
+                                }`}
+                            >
+                                {lv === 'all' ? '모든 레벨' : lv.toUpperCase()}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="relative flex-1 min-w-[200px]">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                        <input
+                            type="text"
+                            placeholder="메시지 / 이메일 검색..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') fetchLogs(); }}
+                            className="w-full pl-8 pr-2 py-1.5 border rounded text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                    </div>
+                </div>
+            </CardHeader>
+
+            <CardContent>
+                {loading ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">로딩 중...</p>
+                ) : logs.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">로그가 없습니다.</p>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                            <thead>
+                                <tr className="border-b bg-muted/30">
+                                    <th className="text-left p-2 whitespace-nowrap">시각</th>
+                                    <th className="text-left p-2">레벨</th>
+                                    <th className="text-left p-2">영역</th>
+                                    <th className="text-left p-2">이벤트</th>
+                                    <th className="text-left p-2">유저</th>
+                                    <th className="text-left p-2">메시지</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {logs.map(l => (
+                                    <React.Fragment key={l.id}>
+                                        <tr
+                                            className={`border-b hover:bg-muted/30 cursor-pointer ${l.level === 'error' ? 'bg-red-50/40' : l.level === 'warn' ? 'bg-amber-50/40' : ''}`}
+                                            onClick={() => setExpandedId(expandedId === l.id ? null : l.id)}
+                                        >
+                                            <td className="p-2 whitespace-nowrap font-mono text-[10px]">{fmtDate(l.created_at)}</td>
+                                            <td className="p-2">{levelBadge(l.level)}</td>
+                                            <td className="p-2">
+                                                <Badge variant="outline" className="text-[10px]">{LOG_AREA_LABELS[l.area] || l.area}</Badge>
+                                            </td>
+                                            <td className="p-2 font-mono text-[11px]">{l.event}</td>
+                                            <td className="p-2 truncate max-w-[160px]">{l.user_email || '-'}</td>
+                                            <td className="p-2 truncate max-w-[280px]">{l.message || ''}</td>
+                                        </tr>
+                                        {expandedId === l.id && l.metadata && (
+                                            <tr className="bg-slate-50 border-b">
+                                                <td colSpan={6} className="p-3">
+                                                    <pre className="text-[10px] font-mono whitespace-pre-wrap break-all text-slate-700">
+                                                        {JSON.stringify(l.metadata, null, 2)}
+                                                    </pre>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </React.Fragment>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
             </CardContent>
         </Card>

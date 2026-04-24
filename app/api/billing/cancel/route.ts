@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
+import { log } from '@/lib/monitoring/system-log';
 
 export async function POST(request: Request) {
     const supabase = await createClient();
@@ -37,6 +38,13 @@ export async function POST(request: Request) {
             .update({ analyses_limit: 5 })
             .eq('user_id', user.id)
             .eq('period_start', periodStart);
+
+        log.info('subscription', 'subscription_cancelled', {
+            userId: user.id,
+            userEmail: user.email,
+            message: '즉시 해지',
+            metadata: { by: 'user', immediate: true },
+        });
 
         return NextResponse.json({
             success: true,
@@ -76,6 +84,13 @@ export async function POST(request: Request) {
         .update({ analyses_limit: 5 })
         .eq('user_id', user.id)
         .eq('period_start', periodStart);
+
+    log.info('subscription', 'subscription_cancelled', {
+        userId: user.id,
+        userEmail: user.email,
+        message: '기간 만료 후 해지',
+        metadata: { by: 'user', immediate: false, subscriptionId: subscription.id },
+    });
 
     return NextResponse.json({
         success: true,

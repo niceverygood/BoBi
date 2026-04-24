@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { payWithBillingKey } from '@/lib/portone/server';
 import { getPlanPrice } from '@/lib/utils/pricing';
+import { log } from '@/lib/monitoring/system-log';
 
 export async function POST(request: Request) {
     const supabase = await createClient();
@@ -303,6 +304,19 @@ export async function POST(request: Request) {
                 payment_method: paymentMethod || 'card',
             });
     } catch { /* non-critical */ }
+
+    log.info('billing', 'payment_issued', {
+        userId: user.id,
+        userEmail: user.email,
+        metadata: {
+            provider: paymentMethod || 'card',
+            amount,
+            plan: actualPlan.slug,
+            cycle: billingCycle,
+            paymentId: finalPaymentId,
+            coupon: couponCode || null,
+        },
+    });
 
     // 쿠폰 사용 기록
     if (validatedCouponId) {

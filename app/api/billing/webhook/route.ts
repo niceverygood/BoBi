@@ -1,6 +1,7 @@
 // app/api/billing/webhook/route.ts
 // PortOne 웹훅: 결제 취소/환불 시 무료 플랜으로 복귀
 import { NextResponse } from 'next/server';
+import { log } from '@/lib/monitoring/system-log';
 
 async function getServiceSupabase() {
     const sk = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -55,6 +56,10 @@ export async function POST(request: Request) {
 
         // PortOne V2 웹훅 형식
         const { type, data } = body;
+
+        log.info('webhook', 'portone_webhook_received', {
+            metadata: { type, dataPreview: JSON.stringify(data || body).slice(0, 400) },
+        });
 
         // 결제 취소/환불 이벤트 (여러 형식 대응)
         const cancelTypes = [
@@ -116,8 +121,15 @@ export async function POST(request: Request) {
                 } catch { /* payments 테이블 구조에 따라 무시 */ }
 
                 console.log('[Webhook] 무료 플랜 복귀 완료:', sub.user_id);
+                log.warn('webhook', 'payment_cancelled_reverted_to_free', {
+                    userId: sub.user_id,
+                    metadata: { paymentId, webhookType: type },
+                });
             } else {
                 console.log('[Webhook] 매칭되는 구독 없음:', paymentId);
+                log.warn('webhook', 'webhook_unmatched_payment', {
+                    metadata: { paymentId, webhookType: type },
+                });
             }
 
             return NextResponse.json({ ok: true });
@@ -128,6 +140,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: true });
     } catch (error) {
         console.error('[Webhook] 에러:', error);
+        log.error('webhook', 'webhook_handler_error', {
+            message: (error as Error).message,
+        });
         return NextResponse.json({ ok: true }); // 웹훅은 항상 200 반환
     }
 }

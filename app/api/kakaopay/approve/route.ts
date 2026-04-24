@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { kakaoPayApprove, kakaoPayCancel } from '@/lib/kakaopay/client';
 import { computeTrialEndsAt, isTrialEligiblePlan, TRIAL_DAYS } from '@/lib/subscription/trial';
+import { log } from '@/lib/monitoring/system-log';
 
 // 체험 모드에서 SID 발급용으로 청구한 임시 금액 (ready 라우트와 일치해야 함)
 const TRIAL_MINI_CHARGE_AMOUNT = 100;
@@ -231,6 +232,8 @@ export async function GET(request: NextRequest) {
         // Record payment history
         //   - 체험: 100원 청구 → 즉시 환불된 상태이므로 'refunded' 기록
         //   - 일반: 'paid'
+        const recordedAmount = isTrial ? TRIAL_MINI_CHARGE_AMOUNT : session.amount;
+        const recordedStatus = isTrial ? 'refunded' : 'paid';
         try {
             await serviceClient
                 .from('payment_history')
@@ -238,14 +241,43 @@ export async function GET(request: NextRequest) {
                     user_id: partnerUserId,
                     subscription_id: subscription?.id,
                     payment_id: approveResponse.tid,
-                    amount: isTrial ? TRIAL_MINI_CHARGE_AMOUNT : session.amount,
-                    status: isTrial ? 'refunded' : 'paid',
+                    amount: recordedAmount,
+                    status: recordedStatus,
                     billing_cycle: session.billing_cycle,
                     plan_slug: session.plan_slug,
                 });
         } catch {
             // non-critical
         }
+
+        // 통합 payments 테이블에도 기록 → 관리자에서 토스/INICIS/애플/구글과 함께 조회
+        try {
+            await serviceClient
+                .from('payments')
+                .insert({
+                    user_id: partnerUserId,
+                    subscription_id: subscription?.id,
+                    payment_id: approveResponse.tid,
+                    portone_payment_id: null,
+                    amount: recordedAmount,
+                    status: recordedStatus,
+                    billing_cycle: session.billing_cycle,
+                    plan_slug: session.plan_slug,
+                    payment_method: 'kakaopay',
+                });
+        } catch { /* non-critical */ }
+
+        log.info('kakaopay', isTrial ? 'kakaopay_trial_started' : 'kakaopay_paid', {
+            userId: partnerUserId,
+            metadata: {
+                provider: 'kakaopay',
+                tid: approveResponse.tid,
+                amount: recordedAmount,
+                plan: session.plan_slug,
+                cycle: session.billing_cycle,
+                trial: isTrial,
+            },
+        });
 
         // 체험 이력 기록 (중복 체험 방지)
         if (isTrial) {

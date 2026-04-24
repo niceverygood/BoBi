@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { GoogleAuth } from 'google-auth-library';
+import { getPlanPrice } from '@/lib/utils/pricing';
+import { log } from '@/lib/monitoring/system-log';
 
 // Apple App Store 영수증 검증
 async function verifyAppleReceipt(receipt: string) {
@@ -120,6 +122,12 @@ export async function POST(request: Request) {
   }
 
   if (!verification.valid) {
+    log.error('iap', 'iap_verification_failed', {
+      userId: user.id,
+      userEmail: user.email,
+      message: verification.error || '영수증 검증 실패',
+      metadata: { platform, productId, hasReceipt: !!receipt, hasToken: !!purchaseToken },
+    });
     return NextResponse.json({ error: verification.error || '영수증 검증에 실패했습니다.' }, { status: 400 });
   }
 
@@ -143,6 +151,11 @@ export async function POST(request: Request) {
 
     if (existingTx) {
       if (existingTx.user_id !== user.id) {
+        log.warn('iap', 'receipt_cross_account', {
+          userId: user.id,
+          userEmail: user.email,
+          metadata: { platform, transactionId: verification.transactionId, existingUserId: existingTx.user_id },
+        });
         return NextResponse.json(
           { error: '이 영수증은 다른 계정에 귀속되어 있습니다.' },
           { status: 409 },
@@ -205,8 +218,59 @@ export async function POST(request: Request) {
     .single();
 
   if (subError) {
+    log.error('iap', 'subscription_insert_failed', {
+      userId: user.id,
+      userEmail: user.email,
+      message: subError.message,
+      metadata: { platform, productId: verification.productId, transactionId: verification.transactionId },
+    });
     return NextResponse.json({ error: subError.message }, { status: 500 });
   }
+
+  // payments 테이블에도 기록 → 관리자 통합 대시보드에서 카카오페이/토스/애플/구글 한 눈에 보이도록
+  const chargedAmount = getPlanPrice(subInfo.planSlug, subInfo.billingCycle as 'monthly' | 'yearly');
+  try {
+    await serviceClient
+      .from('payments')
+      .insert({
+        user_id: user.id,
+        subscription_id: subscription.id,
+        payment_id: verification.transactionId || `iap_${Date.now()}`,
+        portone_payment_id: null,
+        amount: chargedAmount,
+        status: 'paid',
+        billing_cycle: subInfo.billingCycle,
+        plan_slug: subInfo.planSlug,
+        payment_method: paymentProvider, // 'apple_iap' | 'google_play'
+      });
+  } catch { /* non-critical — payments schema may differ in some envs */ }
+
+  try {
+    await serviceClient
+      .from('payment_history')
+      .insert({
+        user_id: user.id,
+        subscription_id: subscription.id,
+        payment_id: verification.transactionId || `iap_${Date.now()}`,
+        amount: chargedAmount,
+        status: 'paid',
+        billing_cycle: subInfo.billingCycle,
+        plan_slug: subInfo.planSlug,
+      });
+  } catch { /* non-critical */ }
+
+  log.info('iap', restore ? 'iap_restored' : 'iap_purchased', {
+    userId: user.id,
+    userEmail: user.email,
+    metadata: {
+      provider: paymentProvider,
+      plan: subInfo.planSlug,
+      cycle: subInfo.billingCycle,
+      amount: chargedAmount,
+      transactionId: verification.transactionId,
+      productId: verification.productId,
+    },
+  });
 
   // usage_tracking 갱신
   const year = now.getFullYear();
