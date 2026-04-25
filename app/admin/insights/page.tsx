@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
     Sparkles, ArrowLeft, RefreshCw, TrendingUp, TrendingDown, Minus,
-    AlertTriangle, Lightbulb, CheckCircle2, Clock,
+    AlertTriangle, Lightbulb, CheckCircle2, Clock, Copy, Check, Code2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,6 +38,8 @@ interface Action {
     expected_impact: string;
     effort: 'low' | 'medium' | 'high';
     priority: number;
+    implementable?: boolean;
+    claude_code_prompt?: string;
 }
 interface Insights {
     summary: string;
@@ -346,37 +348,104 @@ function InsightContent({ insight }: { insight: InsightRow }) {
                     <CardTitle className="text-base flex items-center gap-2">
                         <Lightbulb className="w-4 h-4" /> 개선안 (우선순위 순)
                     </CardTitle>
+                    <p className="text-xs text-muted-foreground mt-1">
+                        <Code2 className="inline w-3 h-3 mr-0.5" /> 표시는 코드 변경으로 구현 가능한 항목 — 펼쳐서 Claude Code 프롬프트를 복사해 사용하세요
+                    </p>
                 </CardHeader>
                 <CardContent className="space-y-3">
                     {[...(insight.insights?.recommended_actions || [])]
                         .sort((a, b) => (a.priority || 99) - (b.priority || 99))
                         .map((a, i) => (
-                            <div key={i} className="border rounded-lg p-3 bg-emerald-50/30">
-                                <div className="flex items-start justify-between gap-2">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs font-bold text-emerald-700">P{a.priority || '-'}</span>
-                                            <span className="text-sm font-semibold">{a.title}</span>
-                                        </div>
-                                        <p className="text-xs text-muted-foreground mt-1">{a.description}</p>
-                                    </div>
-                                    <div className="flex flex-col gap-1 items-end">
-                                        <Badge variant="outline" className="text-[10px]">
-                                            {a.effort === 'low' ? '🟢 쉬움' : a.effort === 'medium' ? '🟡 보통' : '🔴 어려움'}
-                                        </Badge>
-                                    </div>
-                                </div>
-                                <div className="text-[11px] text-emerald-700 mt-2 flex items-center gap-1">
-                                    <CheckCircle2 className="w-3 h-3" />
-                                    예상 임팩트: {a.expected_impact}
-                                </div>
-                            </div>
+                            <ActionCard key={i} action={a} />
                         ))}
                     {(insight.insights?.recommended_actions || []).length === 0 && (
                         <p className="text-xs text-muted-foreground">제시된 개선안이 없습니다.</p>
                     )}
                 </CardContent>
             </Card>
+        </div>
+    );
+}
+
+function ActionCard({ action }: { action: Action }) {
+    const [expanded, setExpanded] = useState(false);
+    const [copied, setCopied] = useState(false);
+    const a = action;
+    const hasPrompt = !!(a.implementable && a.claude_code_prompt);
+
+    const copy = async () => {
+        if (!a.claude_code_prompt) return;
+        try {
+            await navigator.clipboard.writeText(a.claude_code_prompt);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+        } catch {
+            // fallback
+            const ta = document.createElement('textarea');
+            ta.value = a.claude_code_prompt;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+        }
+    };
+
+    return (
+        <div className="border rounded-lg p-3 bg-emerald-50/30">
+            <div className="flex items-start justify-between gap-2">
+                <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold text-emerald-700">P{a.priority || '-'}</span>
+                        <span className="text-sm font-semibold">{a.title}</span>
+                        {hasPrompt && (
+                            <Badge className="bg-violet-600 text-white text-[10px] flex items-center gap-1">
+                                <Code2 className="w-2.5 h-2.5" /> 코드 구현 가능
+                            </Badge>
+                        )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">{a.description}</p>
+                </div>
+                <div className="flex flex-col gap-1 items-end">
+                    <Badge variant="outline" className="text-[10px]">
+                        {a.effort === 'low' ? '🟢 쉬움' : a.effort === 'medium' ? '🟡 보통' : '🔴 어려움'}
+                    </Badge>
+                </div>
+            </div>
+            <div className="text-[11px] text-emerald-700 mt-2 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" />
+                예상 임팩트: {a.expected_impact}
+            </div>
+
+            {hasPrompt && (
+                <div className="mt-3 border-t border-emerald-200/60 pt-2.5">
+                    <div className="flex items-center justify-between mb-1.5">
+                        <button
+                            onClick={() => setExpanded(v => !v)}
+                            className="text-[11px] font-medium text-violet-700 hover:text-violet-900 flex items-center gap-1"
+                        >
+                            <Code2 className="w-3 h-3" />
+                            Claude Code 프롬프트 {expanded ? '접기' : '펼치기'}
+                        </button>
+                        <button
+                            onClick={copy}
+                            className={`text-[11px] flex items-center gap-1 px-2 py-0.5 rounded border transition ${
+                                copied
+                                    ? 'bg-emerald-600 text-white border-emerald-600'
+                                    : 'bg-white text-violet-700 border-violet-300 hover:bg-violet-50'
+                            }`}
+                        >
+                            {copied ? <><Check className="w-3 h-3" /> 복사됨</> : <><Copy className="w-3 h-3" /> 복사</>}
+                        </button>
+                    </div>
+                    {expanded && (
+                        <pre className="text-[11px] font-mono whitespace-pre-wrap bg-slate-900 text-slate-100 p-3 rounded leading-relaxed max-h-80 overflow-y-auto">
+                            {a.claude_code_prompt}
+                        </pre>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
