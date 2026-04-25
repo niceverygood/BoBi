@@ -113,7 +113,7 @@ export default function PricingPage() {
                         return (
                             <Card
                                 key={slug}
-                                className={`border-0 shadow-lg relative overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 ${isRecommended ? 'ring-2 ring-primary' : ''}`}
+                                className={`border-0 shadow-lg relative overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 flex flex-col h-full ${isRecommended ? 'ring-2 ring-primary' : ''}`}
                             >
                                 {isRecommended && (
                                     <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-bl-lg">
@@ -158,7 +158,7 @@ export default function PricingPage() {
                                             : `월 ${plan.analysisLimit === -1 ? '무제한' : `${plan.analysisLimit}건`} 분석`}
                                     </p>
                                 </CardHeader>
-                                <CardContent>
+                                <CardContent className="flex flex-col flex-1">
                                     <ul className="space-y-2.5 mb-6">
                                         {plan.features.map((feature) => (
                                             <li key={feature} className="flex items-start gap-2 text-sm">
@@ -173,7 +173,10 @@ export default function PricingPage() {
                                             </li>
                                         ))}
                                     </ul>
-                                    <Link href={slug === 'free' ? '/auth/signup' : `/dashboard/subscribe?plan=${slug}`}>
+                                    <Link
+                                        href={slug === 'free' ? '/auth/signup' : `/dashboard/subscribe?plan=${slug}`}
+                                        className="mt-auto"
+                                    >
                                         <Button
                                             className={`w-full ${isRecommended ? 'bg-gradient-primary hover:opacity-90' : ''}`}
                                             variant={isRecommended ? 'default' : 'outline'}
@@ -283,7 +286,7 @@ export default function PricingPage() {
                         return (
                             <Card
                                 key={slug}
-                                className={`border-0 shadow-lg relative overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 ${isRecommended ? 'ring-2 ring-primary' : ''}`}
+                                className={`border-0 shadow-lg relative overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 flex flex-col h-full ${isRecommended ? 'ring-2 ring-primary' : ''}`}
                             >
                                 {isRecommended && (
                                     <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-bl-lg">
@@ -314,7 +317,7 @@ export default function PricingPage() {
                                         </p>
                                     </div>
                                 </CardHeader>
-                                <CardContent>
+                                <CardContent className="flex flex-col flex-1">
                                     <ul className="space-y-2.5 mb-6">
                                         {plan.features.map((feature) => (
                                             <li key={feature} className="flex items-start gap-2 text-sm">
@@ -329,16 +332,18 @@ export default function PricingPage() {
                                             </li>
                                         ))}
                                     </ul>
-                                    <ExternalLinkButton
-                                        url="https://open.kakao.com/o/sBoBi"
-                                        className={`w-full ${isRecommended ? 'bg-gradient-primary hover:opacity-90' : ''}`}
-                                        variant={isRecommended ? 'default' : 'outline'}
-                                    >
-                                        도입 문의하기
-                                    </ExternalLinkButton>
-                                    <p className="text-[11px] text-center text-muted-foreground mt-2">
-                                        조직 규모·요구사항 확인 후 담당자가 안내드립니다.
-                                    </p>
+                                    <div className="mt-auto">
+                                        <ExternalLinkButton
+                                            url="https://open.kakao.com/o/sBoBi"
+                                            className={`w-full ${isRecommended ? 'bg-gradient-primary hover:opacity-90' : ''}`}
+                                            variant={isRecommended ? 'default' : 'outline'}
+                                        >
+                                            도입 문의하기
+                                        </ExternalLinkButton>
+                                        <p className="text-[11px] text-center text-muted-foreground mt-2">
+                                            조직 규모·요구사항 확인 후 담당자가 안내드립니다.
+                                        </p>
+                                    </div>
                                 </CardContent>
                             </Card>
                         );
