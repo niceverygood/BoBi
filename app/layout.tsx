@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
-import ChatBot from "@/components/chat/ChatBot";
+import ChatBotLazy from "@/components/chat/ChatBotLazy";
 import PostHogProvider from "@/components/analytics/PostHogProvider";
 import "./globals.css";
 
@@ -25,6 +25,8 @@ export const metadata: Metadata = {
   },
 };
 
+const PRETENDARD_HREF = "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -33,7 +35,21 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning>
       <head>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="" />
+        <link
+          id="pretendard-css"
+          rel="stylesheet"
+          href={PRETENDARD_HREF}
+          media="print"
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var l=document.getElementById('pretendard-css');if(l){l.media='all';}})();`,
+          }}
+        />
+        <noscript>
+          <link rel="stylesheet" href={PRETENDARD_HREF} />
+        </noscript>
       </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
         {/* PostHog 분석 초기화 + pageview 자동 캡처 (useSearchParams 때문에 Suspense 필요) */}
@@ -42,7 +58,7 @@ export default function RootLayout({
         </Suspense>
         {children}
         <Toaster position="top-right" richColors />
-        <ChatBot />
+        <ChatBotLazy />
       </body>
     </html>
   );
