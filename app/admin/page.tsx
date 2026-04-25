@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
     Shield, Users, FileText, CreditCard, Activity, BarChart3,
     TrendingUp, AlertCircle, Search, CheckCircle2, ArrowUpDown,
-    ChevronDown, Tag, Building2, Terminal
+    ChevronDown, Tag, Building2, Terminal, Sparkles
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -303,6 +303,29 @@ export default function AdminPage() {
                             );
                         })}
                     </div>
+                    )}
+
+                    {/* AI 인사이트 진입 - 총괄관리자만 */}
+                    {isAdmin && (
+                        <Link href="/admin/insights" className="block mb-8">
+                            <Card className="border-0 shadow-md bg-gradient-to-r from-violet-50 via-fuchsia-50 to-pink-50 hover:shadow-lg transition-shadow cursor-pointer">
+                                <CardContent className="p-5 flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-xl bg-violet-600 flex items-center justify-center flex-shrink-0">
+                                        <Sparkles className="w-6 h-6 text-white" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="font-bold text-base flex items-center gap-2">
+                                            AI 인사이트
+                                            <Badge className="bg-violet-600 text-white text-[10px]">NEW</Badge>
+                                        </h3>
+                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                            결제 전환·잔존율을 일/주 단위로 AI가 분석하고 원인 가설과 개선안을 제시합니다
+                                        </p>
+                                    </div>
+                                    <ChevronDown className="w-5 h-5 text-violet-600 -rotate-90" />
+                                </CardContent>
+                            </Card>
+                        </Link>
                     )}
 
                     {/* 결제내역 - 총괄관리자만 */}
