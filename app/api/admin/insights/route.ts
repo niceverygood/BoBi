@@ -4,20 +4,25 @@
 // POST { period_type, force? }     → 지금 분석 실행 → DB upsert → 결과 반환
 
 import { NextResponse } from 'next/server';
+import type { User } from '@supabase/supabase-js';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { ADMIN_EMAILS } from '@/lib/utils/constants';
 import { aggregate, computeRanges, type PeriodType } from '@/lib/ai/insights/aggregator';
 import { analyzeInsights } from '@/lib/ai/insights/analyzer';
 import { log } from '@/lib/monitoring/system-log';
 
-async function requireSuperAdmin() {
+type AdminAuthResult =
+    | { ok: false; status: number; message: string }
+    | { ok: true; user: User };
+
+async function requireSuperAdmin(): Promise<AdminAuthResult> {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return { ok: false, status: 401, message: '인증이 필요합니다.' as const };
+    if (authError || !user) return { ok: false, status: 401, message: '인증이 필요합니다.' };
     if (!user.email || !(ADMIN_EMAILS as readonly string[]).includes(user.email)) {
-        return { ok: false, status: 403, message: '총괄관리자 권한이 필요합니다.' as const };
+        return { ok: false, status: 403, message: '총괄관리자 권한이 필요합니다.' };
     }
-    return { ok: true as const, user };
+    return { ok: true, user };
 }
 
 export async function GET(request: Request) {
