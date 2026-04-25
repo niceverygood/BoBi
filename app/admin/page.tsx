@@ -229,26 +229,26 @@ export default function AdminPage() {
     return (
         <div className="flex min-h-screen bg-background">
             <Sidebar />
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col min-w-0">
                 <div className="flex items-center gap-2 lg:hidden px-4 h-16 border-b">
                     <MobileNav />
                     <span className="font-semibold">보비 BoBi</span>
                 </div>
                 <Header title={isAdmin ? '관리자 대시보드' : '코드 관리'} />
 
-                <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
+                <main className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 min-w-0 overflow-x-hidden">
                     {/* Admin Badge */}
                     <div className="flex items-center gap-3 mb-6">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isAdmin ? 'bg-gradient-to-br from-red-500 to-orange-500' : 'bg-gradient-to-br from-blue-500 to-cyan-500'}`}>
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isAdmin ? 'bg-gradient-to-br from-red-500 to-orange-500' : 'bg-gradient-to-br from-blue-500 to-cyan-500'}`}>
                             <Shield className="w-5 h-5 text-white" />
                         </div>
-                        <div>
-                            <h2 className="text-xl font-bold">{isAdmin ? '총괄 관리자' : '코드 관리자'}</h2>
-                            <p className="text-sm text-muted-foreground">
+                        <div className="min-w-0 flex-1">
+                            <h2 className="text-lg sm:text-xl font-bold">{isAdmin ? '총괄 관리자' : '코드 관리자'}</h2>
+                            <p className="text-xs sm:text-sm text-muted-foreground">
                                 {isAdmin ? '시스템 전체 현황을 관리합니다' : '프로모션 코드를 발행하고 관리합니다'}
                             </p>
                         </div>
-                        <Badge variant={isAdmin ? 'destructive' : 'default'} className="ml-auto">
+                        <Badge variant={isAdmin ? 'destructive' : 'default'} className="shrink-0">
                             {isAdmin ? 'ADMIN' : 'MANAGER'}
                         </Badge>
                     </div>
@@ -309,12 +309,12 @@ export default function AdminPage() {
                     {isAdmin && (
                         <Link href="/admin/insights" className="block mb-8">
                             <Card className="border-0 shadow-md bg-gradient-to-r from-violet-50 via-fuchsia-50 to-pink-50 hover:shadow-lg transition-shadow cursor-pointer">
-                                <CardContent className="p-5 flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-violet-600 flex items-center justify-center flex-shrink-0">
-                                        <Sparkles className="w-6 h-6 text-white" />
+                                <CardContent className="p-4 sm:p-5 flex items-center gap-3 sm:gap-4">
+                                    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-violet-600 flex items-center justify-center flex-shrink-0">
+                                        <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                                     </div>
-                                    <div className="flex-1">
-                                        <h3 className="font-bold text-base flex items-center gap-2">
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="font-bold text-sm sm:text-base flex items-center gap-2">
                                             AI 인사이트
                                             <Badge className="bg-violet-600 text-white text-[10px]">NEW</Badge>
                                         </h3>
@@ -322,7 +322,7 @@ export default function AdminPage() {
                                             결제 전환·잔존율을 일/주 단위로 AI가 분석하고 원인 가설과 개선안을 제시합니다
                                         </p>
                                     </div>
-                                    <ChevronDown className="w-5 h-5 text-violet-600 -rotate-90" />
+                                    <ChevronDown className="w-5 h-5 text-violet-600 -rotate-90 shrink-0" />
                                 </CardContent>
                             </Card>
                         </Link>
@@ -399,11 +399,11 @@ export default function AdminPage() {
                                     {filteredAndSortedUsers.map((u) => (
                                         <div
                                             key={u.id}
-                                            className="flex items-center gap-3 px-5 py-3 hover:bg-muted/30 transition-colors"
+                                            className="flex flex-wrap items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 hover:bg-muted/30 transition-colors"
                                         >
                                             <Link
                                                 href={`/admin/users/${u.id}`}
-                                                className="flex items-center gap-3 flex-1 min-w-0"
+                                                className="flex items-center gap-3 w-full sm:w-auto sm:flex-1 min-w-0"
                                             >
                                                 {/* Avatar */}
                                                 <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -453,7 +453,7 @@ export default function AdminPage() {
                                             </Link>
 
                                             {/* Suspend Buttons */}
-                                            <div className="flex gap-1 shrink-0">
+                                            <div className="flex gap-1 shrink-0 ml-auto sm:ml-0">
                                                 {u.suspended ? (
                                                     <Button
                                                         size="sm"
@@ -524,18 +524,18 @@ export default function AdminPage() {
 
                     {/* 상담 관리 바로가기 */}
                     <Card className="border-0 shadow-md mb-8">
-                        <CardContent className="p-5">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                        <CardContent className="p-4 sm:p-5">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
                                         <Users className="w-5 h-5 text-amber-600" />
                                     </div>
-                                    <div>
+                                    <div className="min-w-0">
                                         <p className="font-semibold text-sm">고객 상담 관리</p>
-                                        <p className="text-xs text-muted-foreground">실시간 상담 요청 확인 및 응대</p>
+                                        <p className="text-xs text-muted-foreground truncate">실시간 상담 요청 확인 및 응대</p>
                                     </div>
                                 </div>
-                                <Link href="/admin/support">
+                                <Link href="/admin/support" className="shrink-0">
                                     <Button size="sm">상담 관리</Button>
                                 </Link>
                             </div>
@@ -544,18 +544,18 @@ export default function AdminPage() {
 
                     {/* 고객 문의 관리 */}
                     <Card className="border-0 shadow-md mb-8">
-                        <CardContent className="p-5">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                        <CardContent className="p-4 sm:p-5">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
                                         <Activity className="w-5 h-5 text-emerald-600" />
                                     </div>
-                                    <div>
+                                    <div className="min-w-0">
                                         <p className="font-semibold text-sm">1:1 문의 관리</p>
-                                        <p className="text-xs text-muted-foreground">고객 문의 확인 및 답변</p>
+                                        <p className="text-xs text-muted-foreground truncate">고객 문의 확인 및 답변</p>
                                     </div>
                                 </div>
-                                <Link href="/admin/inquiries">
+                                <Link href="/admin/inquiries" className="shrink-0">
                                     <Button size="sm">문의 관리</Button>
                                 </Link>
                             </div>
@@ -564,18 +564,18 @@ export default function AdminPage() {
 
                     {/* 엔터프라이즈 문의 관리 */}
                     <Card className="border-0 shadow-md mb-8">
-                        <CardContent className="p-5">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                        <CardContent className="p-4 sm:p-5">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
                                         <Building2 className="w-5 h-5 text-amber-600" />
                                     </div>
-                                    <div>
+                                    <div className="min-w-0">
                                         <p className="font-semibold text-sm">엔터프라이즈 문의</p>
-                                        <p className="text-xs text-muted-foreground">팀/조직 도입 문의 관리 (전화 연락 필수)</p>
+                                        <p className="text-xs text-muted-foreground truncate">팀/조직 도입 문의 관리 (전화 연락 필수)</p>
                                     </div>
                                 </div>
-                                <Link href="/admin/enterprise-inquiries">
+                                <Link href="/admin/enterprise-inquiries" className="shrink-0">
                                     <Button size="sm">문의 관리</Button>
                                 </Link>
                             </div>
@@ -584,18 +584,18 @@ export default function AdminPage() {
 
                     {/* 약관 관리 */}
                     <Card className="border-0 shadow-md mb-8">
-                        <CardContent className="p-5">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                        <CardContent className="p-4 sm:p-5">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
                                         <FileText className="w-5 h-5 text-blue-600" />
                                     </div>
-                                    <div>
+                                    <div className="min-w-0">
                                         <p className="font-semibold text-sm">보험 약관 관리</p>
-                                        <p className="text-xs text-muted-foreground">약관 크롤링 및 PDF 관리</p>
+                                        <p className="text-xs text-muted-foreground truncate">약관 크롤링 및 PDF 관리</p>
                                     </div>
                                 </div>
-                                <Link href="/admin/insurance-docs">
+                                <Link href="/admin/insurance-docs" className="shrink-0">
                                     <Button size="sm">약관 관리</Button>
                                 </Link>
                             </div>
@@ -949,14 +949,14 @@ function SubAdminManager() {
                 ) : (
                     <div className="divide-y">
                         {subAdmins.map(s => (
-                            <div key={s.id} className="flex items-center gap-3 px-5 py-3 hover:bg-muted/30 transition-colors">
+                            <div key={s.id} className="flex flex-wrap items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 hover:bg-muted/30 transition-colors">
                                 <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
                                     <span className="text-xs font-semibold text-blue-600">
                                         {(s.name || s.email).charAt(0).toUpperCase()}
                                     </span>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                         <p className="text-sm font-medium truncate">{s.name || s.email}</p>
                                         {s.kakao_id && (
                                             <span className="text-[10px] text-muted-foreground bg-yellow-100 text-yellow-700 px-1.5 rounded">
@@ -971,7 +971,7 @@ function SubAdminManager() {
                                 <Badge variant={s.active ? 'default' : 'secondary'} className="text-[10px] shrink-0">
                                     {s.active ? '활성' : '비활성'}
                                 </Badge>
-                                <div className="flex items-center gap-1 shrink-0">
+                                <div className="flex items-center gap-1 shrink-0 ml-auto sm:ml-0">
                                     <Button
                                         variant="ghost" size="sm" className="text-xs h-7 px-2"
                                         onClick={() => toggleActive(s.id, s.active)}
@@ -1301,9 +1301,9 @@ function PromoCodeManager() {
                 ) : (
                     <div className="divide-y max-h-[400px] overflow-y-auto">
                         {codes.map(c => (
-                            <div key={c.id} className="flex items-center gap-3 px-5 py-3 hover:bg-muted/30 transition-colors">
+                            <div key={c.id} className="flex flex-wrap items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 hover:bg-muted/30 transition-colors">
                                 {/* Code */}
-                                <div className="flex-1 min-w-0">
+                                <div className="w-full sm:w-auto sm:flex-1 min-w-0">
                                     <div className="flex items-center gap-2">
                                         <code className="text-sm font-mono font-bold">{c.code}</code>
                                         <Badge variant={c.active ? 'default' : 'secondary'} className="text-[10px]">
@@ -1327,7 +1327,7 @@ function PromoCodeManager() {
                                 </div>
 
                                 {/* Actions */}
-                                <div className="flex items-center gap-1 shrink-0">
+                                <div className="flex items-center gap-1 shrink-0 ml-auto sm:ml-0">
                                     <Button
                                         variant="ghost" size="sm" className="text-xs h-7 px-2"
                                         onClick={() => toggleActive(c.id, c.active)}
@@ -1562,12 +1562,12 @@ function PaymentHistory() {
     return (
         <Card className="border-0 shadow-md mb-8">
             <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                        <CreditCard className="w-5 h-5" />
+                <div className="flex items-center justify-between gap-2">
+                    <CardTitle className="text-base sm:text-lg flex items-center gap-2 min-w-0">
+                        <CreditCard className="w-5 h-5 shrink-0" />
                         결제 관리
                     </CardTitle>
-                    <Button size="sm" variant="ghost" onClick={fetchData} className="text-xs">새로고침</Button>
+                    <Button size="sm" variant="ghost" onClick={fetchData} className="text-xs shrink-0">새로고침</Button>
                 </div>
                 {actionMsg && (
                     <p className={`text-xs mt-1 ${actionMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>{actionMsg.text}</p>
@@ -1799,15 +1799,17 @@ function SystemLogs() {
     return (
         <Card className="border-0 shadow-md mb-8">
             <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                        <Terminal className="w-5 h-5" />
-                        시스템 로그
-                        <span className="text-xs font-normal text-muted-foreground ml-2">
+                <div className="flex items-start sm:items-center justify-between gap-2 flex-wrap">
+                    <CardTitle className="text-base sm:text-lg flex items-center gap-2 flex-wrap min-w-0">
+                        <span className="flex items-center gap-2">
+                            <Terminal className="w-5 h-5 shrink-0" />
+                            시스템 로그
+                        </span>
+                        <span className="text-xs font-normal text-muted-foreground">
                             최근 24시간: info {summary.info || 0} · warn {summary.warn || 0} · error {summary.error || 0}
                         </span>
                     </CardTitle>
-                    <Button size="sm" variant="ghost" onClick={fetchLogs} className="text-xs">새로고침</Button>
+                    <Button size="sm" variant="ghost" onClick={fetchLogs} className="text-xs shrink-0">새로고침</Button>
                 </div>
 
                 {tableMissing && (

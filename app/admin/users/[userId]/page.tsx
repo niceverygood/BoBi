@@ -169,7 +169,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ user
 
     if (loading) {
         return (
-            <div className="max-w-5xl mx-auto p-6">
+            <div className="max-w-5xl mx-auto p-3 sm:p-6">
                 <div className="animate-pulse space-y-4">
                     <div className="h-32 bg-slate-100 rounded-xl" />
                     <div className="h-64 bg-slate-100 rounded-xl" />
@@ -180,7 +180,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ user
 
     if (error || !data) {
         return (
-            <div className="max-w-5xl mx-auto p-6 space-y-3">
+            <div className="max-w-5xl mx-auto p-3 sm:p-6 space-y-3">
                 <Link href="/admin">
                     <Button variant="outline" size="sm" className="text-xs">
                         <ArrowLeft className="w-3.5 h-3.5 mr-1" /> 관리자 홈
@@ -200,7 +200,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ user
     const stageInfo = STAGE_LABELS[funnel.stage];
 
     return (
-        <div className="max-w-5xl mx-auto p-6 space-y-5 animate-fade-in">
+        <div className="max-w-5xl mx-auto p-3 sm:p-6 space-y-4 sm:space-y-5 animate-fade-in min-w-0">
             {/* 상단 네비 */}
             <Link href="/admin">
                 <Button variant="outline" size="sm" className="text-xs">
@@ -210,10 +210,10 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ user
 
             {/* 헤더: 프로필 + 퍼널 단계 */}
             <Card className="border-0 shadow-sm">
-                <CardContent className="p-5">
-                    <div className="flex items-start gap-4 flex-wrap">
-                        <div className="w-14 h-14 rounded-full bg-[#1a56db]/10 flex items-center justify-center shrink-0">
-                            <User className="w-7 h-7 text-[#1a56db]" />
+                <CardContent className="p-4 sm:p-5">
+                    <div className="flex items-start gap-3 sm:gap-4 flex-wrap">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-[#1a56db]/10 flex items-center justify-center shrink-0">
+                            <User className="w-6 h-6 sm:w-7 sm:h-7 text-[#1a56db]" />
                         </div>
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -230,10 +230,10 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ user
                                 )}
                             </div>
                             <p className="text-xs text-muted-foreground mt-0.5">{stageInfo.description}</p>
-                            <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground flex-wrap">
-                                <span className="flex items-center gap-1">
-                                    <Mail className="w-3 h-3" />
-                                    {profile.email}
+                            <div className="flex items-center gap-x-3 gap-y-1.5 mt-3 text-xs text-muted-foreground flex-wrap">
+                                <span className="flex items-center gap-1 min-w-0 max-w-full">
+                                    <Mail className="w-3 h-3 shrink-0" />
+                                    <span className="truncate">{profile.email}</span>
                                 </span>
                                 {profile.phone && (
                                     <span className="flex items-center gap-1">

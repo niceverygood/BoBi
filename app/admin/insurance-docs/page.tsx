@@ -115,15 +115,15 @@ export default function InsuranceDocsPage() {
     if (!hasAdminAccess) return <div className="p-8 text-center">관리자 권한이 필요합니다.</div>;
 
     return (
-        <div className="max-w-6xl mx-auto p-4 space-y-6">
+        <div className="max-w-6xl mx-auto p-3 sm:p-4 space-y-4 sm:space-y-6 min-w-0">
             {/* 헤더 */}
-            <div className="flex items-center gap-3">
-                <Link href="/admin"><Button variant="ghost" size="icon"><ArrowLeft className="w-4 h-4" /></Button></Link>
-                <div>
-                    <h1 className="text-xl font-bold flex items-center gap-2"><FileText className="w-5 h-5" />보험 약관 관리</h1>
-                    <p className="text-sm text-muted-foreground">총 {docs.length}건 등록됨 · {sources.length}개 보험사 소스</p>
+            <div className="flex items-center gap-2 sm:gap-3">
+                <Link href="/admin" className="shrink-0"><Button variant="ghost" size="icon"><ArrowLeft className="w-4 h-4" /></Button></Link>
+                <div className="min-w-0 flex-1">
+                    <h1 className="text-lg sm:text-xl font-bold flex items-center gap-2"><FileText className="w-5 h-5 shrink-0" /><span className="truncate">보험 약관 관리</span></h1>
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">총 {docs.length}건 등록됨 · {sources.length}개 보험사 소스</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={fetchDocs} className="ml-auto"><RefreshCw className="w-3 h-3 mr-1" />새로고침</Button>
+                <Button variant="outline" size="sm" onClick={fetchDocs} className="shrink-0"><RefreshCw className="w-3 h-3 mr-1" />새로고침</Button>
             </div>
 
             {/* URL 크롤링 */}
@@ -133,13 +133,15 @@ export default function InsuranceDocsPage() {
                     <CardDescription>보험사 공시 페이지 URL을 입력하면 PDF 링크를 자동 추출합니다.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                    <div className="flex gap-2">
-                        <Input value={crawlUrl} onChange={e => setCrawlUrl(e.target.value)} placeholder="https://www.samsungfire.com/..." className="flex-1" />
-                        <Input value={crawlInsurer} onChange={e => setCrawlInsurer(e.target.value)} placeholder="보험사명" className="w-32" />
-                        <Button onClick={handleCrawl} disabled={crawling || !crawlUrl}>
-                            {crawling ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
-                            크롤링
-                        </Button>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                        <Input value={crawlUrl} onChange={e => setCrawlUrl(e.target.value)} placeholder="https://www.samsungfire.com/..." className="flex-1 min-w-0" />
+                        <div className="flex gap-2">
+                            <Input value={crawlInsurer} onChange={e => setCrawlInsurer(e.target.value)} placeholder="보험사명" className="flex-1 sm:w-32 sm:flex-initial" />
+                            <Button onClick={handleCrawl} disabled={crawling || !crawlUrl} className="shrink-0">
+                                {crawling ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
+                                크롤링
+                            </Button>
+                        </div>
                     </div>
                     {/* 보험사 바로가기 */}
                     <div className="flex flex-wrap gap-1">
