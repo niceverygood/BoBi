@@ -12,7 +12,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { useAdmin } from '@/hooks/useAdmin';
+import { ApiError } from '@/lib/api/client';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
 import MobileNav from '@/components/layout/MobileNav';
@@ -1489,6 +1492,29 @@ const PROVIDER_META: Record<string, { label: string; className: string }> = {
 
 type ProviderSummary = Record<string, { count: number; paidCount: number; paidAmount: number; refundedAmount: number }>;
 
+interface RefundEligibilityInfo {
+    daysSincePayment: number | null;
+    analysesUsed: number;
+    lastPaidAt: string | null;
+    lastPaidAmount: number | null;
+    isPolicyViolation: boolean;
+    violationReasons: string[];
+}
+
+interface RefundTarget {
+    userId: string;
+    email: string;
+}
+
+const REFUND_REASON_OPTIONS = [
+    { value: 'customer_request', label: '단순 변심 (고객 요청)' },
+    { value: 'payment_error', label: '결제 시스템 오류 / 중복 결제' },
+    { value: 'duplicate', label: '중복 가입' },
+    { value: 'unused', label: '명백한 실수 결제 (미사용)' },
+    { value: 'service_issue', label: '서비스 장애 보상' },
+    { value: 'other', label: '기타' },
+] as const;
+
 function PaymentHistory() {
     const [payments, setPayments] = useState<Record<string, unknown>[]>([]);
     const [subs, setSubs] = useState<Record<string, unknown>[]>([]);
@@ -1496,8 +1522,9 @@ function PaymentHistory() {
     const [loading, setLoading] = useState(true);
     const [tab, setTab] = useState<'payments' | 'active' | 'cancelled'>('payments');
     const [providerFilter, setProviderFilter] = useState<string>('all');
-    const [cancelling, setCancelling] = useState<string | null>(null);
     const [actionMsg, setActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    const [refundTarget, setRefundTarget] = useState<RefundTarget | null>(null);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -1528,25 +1555,9 @@ function PaymentHistory() {
     const paidPayments = payments.filter(p => p.status === 'paid' || p.status === 'success');
     const cancelledPayments = payments.filter(p => p.status === 'cancelled' || p.status === 'refunded');
 
-    const handleForceCancel = async (userId: string, email: string) => {
-        if (!confirm(`${email}의 구독을 강제 취소하고 무료 플랜으로 전환하시겠습니까?`)) return;
-        setCancelling(userId);
-        setActionMsg(null);
-        try {
-            const res = await apiFetch<{ success?: boolean; message?: string; error?: string }>('/api/admin/payments', {
-                method: 'POST',
-                body: JSON.stringify({ targetUserId: userId }),
-            });
-            if (res.success) {
-                setActionMsg({ type: 'success', text: res.message || '취소 완료' });
-                fetchData();
-            } else {
-                setActionMsg({ type: 'error', text: res.error || '취소 실패' });
-            }
-        } catch (e) {
-            setActionMsg({ type: 'error', text: (e as Error).message });
-        }
-        setCancelling(null);
+    const handleRefundComplete = (msg: { type: 'success' | 'error'; text: string }) => {
+        setActionMsg(msg);
+        if (msg.type === 'success') fetchData();
     };
 
     const fmtDate = (d: string) => new Date(d).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -1668,10 +1679,9 @@ function PaymentHistory() {
                                     size="sm"
                                     variant="destructive"
                                     className="h-6 text-[10px] px-2"
-                                    disabled={cancelling === String(s.user_id)}
-                                    onClick={() => handleForceCancel(String(s.user_id), String(s.user_email))}
+                                    onClick={() => setRefundTarget({ userId: String(s.user_id), email: String(s.user_email) })}
                                 >
-                                    {cancelling === String(s.user_id) ? '처리중...' : '강제 취소'}
+                                    환불/취소
                                 </Button>
                             </td>
                         </tr>);
@@ -1721,7 +1731,229 @@ function PaymentHistory() {
                     </div>)
                 )}
             </CardContent>
+
+            <RefundDialog
+                target={refundTarget}
+                onClose={() => setRefundTarget(null)}
+                onComplete={handleRefundComplete}
+            />
         </Card>
+    );
+}
+
+function RefundDialog({
+    target,
+    onClose,
+    onComplete,
+}: {
+    target: RefundTarget | null;
+    onClose: () => void;
+    onComplete: (msg: { type: 'success' | 'error'; text: string }) => void;
+}) {
+    const [eligibility, setEligibility] = useState<RefundEligibilityInfo | null>(null);
+    const [eligibilityLoading, setEligibilityLoading] = useState(false);
+    const [actorRole, setActorRole] = useState<'super' | 'sub' | null>(null);
+    const [policyDays, setPolicyDays] = useState(7);
+
+    const [reasonCategory, setReasonCategory] = useState<string>('customer_request');
+    const [reasonDetail, setReasonDetail] = useState('');
+    const [confirmViolation, setConfirmViolation] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!target) return;
+        // 모달 열릴 때마다 폼 리셋
+        setReasonCategory('customer_request');
+        setReasonDetail('');
+        setConfirmViolation(false);
+        setError(null);
+        setEligibility(null);
+
+        let cancelled = false;
+        setEligibilityLoading(true);
+        apiFetch<{ eligibility: RefundEligibilityInfo; role: 'super' | 'sub'; policyDays: number }>(
+            '/api/admin/payments',
+            { method: 'PATCH', body: { targetUserId: target.userId } },
+        )
+            .then(res => {
+                if (cancelled) return;
+                setEligibility(res.eligibility);
+                setActorRole(res.role);
+                setPolicyDays(res.policyDays);
+            })
+            .catch((e: Error) => {
+                if (cancelled) return;
+                setError(e.message);
+            })
+            .finally(() => {
+                if (!cancelled) setEligibilityLoading(false);
+            });
+
+        return () => { cancelled = true; };
+    }, [target]);
+
+    const isViolation = eligibility?.isPolicyViolation ?? false;
+    const blockedForSub = isViolation && actorRole === 'sub';
+    const needsConfirm = isViolation && actorRole === 'super';
+    const canSubmit =
+        !!target &&
+        !submitting &&
+        !blockedForSub &&
+        reasonDetail.trim().length >= 5 &&
+        (!needsConfirm || confirmViolation);
+
+    const handleSubmit = async () => {
+        if (!target || !canSubmit) return;
+        setSubmitting(true);
+        setError(null);
+        try {
+            const res = await apiFetch<{ success?: boolean; message?: string }>('/api/admin/payments', {
+                method: 'POST',
+                body: {
+                    targetUserId: target.userId,
+                    reasonCategory,
+                    reasonDetail: reasonDetail.trim(),
+                    confirmPolicyViolation: confirmViolation,
+                },
+            });
+            onComplete({ type: 'success', text: res.message || '환불 처리 완료' });
+            onClose();
+        } catch (e) {
+            const apiErr = e as ApiError;
+            setError(apiErr.message);
+            // 서버에서 eligibility를 함께 반환하면 갱신 (정책 위반 추가 확인 케이스)
+            const data = apiErr.data as { eligibility?: RefundEligibilityInfo } | null;
+            if (data?.eligibility) setEligibility(data.eligibility);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <Dialog open={!!target} onOpenChange={(o) => { if (!o) onClose(); }}>
+            <DialogContent className="max-w-md">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-base">
+                        <CreditCard className="w-4 h-4" />
+                        환불 / 구독 취소
+                    </DialogTitle>
+                    <DialogDescription className="text-xs">
+                        {target?.email} · 환불 처리 시 PG사에서 별도로 환불을 진행한 후 이 작업을 실행해주세요.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-3 text-sm">
+                    {/* 정책 검증 영역 */}
+                    {eligibilityLoading ? (
+                        <div className="p-3 rounded-lg bg-muted/30 text-xs text-muted-foreground">
+                            환불 정책 검증 중...
+                        </div>
+                    ) : eligibility && (
+                        <div className={`p-3 rounded-lg border text-xs ${isViolation
+                            ? 'bg-red-50 border-red-200 text-red-800'
+                            : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}
+                        >
+                            <p className="font-semibold mb-1.5 flex items-center gap-1.5">
+                                {isViolation ? <AlertCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                                {isViolation ? '환불 정책 위반' : '환불 정책 충족'}
+                            </p>
+                            <ul className="space-y-0.5 text-[11px]">
+                                <li>· 마지막 결제: {eligibility.lastPaidAt
+                                    ? `${new Date(eligibility.lastPaidAt).toLocaleDateString('ko-KR')} (${eligibility.daysSincePayment}일 경과 / 정책 ${policyDays}일)`
+                                    : '결제 이력 없음'}
+                                </li>
+                                <li>· 이번 달 분석 사용: {eligibility.analysesUsed}회 {eligibility.analysesUsed > 0 && '(미사용 조건 위반)'}</li>
+                                {eligibility.lastPaidAmount != null && (
+                                    <li>· 결제 금액: {eligibility.lastPaidAmount.toLocaleString()}원</li>
+                                )}
+                            </ul>
+                            {isViolation && eligibility.violationReasons.length > 0 && (
+                                <div className="mt-2 pt-2 border-t border-red-200">
+                                    <p className="font-semibold text-[11px] mb-0.5">위반 사유:</p>
+                                    <ul className="text-[11px] space-y-0.5">
+                                        {eligibility.violationReasons.map((r, i) => <li key={i}>· {r}</li>)}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {blockedForSub && (
+                        <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+                            정책 위반 환불은 <strong>총괄관리자</strong>만 처리할 수 있습니다.
+                            매니저(@niceverygood@naver.com)에게 환불 요청을 전달해주세요.
+                        </div>
+                    )}
+
+                    {/* 사유 카테고리 */}
+                    <div>
+                        <label className="text-xs font-medium mb-1 block">환불 사유 *</label>
+                        <select
+                            value={reasonCategory}
+                            onChange={e => setReasonCategory(e.target.value)}
+                            disabled={blockedForSub}
+                            className="w-full px-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+                        >
+                            {REFUND_REASON_OPTIONS.map(o => (
+                                <option key={o.value} value={o.value}>{o.label}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* 상세 사유 */}
+                    <div>
+                        <label className="text-xs font-medium mb-1 block">
+                            상세 사유 * <span className="text-muted-foreground font-normal">(5자 이상, 감사 로그 기록)</span>
+                        </label>
+                        <Textarea
+                            value={reasonDetail}
+                            onChange={e => setReasonDetail(e.target.value)}
+                            disabled={blockedForSub}
+                            placeholder="예: 카카오페이 중복 결제 발생, 1건 환불 요청"
+                            rows={3}
+                            className="text-sm"
+                        />
+                    </div>
+
+                    {/* 정책 위반 확인 체크박스 (총괄관리자) */}
+                    {needsConfirm && (
+                        <label className="flex items-start gap-2 p-2.5 rounded-lg bg-red-50 border border-red-200 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={confirmViolation}
+                                onChange={e => setConfirmViolation(e.target.checked)}
+                                className="mt-0.5"
+                            />
+                            <span className="text-xs text-red-900">
+                                위 정책 위반 사항을 확인했으며, <strong>예외 환불</strong>로 처리하는 것에 동의합니다.
+                                (감사 로그에 정책 위반 환불로 기록됩니다)
+                            </span>
+                        </label>
+                    )}
+
+                    {error && (
+                        <div className="p-2.5 rounded-lg bg-red-50 border border-red-200 text-red-800 text-xs">
+                            {error}
+                        </div>
+                    )}
+                </div>
+
+                <DialogFooter>
+                    <Button variant="outline" size="sm" onClick={onClose} disabled={submitting}>
+                        취소
+                    </Button>
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleSubmit}
+                        disabled={!canSubmit}
+                    >
+                        {submitting ? '처리 중...' : '환불 처리'}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }
 

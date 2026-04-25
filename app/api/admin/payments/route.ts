@@ -2,23 +2,134 @@ import { NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { ADMIN_EMAILS } from '@/lib/utils/constants';
 
-// 관리자: 유저 구독 강제 취소 → 무료 플랜 복귀
-export async function POST(request: Request) {
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+type AdminRole = 'super' | 'sub' | null;
 
-    if (authError || !user) {
-        return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
+async function getAdminRole(
+    supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<{ role: AdminRole; userId: string | null; email: string | null }> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { role: null, userId: null, email: null };
+
+    if (user.email && (ADMIN_EMAILS as readonly string[]).includes(user.email)) {
+        return { role: 'super', userId: user.id, email: user.email };
     }
 
-    if (!user.email || !(ADMIN_EMAILS as readonly string[]).includes(user.email)) {
+    const { data: subAdmin } = await supabase
+        .from('sub_admins')
+        .select('id, active')
+        .eq('email', user.email || '')
+        .eq('active', true)
+        .maybeSingle();
+
+    if (subAdmin) {
+        return { role: 'sub', userId: user.id, email: user.email ?? null };
+    }
+
+    return { role: null, userId: null, email: null };
+}
+
+const REFUND_REASON_CATEGORIES = [
+    'customer_request',  // 단순 변심 — 7일 이내 + 미사용일 때만 정상 처리
+    'payment_error',     // 결제 시스템 오류 / 중복 결제
+    'duplicate',         // 중복 가입
+    'unused',            // 명백히 미사용 (실수 결제)
+    'service_issue',     // 서비스 장애로 인한 환불
+    'other',             // 기타 (사유 상세 필수)
+] as const;
+type RefundReasonCategory = typeof REFUND_REASON_CATEGORIES[number];
+
+const REFUND_POLICY_DAYS = 7;
+
+interface RefundEligibility {
+    daysSincePayment: number | null;
+    analysesUsed: number;
+    lastPaidAt: string | null;
+    lastPaidAmount: number | null;
+    isPolicyViolation: boolean;
+    violationReasons: string[];
+}
+
+async function computeEligibility(
+    serviceClient: Awaited<ReturnType<typeof createServiceClient>>,
+    userId: string,
+): Promise<RefundEligibility> {
+    const { data: lastPaid } = await serviceClient
+        .from('payments')
+        .select('created_at, amount, status')
+        .eq('user_id', userId)
+        .in('status', ['paid', 'success'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    const now = new Date();
+    const periodStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    const { data: usage } = await serviceClient
+        .from('usage_tracking')
+        .select('analyses_used')
+        .eq('user_id', userId)
+        .eq('period_start', periodStart)
+        .maybeSingle();
+
+    const lastPaidAt = lastPaid?.created_at ?? null;
+    const daysSincePayment = lastPaidAt
+        ? Math.floor((now.getTime() - new Date(lastPaidAt).getTime()) / (1000 * 60 * 60 * 24))
+        : null;
+    const analysesUsed = Number(usage?.analyses_used ?? 0);
+
+    const violationReasons: string[] = [];
+    if (daysSincePayment !== null && daysSincePayment > REFUND_POLICY_DAYS) {
+        violationReasons.push(`결제 후 ${daysSincePayment}일 경과 (정책 ${REFUND_POLICY_DAYS}일 초과)`);
+    }
+    if (analysesUsed > 0) {
+        violationReasons.push(`서비스 ${analysesUsed}회 이용 이력 있음`);
+    }
+
+    return {
+        daysSincePayment,
+        analysesUsed,
+        lastPaidAt,
+        lastPaidAmount: lastPaid?.amount != null ? Number(lastPaid.amount) : null,
+        isPolicyViolation: violationReasons.length > 0,
+        violationReasons,
+    };
+}
+
+// 관리자: 유저 구독 강제 취소 → 무료 플랜 복귀
+// 정책: 결제 후 7일 이내 + 미사용일 때만 일반 환불.
+// 정책 위반 환불은 총괄관리자 + 명시적 동의(confirmPolicyViolation) 필요.
+export async function POST(request: Request) {
+    const supabase = await createClient();
+    const { role, userId: actorId, email: actorEmail } = await getAdminRole(supabase);
+
+    if (!role) {
         return NextResponse.json({ error: '관리자 권한이 필요합니다.' }, { status: 403 });
     }
 
-    const { targetUserId, targetEmail } = await request.json();
+    const body = await request.json();
+    const {
+        targetUserId,
+        targetEmail,
+        reasonCategory,
+        reasonDetail,
+        confirmPolicyViolation,
+    }: {
+        targetUserId?: string;
+        targetEmail?: string;
+        reasonCategory?: RefundReasonCategory;
+        reasonDetail?: string;
+        confirmPolicyViolation?: boolean;
+    } = body;
 
     if (!targetUserId && !targetEmail) {
         return NextResponse.json({ error: 'targetUserId 또는 targetEmail이 필요합니다.' }, { status: 400 });
+    }
+    if (!reasonCategory || !(REFUND_REASON_CATEGORIES as readonly string[]).includes(reasonCategory)) {
+        return NextResponse.json({ error: '환불 사유 카테고리가 올바르지 않습니다.' }, { status: 400 });
+    }
+    const trimmedDetail = (reasonDetail || '').trim();
+    if (trimmedDetail.length < 5) {
+        return NextResponse.json({ error: '환불 상세 사유를 5자 이상 입력해주세요.' }, { status: 400 });
     }
 
     try {
@@ -35,7 +146,26 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: '사용자를 찾을 수 없습니다.' }, { status: 404 });
         }
 
-        // 모든 active 구독 취소
+        const eligibility = await computeEligibility(serviceClient, userId);
+
+        // 정책 위반 시 가드: 중간관리자는 진행 불가, 총괄관리자도 명시적 confirm 필요
+        if (eligibility.isPolicyViolation) {
+            if (role !== 'super') {
+                return NextResponse.json({
+                    error: '정책 위반 환불은 총괄관리자만 처리할 수 있습니다. 매니저에게 요청해주세요.',
+                    eligibility,
+                    requiresSuperAdmin: true,
+                }, { status: 403 });
+            }
+            if (!confirmPolicyViolation) {
+                return NextResponse.json({
+                    error: '환불 정책에 위배됩니다. 정책 위반 처리 동의가 필요합니다.',
+                    eligibility,
+                    requiresConfirmation: true,
+                }, { status: 409 });
+            }
+        }
+
         const { data: activeSubs } = await serviceClient
             .from('subscriptions')
             .select('id, plan_id')
@@ -43,7 +173,7 @@ export async function POST(request: Request) {
             .eq('status', 'active');
 
         if (!activeSubs || activeSubs.length === 0) {
-            return NextResponse.json({ error: '활성 구독이 없습니다.' }, { status: 404 });
+            return NextResponse.json({ error: '활성 구독이 없습니다.', eligibility }, { status: 404 });
         }
 
         for (const sub of activeSubs) {
@@ -54,7 +184,6 @@ export async function POST(request: Request) {
             }).eq('id', sub.id);
         }
 
-        // usage_tracking 무료 한도(5건)로 리셋
         const now = new Date();
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -66,7 +195,6 @@ export async function POST(request: Request) {
             .eq('user_id', userId)
             .eq('period_start', periodStart);
 
-        // payments 테이블 취소 표시
         try {
             await serviceClient
                 .from('payments')
@@ -79,11 +207,65 @@ export async function POST(request: Request) {
                 .eq('status', 'paid');
         } catch { /* ignore if columns don't exist */ }
 
+        const { data: targetProfile } = await serviceClient
+            .from('profiles')
+            .select('email')
+            .eq('id', userId)
+            .maybeSingle();
+
+        try {
+            await serviceClient.from('system_logs').insert({
+                level: eligibility.isPolicyViolation ? 'warn' : 'info',
+                area: 'billing',
+                event: 'admin_refund_processed',
+                user_id: userId,
+                user_email: targetProfile?.email ?? null,
+                message: `[${reasonCategory}] ${trimmedDetail}`,
+                metadata: {
+                    actor_id: actorId,
+                    actor_email: actorEmail,
+                    actor_role: role,
+                    reason_category: reasonCategory,
+                    reason_detail: trimmedDetail,
+                    cancelled_subs: activeSubs.length,
+                    days_since_payment: eligibility.daysSincePayment,
+                    analyses_used: eligibility.analysesUsed,
+                    last_paid_amount: eligibility.lastPaidAmount,
+                    is_policy_violation: eligibility.isPolicyViolation,
+                    violation_reasons: eligibility.violationReasons,
+                    confirmed_policy_violation: !!confirmPolicyViolation,
+                },
+            });
+        } catch { /* logging is best-effort */ }
+
         return NextResponse.json({
             success: true,
             message: `${activeSubs.length}개 구독이 취소되었습니다. 무료 플랜으로 전환됨.`,
             cancelledCount: activeSubs.length,
+            eligibility,
         });
+    } catch (error) {
+        return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+    }
+}
+
+// 환불 사전 점검 — 정책 위반 여부를 모달에서 미리 확인하기 위한 endpoint
+export async function PATCH(request: Request) {
+    const supabase = await createClient();
+    const { role } = await getAdminRole(supabase);
+    if (!role) {
+        return NextResponse.json({ error: '관리자 권한이 필요합니다.' }, { status: 403 });
+    }
+
+    const { targetUserId } = await request.json();
+    if (!targetUserId) {
+        return NextResponse.json({ error: 'targetUserId가 필요합니다.' }, { status: 400 });
+    }
+
+    try {
+        const serviceClient = await createServiceClient();
+        const eligibility = await computeEligibility(serviceClient, targetUserId);
+        return NextResponse.json({ eligibility, role, policyDays: REFUND_POLICY_DAYS });
     } catch (error) {
         return NextResponse.json({ error: (error as Error).message }, { status: 500 });
     }
