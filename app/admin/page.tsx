@@ -525,6 +525,26 @@ export default function AdminPage() {
                     </Card>
                     )}
 
+                    {/* 환불 정책 가이드 — 영업이사 셀프 판단용 (총괄 + 중간관리자 모두 접근) */}
+                    <Card className="border-0 shadow-md mb-8 border-l-4 border-l-emerald-500">
+                        <CardContent className="p-4 sm:p-5">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+                                        <Shield className="w-5 h-5 text-emerald-600" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="font-semibold text-sm">환불 정책 가이드</p>
+                                        <p className="text-xs text-muted-foreground truncate">고객 환불 요청 응대 — 셀프 판단 + 카톡 템플릿</p>
+                                    </div>
+                                </div>
+                                <Link href="/admin/refund-policy" className="shrink-0">
+                                    <Button size="sm" variant="outline">정책 보기</Button>
+                                </Link>
+                            </div>
+                        </CardContent>
+                    </Card>
+
                     {/* 상담 관리 바로가기 */}
                     <Card className="border-0 shadow-md mb-8">
                         <CardContent className="p-4 sm:p-5">
