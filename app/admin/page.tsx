@@ -401,51 +401,56 @@ export default function AdminPage() {
                                             key={u.id}
                                             className="flex items-center gap-3 px-5 py-3 hover:bg-muted/30 transition-colors"
                                         >
-                                            {/* Avatar */}
-                                            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                                <span className="text-xs font-semibold text-primary">
-                                                    {(u.name || u.email).charAt(0).toUpperCase()}
-                                                </span>
-                                            </div>
-
-                                            {/* Info */}
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2">
-                                                    <p className={`text-sm font-medium truncate ${u.suspended ? 'line-through text-muted-foreground' : ''}`}>
-                                                        {u.name || '(이름 없음)'}
-                                                    </p>
-                                                    {u.suspended && u.suspend_type === 'shadow' && (
-                                                        <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200">
-                                                            쉐도우
-                                                        </Badge>
-                                                    )}
-                                                    {u.suspended && u.suspend_type === 'official' && (
-                                                        <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-                                                            공식정지
-                                                        </Badge>
-                                                    )}
-                                                    {u.suspended && !u.suspend_type && (
-                                                        <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-                                                            정지됨
-                                                        </Badge>
-                                                    )}
-                                                    {u.company && (
-                                                        <span className="text-xs text-muted-foreground hidden sm:inline">
-                                                            {u.company}
-                                                        </span>
-                                                    )}
+                                            <Link
+                                                href={`/admin/users/${u.id}`}
+                                                className="flex items-center gap-3 flex-1 min-w-0"
+                                            >
+                                                {/* Avatar */}
+                                                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                                    <span className="text-xs font-semibold text-primary">
+                                                        {(u.name || u.email).charAt(0).toUpperCase()}
+                                                    </span>
                                                 </div>
-                                                <p className="text-xs text-muted-foreground truncate">{u.email}</p>
-                                                <p className="text-[10px] text-muted-foreground/60 truncate font-mono">
-                                                    {u.id.slice(0, 8)}...{u.phone ? ` | ${u.phone}` : ''}
-                                                    {u.suspended && u.suspended_reason ? ` | 사유: ${u.suspended_reason}` : ''}
-                                                </p>
-                                            </div>
 
-                                            {/* Date */}
-                                            <div className="hidden md:block text-xs text-muted-foreground whitespace-nowrap">
-                                                {new Date(u.created_at).toLocaleDateString('ko-KR')}
-                                            </div>
+                                                {/* Info */}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <p className={`text-sm font-medium truncate ${u.suspended ? 'line-through text-muted-foreground' : ''}`}>
+                                                            {u.name || '(이름 없음)'}
+                                                        </p>
+                                                        {u.suspended && u.suspend_type === 'shadow' && (
+                                                            <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200">
+                                                                쉐도우
+                                                            </Badge>
+                                                        )}
+                                                        {u.suspended && u.suspend_type === 'official' && (
+                                                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                                                                공식정지
+                                                            </Badge>
+                                                        )}
+                                                        {u.suspended && !u.suspend_type && (
+                                                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                                                                정지됨
+                                                            </Badge>
+                                                        )}
+                                                        {u.company && (
+                                                            <span className="text-xs text-muted-foreground hidden sm:inline">
+                                                                {u.company}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                                                    <p className="text-[10px] text-muted-foreground/60 truncate font-mono">
+                                                        {u.id.slice(0, 8)}...{u.phone ? ` | ${u.phone}` : ''}
+                                                        {u.suspended && u.suspended_reason ? ` | 사유: ${u.suspended_reason}` : ''}
+                                                    </p>
+                                                </div>
+
+                                                {/* Date */}
+                                                <div className="hidden md:block text-xs text-muted-foreground whitespace-nowrap">
+                                                    {new Date(u.created_at).toLocaleDateString('ko-KR')}
+                                                </div>
+                                            </Link>
 
                                             {/* Suspend Buttons */}
                                             <div className="flex gap-1 shrink-0">
