@@ -24,6 +24,49 @@ const PLAN_ICONS: Record<string, typeof Zap> = {
     pro: Crown,
 };
 
+// IAP 영수증을 받았으나 서버 sync가 실패한 경우 보관할 페이로드.
+// 재시도(또는 다음 페이지 진입)에서 /api/iap/verify로 다시 전송한다.
+type PendingIapReceipt = {
+    platform: AppPlatform;
+    receipt?: string;
+    productId: string;
+    purchaseToken?: string;
+    savedAt: number;
+};
+
+const PENDING_IAP_KEY = 'bobi:pending_iap_receipt';
+
+function loadPendingIapReceipt(): PendingIapReceipt | null {
+    if (typeof window === 'undefined') return null;
+    try {
+        const raw = window.localStorage.getItem(PENDING_IAP_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as PendingIapReceipt;
+        // 7일 이상 묵은 영수증은 폐기 — Apple/Google이 그 사이 환불·소멸 처리했을 수 있음
+        if (Date.now() - parsed.savedAt > 7 * 24 * 60 * 60 * 1000) {
+            window.localStorage.removeItem(PENDING_IAP_KEY);
+            return null;
+        }
+        return parsed;
+    } catch {
+        return null;
+    }
+}
+
+function savePendingIapReceipt(payload: PendingIapReceipt) {
+    if (typeof window === 'undefined') return;
+    try {
+        window.localStorage.setItem(PENDING_IAP_KEY, JSON.stringify(payload));
+    } catch { /* 용량 초과 등은 무시 */ }
+}
+
+function clearPendingIapReceipt() {
+    if (typeof window === 'undefined') return;
+    try {
+        window.localStorage.removeItem(PENDING_IAP_KEY);
+    } catch { /* ignore */ }
+}
+
 export default function SubscribePage() {
     return (
         <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /></div>}>
@@ -51,6 +94,9 @@ function SubscribeContent() {
     const [isMobile, setIsMobile] = useState(false);
     const [iapReady, setIapReady] = useState(false);
     const [enterpriseDialogOpen, setEnterpriseDialogOpen] = useState(false);
+
+    // IAP 결제는 됐는데 서버 sync가 실패한 영수증을 localStorage에 보관해 재시도 가능하게 함
+    const [pendingReceipt, setPendingReceipt] = useState<PendingIapReceipt | null>(null);
 
     // 3일 무료 체험
     const [trialEligible, setTrialEligible] = useState(false);
@@ -118,6 +164,10 @@ function SubscribeContent() {
                 if (name) setUserName(name);
             });
         });
+
+        // 직전 IAP 결제가 서버 sync에 실패한 경우 영수증이 보관돼 있으면 재시도 안내 표시
+        const pending = loadPendingIapReceipt();
+        if (pending) setPendingReceipt(pending);
     }, []);
 
     useEffect(() => {
@@ -446,28 +496,75 @@ function SubscribeContent() {
                 return;
             }
 
+            const productId = `kr.bobi.app.${selectedPlan}.${billingCycle}`;
             console.log('[IAP] Sending receipt to server:', {
                 platform,
                 hasReceipt: !!result.receipt,
                 hasToken: !!result.transactionId,
-                productId: `kr.bobi.app.${selectedPlan}.${billingCycle}`,
+                productId,
             });
 
-            // 서버에 영수증 검증 요청
-            await apiFetch('/api/iap/verify', {
-                method: 'POST',
-                body: {
+            // 서버 검증은 별도 try — 영수증은 수령했는데 서버 sync만 실패한 경우
+            // localStorage에 보관해 사용자가 재시도(또는 자동 재시도)할 수 있도록 한다.
+            try {
+                await apiFetch('/api/iap/verify', {
+                    method: 'POST',
+                    body: {
+                        platform,
+                        receipt: result.receipt,
+                        productId,
+                        purchaseToken: result.transactionId || result.receipt,
+                    },
+                });
+                clearPendingIapReceipt();
+                setSuccess(true);
+            } catch (verifyErr) {
+                savePendingIapReceipt({
                     platform,
                     receipt: result.receipt,
-                    productId: `kr.bobi.app.${selectedPlan}.${billingCycle}`,
+                    productId,
                     purchaseToken: result.transactionId || result.receipt,
-                },
-            });
-
-            setSuccess(true);
+                    savedAt: Date.now(),
+                });
+                setPendingReceipt(loadPendingIapReceipt());
+                setError(
+                    `결제는 완료되었으나 서버 동기화에 실패했습니다 (${(verifyErr as Error).message}). ` +
+                    `아래 "결제 동기화" 버튼을 눌러 다시 시도해주세요. 영수증은 안전하게 보관되어 있어 추가 결제는 발생하지 않습니다.`
+                );
+            }
         } catch (err) {
             console.error('[IAP] Subscribe error:', err);
             setError((err as Error).message || '결제 처리 중 오류가 발생했습니다.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 보관해둔 IAP 영수증을 다시 서버에 전송 — 첫 결제 후 sync 실패 시 사용
+    const handleIAPResync = async () => {
+        const pending = loadPendingIapReceipt();
+        if (!pending) {
+            setError('재시도할 영수증이 없습니다.');
+            return;
+        }
+        setLoading(true);
+        setError(null);
+        try {
+            await apiFetch('/api/iap/verify', {
+                method: 'POST',
+                body: {
+                    platform: pending.platform,
+                    receipt: pending.receipt,
+                    productId: pending.productId,
+                    purchaseToken: pending.purchaseToken,
+                    restore: true,
+                },
+            });
+            clearPendingIapReceipt();
+            setPendingReceipt(null);
+            setSuccess(true);
+        } catch (err) {
+            setError(`재시도 실패: ${(err as Error).message}. 잠시 후 다시 시도하시거나 고객센터로 문의해주세요.`);
         } finally {
             setLoading(false);
         }
@@ -839,6 +936,42 @@ function SubscribeContent() {
 
             {/* 사회적 증거 — 결제 직전 안심 */}
             <SocialProofInline />
+
+            {/* IAP 결제는 됐는데 서버 sync 실패한 영수증이 보관돼 있으면 재시도 안내 */}
+            {pendingReceipt && !success && (
+                <Card className="border-amber-200 bg-amber-50">
+                    <CardContent className="flex items-start gap-3 py-4">
+                        <Loader2 className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+                        <div className="flex-1 space-y-2">
+                            <p className="text-sm font-medium text-amber-900">
+                                결제는 완료되었으나 서버 동기화가 끝나지 않은 영수증이 있습니다.
+                            </p>
+                            <p className="text-xs text-amber-800">
+                                상품: {pendingReceipt.productId} · 저장 시각: {new Date(pendingReceipt.savedAt).toLocaleString('ko-KR')}
+                            </p>
+                            <div className="flex gap-2 pt-1">
+                                <Button
+                                    size="sm"
+                                    onClick={handleIAPResync}
+                                    disabled={loading}
+                                    className="bg-amber-600 hover:bg-amber-700 text-white"
+                                >
+                                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : '결제 동기화'}
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => { clearPendingIapReceipt(); setPendingReceipt(null); }}
+                                    disabled={loading}
+                                    className="text-amber-700"
+                                >
+                                    <X className="w-4 h-4 mr-1" /> 닫기
+                                </Button>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             <div className="grid lg:grid-cols-5 gap-6">
                 {/* Left: Plan Selection */}
