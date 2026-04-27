@@ -18,6 +18,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import MobileNav from '@/components/layout/MobileNav';
 import { apiFetch } from '@/lib/api/client';
 import { openExternal } from '@/lib/open-external';
+import { toast } from 'sonner';
 
 interface AdminStats {
     totalUsers: number;
@@ -1496,8 +1497,13 @@ function PaymentHistory() {
     const [loading, setLoading] = useState(true);
     const [tab, setTab] = useState<'payments' | 'active' | 'cancelled'>('payments');
     const [providerFilter, setProviderFilter] = useState<string>('all');
+    const [searchQuery, setSearchQuery] = useState<string>('');
     const [cancelling, setCancelling] = useState<string | null>(null);
     const [actionMsg, setActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [refundTarget, setRefundTarget] = useState<Record<string, unknown> | null>(null);
+    const [refundConfirm, setRefundConfirm] = useState<string>('');
+    const [refundReason, setRefundReason] = useState<string>('');
+    const [refunding, setRefunding] = useState<boolean>(false);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -1523,10 +1529,19 @@ function PaymentHistory() {
         return <Badge variant="outline" className={`${meta.className} text-[10px]`}>{meta.label}</Badge>;
     };
 
-    const activeSubs = subs.filter(s => s.status === 'active');
-    const cancelledSubs = subs.filter(s => s.status === 'cancelled');
-    const paidPayments = payments.filter(p => p.status === 'paid' || p.status === 'success');
-    const cancelledPayments = payments.filter(p => p.status === 'cancelled' || p.status === 'refunded');
+    const matchesSearch = useCallback((row: Record<string, unknown>) => {
+        const q = searchQuery.trim().toLowerCase();
+        if (!q) return true;
+        const fields = [row.user_email, row.user_name, row.user_id, row.payment_id, row.portone_payment_id];
+        return fields.some(v => String(v ?? '').toLowerCase().includes(q));
+    }, [searchQuery]);
+
+    const filteredPayments = payments.filter(matchesSearch);
+    const filteredSubs = subs.filter(matchesSearch);
+    const activeSubs = filteredSubs.filter(s => s.status === 'active');
+    const cancelledSubs = filteredSubs.filter(s => s.status === 'cancelled');
+    const paidPayments = filteredPayments.filter(p => p.status === 'paid' || p.status === 'success');
+    const cancelledPayments = filteredPayments.filter(p => p.status === 'cancelled' || p.status === 'refunded');
 
     const handleForceCancel = async (userId: string, email: string) => {
         if (!confirm(`${email}의 구독을 강제 취소하고 무료 플랜으로 전환하시겠습니까?`)) return;
@@ -1547,6 +1562,57 @@ function PaymentHistory() {
             setActionMsg({ type: 'error', text: (e as Error).message });
         }
         setCancelling(null);
+    };
+
+    const openRefund = (p: Record<string, unknown>) => {
+        setRefundTarget(p);
+        setRefundConfirm('');
+        setRefundReason('');
+    };
+
+    const closeRefund = () => {
+        if (refunding) return;
+        setRefundTarget(null);
+        setRefundConfirm('');
+        setRefundReason('');
+    };
+
+    const handleRefund = async () => {
+        if (!refundTarget) return;
+        const recordId = String(refundTarget.id || '');
+        const source = (refundTarget._source === 'payment_history' ? 'payment_history' : 'payments') as 'payments' | 'payment_history';
+        if (!recordId) {
+            toast.error('결제 레코드 ID가 없습니다.');
+            return;
+        }
+        setRefunding(true);
+        setActionMsg(null);
+        try {
+            const res = await apiFetch<{ success?: boolean; message?: string; error?: string; provider?: string }>(
+                '/api/admin/refund',
+                {
+                    method: 'POST',
+                    body: JSON.stringify({ recordId, source, reason: refundReason || undefined }),
+                },
+            );
+            if (res.success) {
+                toast.success(res.message || '환불 완료');
+                setActionMsg({ type: 'success', text: res.message || '환불 완료' });
+                setRefundTarget(null);
+                setRefundConfirm('');
+                setRefundReason('');
+                fetchData();
+            } else {
+                const msg = res.error || '환불 실패';
+                toast.error(msg);
+                setActionMsg({ type: 'error', text: msg });
+            }
+        } catch (e) {
+            const msg = (e as Error).message || '환불 요청 중 오류';
+            toast.error(msg);
+            setActionMsg({ type: 'error', text: msg });
+        }
+        setRefunding(false);
     };
 
     const fmtDate = (d: string) => new Date(d).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -1574,7 +1640,7 @@ function PaymentHistory() {
                 )}
                 <div className="flex gap-2 mt-2 flex-wrap">
                     <Button size="sm" variant={tab === 'payments' ? 'default' : 'outline'} onClick={() => setTab('payments')}>
-                        결제내역 ({payments.length})
+                        결제내역 ({filteredPayments.length})
                     </Button>
                     <Button size="sm" variant={tab === 'active' ? 'default' : 'outline'} onClick={() => setTab('active')}>
                         활성 구독 ({activeSubs.length})
@@ -1582,6 +1648,27 @@ function PaymentHistory() {
                     <Button size="sm" variant={tab === 'cancelled' ? 'default' : 'outline'} onClick={() => setTab('cancelled')}>
                         취소/해지 ({cancelledSubs.length + cancelledPayments.length})
                     </Button>
+                </div>
+
+                <div className="mt-3 relative">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="이메일 · 이름 · user_id · 결제ID 로 검색"
+                        className="w-full pl-7 pr-8 py-1.5 text-xs border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    {searchQuery && (
+                        <button
+                            type="button"
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
+                            aria-label="검색어 지우기"
+                        >
+                            ×
+                        </button>
+                    )}
                 </div>
 
                 {/* 결제수단별 집계 카드 — 카카오페이/토스/애플/구글 한 눈에 */}
@@ -1627,13 +1714,19 @@ function PaymentHistory() {
                 {loading ? <p className="text-sm text-muted-foreground text-center py-8">로딩 중...</p>
 
                 : tab === 'payments' ? (
-                    payments.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">결제 내역이 없습니다.</p> : (
+                    filteredPayments.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">{searchQuery ? '검색 결과가 없습니다.' : '결제 내역이 없습니다.'}</p> : (
                     <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b bg-muted/30">
                         <th className="text-left p-2">일시</th><th className="text-left p-2">이메일</th><th className="text-left p-2">이름</th>
                         <th className="text-left p-2">수단</th>
                         <th className="text-left p-2">플랜</th><th className="text-left p-2">주기</th><th className="text-right p-2">금액</th>
                         <th className="text-left p-2">상태</th><th className="text-left p-2">결제ID</th>
-                    </tr></thead><tbody>{payments.map((p, i) => (
+                        <th className="text-left p-2">가맹점회원ID</th>
+                        <th className="text-left p-2">관리</th>
+                    </tr></thead><tbody>{filteredPayments.map((p, i) => {
+                        const isPaid = p.status === 'paid' || p.status === 'success';
+                        const provider = String(p.provider || p.payment_method || '').toLowerCase();
+                        const refundable = isPaid && (provider.includes('kakao') || provider.includes('toss'));
+                        return (
                         <tr key={i} className={`border-b hover:bg-muted/30 ${p.status === 'cancelled' || p.status === 'refunded' ? 'bg-red-50/50' : ''}`}>
                             <td className="p-2 whitespace-nowrap">{fmtDate(String(p.created_at))}</td>
                             <td className="p-2">{String(p.user_email || '-')}</td>
@@ -1644,8 +1737,35 @@ function PaymentHistory() {
                             <td className={`p-2 text-right font-mono ${p.status === 'cancelled' ? 'line-through text-red-500' : ''}`}>{(Number(p.amount) || 0).toLocaleString()}원</td>
                             <td className="p-2">{statusBadge(p.status, p.cancelled_by)}</td>
                             <td className="p-2 text-muted-foreground truncate max-w-[120px]">{String(p.payment_id || p.portone_payment_id || '')}</td>
+                            <td className="p-2">
+                                {p.user_id ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => { navigator.clipboard?.writeText(String(p.user_id)); toast.success('가맹점회원ID 복사됨'); }}
+                                        title={`클릭하여 복사: ${String(p.user_id)}`}
+                                        className="font-mono text-[10px] text-muted-foreground hover:text-foreground hover:underline"
+                                    >
+                                        {String(p.user_id).slice(0, 8)}…
+                                    </button>
+                                ) : '-'}
+                            </td>
+                            <td className="p-2">
+                                {refundable ? (
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => openRefund(p)}
+                                        className="h-7 px-2 text-[10px] border-red-300 text-red-600 hover:bg-red-50"
+                                    >
+                                        환불
+                                    </Button>
+                                ) : isPaid ? (
+                                    <span className="text-[10px] text-muted-foreground" title="앱결제·이니시스는 PG 어드민에서 직접 환불">PG어드민</span>
+                                ) : null}
+                            </td>
                         </tr>
-                    ))}</tbody></table></div>)
+                        );
+                    })}</tbody></table></div>)
 
                 ) : tab === 'active' ? (
                     activeSubs.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">활성 구독이 없습니다.</p> : (
@@ -1721,7 +1841,118 @@ function PaymentHistory() {
                     </div>)
                 )}
             </CardContent>
+            {refundTarget && (
+                <RefundConfirmModal
+                    target={refundTarget}
+                    confirmText={refundConfirm}
+                    onConfirmTextChange={setRefundConfirm}
+                    reason={refundReason}
+                    onReasonChange={setRefundReason}
+                    refunding={refunding}
+                    onCancel={closeRefund}
+                    onSubmit={handleRefund}
+                    fmtDate={fmtDate}
+                />
+            )}
         </Card>
+    );
+}
+
+// ─── 환불 확인 모달 ──────────────────────
+interface RefundConfirmModalProps {
+    target: Record<string, unknown>;
+    confirmText: string;
+    onConfirmTextChange: (v: string) => void;
+    reason: string;
+    onReasonChange: (v: string) => void;
+    refunding: boolean;
+    onCancel: () => void;
+    onSubmit: () => void;
+    fmtDate: (d: string) => string;
+}
+
+function RefundConfirmModal({
+    target, confirmText, onConfirmTextChange, reason, onReasonChange, refunding, onCancel, onSubmit, fmtDate,
+}: RefundConfirmModalProps) {
+    const provider = String(target.provider || target.payment_method || '').toLowerCase();
+    const providerLabel = provider.includes('kakao') ? '카카오페이' : provider.includes('toss') ? '토스페이먼츠' : provider;
+    const amount = Number(target.amount) || 0;
+    const tid = String(target.payment_id || target.portone_payment_id || '-');
+    const email = String(target.user_email || '-');
+    const name = String(target.user_name || '-');
+    const isReady = confirmText.trim() === '환불';
+
+    return (
+        <div
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={onCancel}
+        >
+            <div
+                className="bg-background border rounded-lg shadow-xl max-w-md w-full p-5"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex items-center gap-2 mb-3">
+                    <AlertCircle className="w-5 h-5 text-red-500" />
+                    <h3 className="text-base font-semibold">결제 환불</h3>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                    아래 결제를 PG사({providerLabel})에 취소 요청하고 DB 상태를 환불 처리합니다.
+                    이 작업은 <strong className="text-red-600">되돌릴 수 없습니다.</strong>
+                </p>
+
+                <div className="border rounded-md bg-muted/30 p-3 text-xs space-y-1 mb-4">
+                    <div><span className="text-muted-foreground">결제일</span> · {fmtDate(String(target.created_at))}</div>
+                    <div><span className="text-muted-foreground">이메일</span> · {email}</div>
+                    <div><span className="text-muted-foreground">이름</span> · {name}</div>
+                    <div><span className="text-muted-foreground">수단</span> · {providerLabel}</div>
+                    <div><span className="text-muted-foreground">금액</span> · <strong className="font-mono">{amount.toLocaleString()}원</strong></div>
+                    <div className="break-all"><span className="text-muted-foreground">TID</span> · <span className="font-mono text-[10px]">{tid}</span></div>
+                </div>
+
+                <div className="mb-3">
+                    <label className="block text-xs font-medium mb-1">환불 사유 (선택)</label>
+                    <input
+                        type="text"
+                        value={reason}
+                        onChange={(e) => onReasonChange(e.target.value)}
+                        placeholder="예: 사용자 요청, 중복 결제 등"
+                        disabled={refunding}
+                        className="w-full px-2 py-1.5 text-xs border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                </div>
+
+                <div className="mb-4">
+                    <label className="block text-xs font-medium mb-1">
+                        진행하려면 <strong className="text-red-600">&quot;환불&quot;</strong>을 입력하세요
+                    </label>
+                    <input
+                        type="text"
+                        value={confirmText}
+                        onChange={(e) => onConfirmTextChange(e.target.value)}
+                        placeholder="환불"
+                        disabled={refunding}
+                        autoFocus
+                        className="w-full px-2 py-1.5 text-xs border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-red-500"
+                    />
+                </div>
+
+                <div className="flex justify-end gap-2">
+                    <Button size="sm" variant="outline" onClick={onCancel} disabled={refunding}>
+                        취소
+                    </Button>
+                    <Button
+                        size="sm"
+                        onClick={onSubmit}
+                        disabled={!isReady || refunding}
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                    >
+                        {refunding ? '환불 처리 중...' : `${amount.toLocaleString()}원 환불`}
+                    </Button>
+                </div>
+            </div>
+        </div>
     );
 }
 
