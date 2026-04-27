@@ -10,6 +10,7 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { chargeBillingKey, generateOrderId } from '@/lib/tosspayments/server';
 import { kakaoPaySubscription } from '@/lib/kakaopay/client';
 import { getPlanPrice } from '@/lib/utils/pricing';
+import { log } from '@/lib/monitoring/system-log';
 
 export const dynamic = 'force-dynamic';
 
@@ -179,8 +180,6 @@ export async function GET(request: Request) {
                     }
                     continue;
                 }
-                void chargePaymentId; // payment_history 기록은 선택적 — 여기서는 생략
-
                 // 4. 결제 성공 → active 전환, period 갱신
                 const periodStart = now.toISOString();
                 const periodEnd = new Date(now);
@@ -200,7 +199,76 @@ export async function GET(request: Request) {
                     })
                     .eq('id', sub.id);
 
-                // trial_history 전환 기록
+                // 5. 결제 기록 — 어드민 결제내역 + 환불 처리에 필요.
+                //    payment_id 우선순위: 카카오페이 TID → 토스 orderId.
+                const recordedPaymentId = chargePaymentId || orderId;
+                const paymentMethod = sub.payment_provider === 'kakaopay' ? 'kakaopay' : 'tosspayments';
+
+                try {
+                    await svc
+                        .from('payment_history')
+                        .insert({
+                            user_id: sub.user_id,
+                            subscription_id: sub.id,
+                            payment_id: recordedPaymentId,
+                            amount,
+                            status: 'paid',
+                            billing_cycle: sub.billing_cycle,
+                            plan_slug: plan.slug,
+                        });
+                } catch { /* non-critical */ }
+
+                try {
+                    await svc
+                        .from('payments')
+                        .insert({
+                            user_id: sub.user_id,
+                            subscription_id: sub.id,
+                            payment_id: recordedPaymentId,
+                            portone_payment_id: null,
+                            amount,
+                            status: 'paid',
+                            billing_cycle: sub.billing_cycle,
+                            plan_slug: plan.slug,
+                            payment_method: paymentMethod,
+                        });
+                } catch { /* non-critical — payments 테이블 부재 시 */ }
+
+                // 6. usage_tracking 갱신 — 체험 → 정기 전환 시 분석 한도를 새 플랜에 맞춤
+                try {
+                    const year = now.getFullYear();
+                    const month = String(now.getMonth() + 1).padStart(2, '0');
+                    const usagePeriodStart = `${year}-${month}-01`;
+                    const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+                    const usagePeriodEnd = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+                    const newLimit = plan.max_analyses === -1 ? 999999 : plan.max_analyses;
+
+                    const { data: existingUsage } = await svc
+                        .from('usage_tracking')
+                        .select('id')
+                        .eq('user_id', sub.user_id)
+                        .eq('period_start', usagePeriodStart)
+                        .maybeSingle();
+
+                    if (existingUsage) {
+                        await svc
+                            .from('usage_tracking')
+                            .update({ analyses_limit: newLimit })
+                            .eq('id', existingUsage.id);
+                    } else {
+                        await svc
+                            .from('usage_tracking')
+                            .insert({
+                                user_id: sub.user_id,
+                                period_start: usagePeriodStart,
+                                period_end: usagePeriodEnd,
+                                analyses_used: 0,
+                                analyses_limit: newLimit,
+                            });
+                    }
+                } catch { /* non-critical */ }
+
+                // 7. trial_history 전환 기록
                 try {
                     await svc
                         .from('trial_history')
@@ -210,6 +278,19 @@ export async function GET(request: Request) {
                 } catch {
                     // non-critical
                 }
+
+                await log.info('billing', 'trial_end_charged', {
+                    userId: sub.user_id,
+                    message: `체험 → 정기 전환 결제 ${amount}원 (${paymentMethod})`,
+                    metadata: {
+                        subscriptionId: sub.id,
+                        provider: sub.payment_provider,
+                        planSlug: plan.slug,
+                        billingCycle: sub.billing_cycle,
+                        amount,
+                        paymentId: recordedPaymentId,
+                    },
+                });
 
                 results.charged++;
             } catch (err) {
