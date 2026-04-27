@@ -18,6 +18,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import MobileNav from '@/components/layout/MobileNav';
 import { apiFetch } from '@/lib/api/client';
 import { openExternal } from '@/lib/open-external';
+import { toast } from 'sonner';
 
 interface AdminStats {
     totalUsers: number;
@@ -1496,6 +1497,7 @@ function PaymentHistory() {
     const [loading, setLoading] = useState(true);
     const [tab, setTab] = useState<'payments' | 'active' | 'cancelled'>('payments');
     const [providerFilter, setProviderFilter] = useState<string>('all');
+    const [searchQuery, setSearchQuery] = useState<string>('');
     const [cancelling, setCancelling] = useState<string | null>(null);
     const [actionMsg, setActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -1523,10 +1525,19 @@ function PaymentHistory() {
         return <Badge variant="outline" className={`${meta.className} text-[10px]`}>{meta.label}</Badge>;
     };
 
-    const activeSubs = subs.filter(s => s.status === 'active');
-    const cancelledSubs = subs.filter(s => s.status === 'cancelled');
-    const paidPayments = payments.filter(p => p.status === 'paid' || p.status === 'success');
-    const cancelledPayments = payments.filter(p => p.status === 'cancelled' || p.status === 'refunded');
+    const matchesSearch = useCallback((row: Record<string, unknown>) => {
+        const q = searchQuery.trim().toLowerCase();
+        if (!q) return true;
+        const fields = [row.user_email, row.user_name, row.user_id, row.payment_id, row.portone_payment_id];
+        return fields.some(v => String(v ?? '').toLowerCase().includes(q));
+    }, [searchQuery]);
+
+    const filteredPayments = payments.filter(matchesSearch);
+    const filteredSubs = subs.filter(matchesSearch);
+    const activeSubs = filteredSubs.filter(s => s.status === 'active');
+    const cancelledSubs = filteredSubs.filter(s => s.status === 'cancelled');
+    const paidPayments = filteredPayments.filter(p => p.status === 'paid' || p.status === 'success');
+    const cancelledPayments = filteredPayments.filter(p => p.status === 'cancelled' || p.status === 'refunded');
 
     const handleForceCancel = async (userId: string, email: string) => {
         if (!confirm(`${email}의 구독을 강제 취소하고 무료 플랜으로 전환하시겠습니까?`)) return;
@@ -1574,7 +1585,7 @@ function PaymentHistory() {
                 )}
                 <div className="flex gap-2 mt-2 flex-wrap">
                     <Button size="sm" variant={tab === 'payments' ? 'default' : 'outline'} onClick={() => setTab('payments')}>
-                        결제내역 ({payments.length})
+                        결제내역 ({filteredPayments.length})
                     </Button>
                     <Button size="sm" variant={tab === 'active' ? 'default' : 'outline'} onClick={() => setTab('active')}>
                         활성 구독 ({activeSubs.length})
@@ -1582,6 +1593,27 @@ function PaymentHistory() {
                     <Button size="sm" variant={tab === 'cancelled' ? 'default' : 'outline'} onClick={() => setTab('cancelled')}>
                         취소/해지 ({cancelledSubs.length + cancelledPayments.length})
                     </Button>
+                </div>
+
+                <div className="mt-3 relative">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="이메일 · 이름 · user_id · 결제ID 로 검색"
+                        className="w-full pl-7 pr-8 py-1.5 text-xs border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    {searchQuery && (
+                        <button
+                            type="button"
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
+                            aria-label="검색어 지우기"
+                        >
+                            ×
+                        </button>
+                    )}
                 </div>
 
                 {/* 결제수단별 집계 카드 — 카카오페이/토스/애플/구글 한 눈에 */}
@@ -1627,13 +1659,14 @@ function PaymentHistory() {
                 {loading ? <p className="text-sm text-muted-foreground text-center py-8">로딩 중...</p>
 
                 : tab === 'payments' ? (
-                    payments.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">결제 내역이 없습니다.</p> : (
+                    filteredPayments.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">{searchQuery ? '검색 결과가 없습니다.' : '결제 내역이 없습니다.'}</p> : (
                     <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b bg-muted/30">
                         <th className="text-left p-2">일시</th><th className="text-left p-2">이메일</th><th className="text-left p-2">이름</th>
                         <th className="text-left p-2">수단</th>
                         <th className="text-left p-2">플랜</th><th className="text-left p-2">주기</th><th className="text-right p-2">금액</th>
                         <th className="text-left p-2">상태</th><th className="text-left p-2">결제ID</th>
-                    </tr></thead><tbody>{payments.map((p, i) => (
+                        <th className="text-left p-2">가맹점회원ID</th>
+                    </tr></thead><tbody>{filteredPayments.map((p, i) => (
                         <tr key={i} className={`border-b hover:bg-muted/30 ${p.status === 'cancelled' || p.status === 'refunded' ? 'bg-red-50/50' : ''}`}>
                             <td className="p-2 whitespace-nowrap">{fmtDate(String(p.created_at))}</td>
                             <td className="p-2">{String(p.user_email || '-')}</td>
@@ -1644,6 +1677,18 @@ function PaymentHistory() {
                             <td className={`p-2 text-right font-mono ${p.status === 'cancelled' ? 'line-through text-red-500' : ''}`}>{(Number(p.amount) || 0).toLocaleString()}원</td>
                             <td className="p-2">{statusBadge(p.status, p.cancelled_by)}</td>
                             <td className="p-2 text-muted-foreground truncate max-w-[120px]">{String(p.payment_id || p.portone_payment_id || '')}</td>
+                            <td className="p-2">
+                                {p.user_id ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => { navigator.clipboard?.writeText(String(p.user_id)); toast.success('가맹점회원ID 복사됨'); }}
+                                        title={`클릭하여 복사: ${String(p.user_id)}`}
+                                        className="font-mono text-[10px] text-muted-foreground hover:text-foreground hover:underline"
+                                    >
+                                        {String(p.user_id).slice(0, 8)}…
+                                    </button>
+                                ) : '-'}
+                            </td>
                         </tr>
                     ))}</tbody></table></div>)
 
