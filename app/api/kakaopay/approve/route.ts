@@ -29,6 +29,15 @@ export async function GET(request: NextRequest) {
             .single();
 
         if (sessionError || !session) {
+            await log.error('kakaopay', 'approve_session_not_found', {
+                userId: partnerUserId,
+                message: 'kakaopay_sessions row not found at approve callback',
+                metadata: {
+                    partnerOrderId,
+                    pgToken,
+                    supabaseError: sessionError?.message ?? null,
+                },
+            });
             return NextResponse.redirect(new URL('/dashboard/subscribe?status=fail&error=session_not_found', request.url));
         }
 
@@ -51,6 +60,15 @@ export async function GET(request: NextRequest) {
             .single();
 
         if (!plan) {
+            await log.error('kakaopay', 'approve_plan_not_found', {
+                userId: partnerUserId,
+                message: `subscription_plan slug=${session.plan_slug} not found`,
+                metadata: {
+                    planSlug: session.plan_slug,
+                    tid: approveResponse.tid,
+                    sid,
+                },
+            });
             return NextResponse.redirect(new URL('/dashboard/subscribe?status=fail&error=plan_not_found', request.url));
         }
 
@@ -162,6 +180,20 @@ export async function GET(request: NextRequest) {
                     console.error('[kakaopay/approve] subscription 생성 실패 후 자동환불 실패:', refundErr);
                 }
             }
+            await log.error('kakaopay', 'approve_subscription_insert_failed', {
+                userId: partnerUserId,
+                message: subscriptionInsertError?.message || 'subscription insert returned null',
+                metadata: {
+                    tid: approveResponse.tid,
+                    sid,
+                    planSlug: actualPlan.slug,
+                    billingCycle: session.billing_cycle,
+                    amount: session.amount,
+                    isTrial,
+                    partnerOrderId,
+                    autoRefundAttempted: !isTrial,
+                },
+            });
             try {
                 const { captureError } = await import('@/lib/monitoring/sentry-helpers');
                 captureError(subscriptionInsertError ?? new Error('subscription insert returned null'), {
@@ -336,6 +368,27 @@ export async function GET(request: NextRequest) {
         );
 
     } catch (error) {
+        // 미처 잡히지 않은 throw — kakaoPayApprove 통신 실패가 가장 흔함.
+        // 카카오페이 측에는 SID가 발급됐을 수 있으므로 운영자 수동 복구가 필요.
+        await log.error('kakaopay', 'approve_unhandled_exception', {
+            userId: partnerUserId,
+            message: (error as Error).message,
+            metadata: {
+                partnerOrderId,
+                pgToken,
+                stack: (error as Error).stack?.split('\n').slice(0, 6).join('\n'),
+                hint: 'kakao 측에 SID가 발급됐을 수 있음 — admin recover-payment API로 수동 복구 검토',
+            },
+        });
+        try {
+            const { captureError } = await import('@/lib/monitoring/sentry-helpers');
+            captureError(error as Error, {
+                area: 'billing',
+                level: 'error',
+                tags: { provider: 'kakaopay', stage: 'approve_unhandled_exception' },
+                metadata: { userId: partnerUserId, partnerOrderId },
+            });
+        } catch { /* sentry 실패는 무시 */ }
         const errorMsg = encodeURIComponent((error as Error).message);
         return NextResponse.redirect(
             new URL(`/dashboard/subscribe?status=fail&error=${errorMsg}`, request.url)

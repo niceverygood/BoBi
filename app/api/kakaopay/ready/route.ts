@@ -3,6 +3,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { kakaoPayReady } from '@/lib/kakaopay/client';
 import { checkTrialEligibility, isTrialEligiblePlan } from '@/lib/subscription/trial';
 import { getPlanPrice } from '@/lib/utils/pricing';
+import { log } from '@/lib/monitoring/system-log';
 
 // 카카오페이 최소 결제 금액 (정기결제 SID 발급 시 required)
 // 체험 모드에서는 이 금액으로 임시 결제 후 approve 직후 즉시 환불.
@@ -131,6 +132,17 @@ export async function POST(request: Request) {
             }, { onConflict: 'user_id' });
 
         if (sessionUpsertError) {
+            await log.error('kakaopay', 'ready_session_upsert_failed', {
+                userId: user.id,
+                userEmail: user.email,
+                message: sessionUpsertError.message,
+                metadata: {
+                    planSlug,
+                    partnerOrderId,
+                    intent: useTrial ? 'trial' : 'subscribe',
+                    tid: readyResponse.tid,
+                },
+            });
             try {
                 const { captureError } = await import('@/lib/monitoring/sentry-helpers');
                 captureError(new Error(`kakaopay_sessions upsert failed: ${sessionUpsertError.message}`), {
@@ -159,6 +171,18 @@ export async function POST(request: Request) {
             mobileRedirectUrl: readyResponse.next_redirect_mobile_url,
         });
     } catch (error) {
+        await log.error('kakaopay', 'ready_kakao_api_failed', {
+            userId: user.id,
+            userEmail: user.email,
+            message: (error as Error).message,
+            metadata: {
+                planSlug,
+                partnerOrderId,
+                billingCycle,
+                intent: useTrial ? 'trial' : 'subscribe',
+                chargeAmount,
+            },
+        });
         return NextResponse.json(
             { error: (error as Error).message },
             { status: 500 }
