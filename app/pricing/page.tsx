@@ -175,10 +175,10 @@ export default function PricingPage() {
                                     </ul>
                                     <Link
                                         href={slug === 'free' ? '/auth/signup' : `/dashboard/subscribe?plan=${slug}`}
-                                        className="mt-auto"
+                                        className="block mt-auto"
                                     >
                                         <Button
-                                            className={`w-full ${isRecommended ? 'bg-gradient-primary hover:opacity-90' : ''}`}
+                                            className={`w-full h-11 ${isRecommended ? 'bg-gradient-primary hover:opacity-90' : ''}`}
                                             variant={isRecommended ? 'default' : 'outline'}
                                         >
                                             {slug === 'free' ? '무료로 시작' : slug === 'basic' ? '3일 무료 체험 시작' : '구독 시작하기'}
@@ -335,7 +335,7 @@ export default function PricingPage() {
                                     <div className="mt-auto">
                                         <ExternalLinkButton
                                             url="https://open.kakao.com/o/sBoBi"
-                                            className={`w-full ${isRecommended ? 'bg-gradient-primary hover:opacity-90' : ''}`}
+                                            className={`w-full h-11 ${isRecommended ? 'bg-gradient-primary hover:opacity-90' : ''}`}
                                             variant={isRecommended ? 'default' : 'outline'}
                                         >
                                             도입 문의하기
