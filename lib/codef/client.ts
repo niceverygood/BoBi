@@ -625,15 +625,16 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
 
     // HIRA(심평원) 조회 날짜 규칙:
     // - endDate: 오늘이 아닌 어제까지만 (당일 데이터 미반영)
-    // - startDate: 최대 1년 전까지 (5년은 CF-13001 오류 발생)
+    // - startDate: HIRA 본인 진료내역은 최대 5년 보관. 보험설계사 인수심사용으로 5년치 필요.
+    //   과거 1년으로 제한된 적이 있었으나 마케팅·AI 프롬프트는 5년 기준으로 작성되어 데이터 누락이 있었음.
     const now = new Date();
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     const endDate = params.endDate || yesterday.toISOString().slice(0, 10).replace(/-/g, '');
 
-    const oneYearAgo = new Date(yesterday);
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-    const startDate = params.startDate || oneYearAgo.toISOString().slice(0, 10).replace(/-/g, '');
+    const fiveYearsAgo = new Date(yesterday);
+    fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
+    const startDate = params.startDate || fiveYearsAgo.toISOString().slice(0, 10).replace(/-/g, '');
 
     const isSmsLogin = params.loginType === '2';
 
@@ -769,15 +770,15 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
 }> {
     const token = await getAccessToken();
 
-    // HIRA 조회 날짜 규칙: 어제까지, 최대 1년
+    // HIRA 조회 날짜 규칙: 어제까지, 자동차보험 진료내역도 HIRA 정책상 최대 5년 보관.
     const now = new Date();
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     const endDate = params.endDate || yesterday.toISOString().slice(0, 10).replace(/-/g, '');
 
-    const oneYearAgo = new Date(yesterday);
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-    const startDate = params.startDate || oneYearAgo.toISOString().slice(0, 10).replace(/-/g, '');
+    const fiveYearsAgo = new Date(yesterday);
+    fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
+    const startDate = params.startDate || fiveYearsAgo.toISOString().slice(0, 10).replace(/-/g, '');
 
     const isSmsLogin = params.loginType === '2';
 
