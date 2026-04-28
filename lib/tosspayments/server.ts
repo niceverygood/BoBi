@@ -203,3 +203,69 @@ export async function deleteBillingKey(billingKey: string): Promise<{ success: b
         return { success: false, errorMessage: (err as Error).message };
     }
 }
+
+/**
+ * 결제 취소 (전액/부분)
+ *
+ * POST https://api.tosspayments.com/v1/payments/{paymentKey}/cancel
+ *
+ * cancelAmount 미지정 시 전액 취소.
+ */
+export async function cancelPayment(params: {
+    paymentKey: string;
+    cancelReason: string;
+    cancelAmount?: number;
+}): Promise<{
+    success: boolean;
+    cancelledAmount?: number;
+    status?: string;
+    errorCode?: string;
+    errorMessage?: string;
+    raw?: unknown;
+}> {
+    try {
+        const body: Record<string, unknown> = { cancelReason: params.cancelReason };
+        if (typeof params.cancelAmount === 'number') {
+            body.cancelAmount = params.cancelAmount;
+        }
+
+        const response = await fetch(
+            `${TOSS_API_BASE}/v1/payments/${encodeURIComponent(params.paymentKey)}/cancel`,
+            {
+                method: 'POST',
+                headers: {
+                    Authorization: authHeader(),
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(body),
+            },
+        );
+
+        const json = (await response.json()) as Record<string, unknown>;
+
+        if (!response.ok || (json && typeof json === 'object' && 'code' in json && !('status' in json))) {
+            return {
+                success: false,
+                errorCode: String(json?.code || `HTTP_${response.status}`),
+                errorMessage: String(json?.message || `토스페이먼츠 결제 취소 실패 (HTTP ${response.status})`),
+                raw: json,
+            };
+        }
+
+        const cancels = Array.isArray(json.cancels) ? (json.cancels as Array<{ cancelAmount?: number }>) : [];
+        const cancelledAmount = cancels.reduce((sum, c) => sum + (Number(c.cancelAmount) || 0), 0);
+
+        return {
+            success: true,
+            cancelledAmount: cancelledAmount || params.cancelAmount,
+            status: typeof json.status === 'string' ? json.status : undefined,
+            raw: json,
+        };
+    } catch (err) {
+        return {
+            success: false,
+            errorCode: 'NETWORK_ERROR',
+            errorMessage: (err as Error).message,
+        };
+    }
+}

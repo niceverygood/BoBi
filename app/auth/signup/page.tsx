@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Shield, ArrowLeft, Loader2 } from 'lucide-react';
 import { KakaoIcon } from '@/components/icons/KakaoIcon';
 import Link from 'next/link';
+import { track } from '@/lib/analytics/events';
 
 export default function SignupPage() {
     const [email, setEmail] = useState('');
@@ -44,6 +45,7 @@ export default function SignupPage() {
             setError(error.message);
             setLoading(false);
         } else {
+            track('user_signup', { method: 'email', has_company: !!company });
             setSuccess(true);
             setLoading(false);
         }
@@ -52,6 +54,8 @@ export default function SignupPage() {
     const handleKakaoLogin = async () => {
         setKakaoLoading(true);
         setError(null);
+
+        track('user_signup', { method: 'kakao_oauth', has_company: false });
 
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'kakao',

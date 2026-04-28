@@ -7,6 +7,7 @@ import {
     transformContractToTerms,
     type ProductTermsInfo,
 } from '@/lib/codef/client';
+import { getUserPlan, canAccessCodef } from '@/lib/subscription/access';
 
 export const maxDuration = 120;
 
@@ -17,6 +18,18 @@ export async function POST(request: Request) {
 
         if (authError || !user) {
             return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
+        }
+
+        const plan = await getUserPlan(supabase, user.id);
+        if (!canAccessCodef(plan)) {
+            return NextResponse.json(
+                {
+                    error: '약관 자동 조회는 베이직 플랜 이상에서 이용 가능합니다.',
+                    requiresPlan: 'basic',
+                    feature: 'codef_product_terms',
+                },
+                { status: 403 },
+            );
         }
 
         const body = await request.json();

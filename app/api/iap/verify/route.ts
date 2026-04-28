@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { GoogleAuth } from 'google-auth-library';
+import { getPlanPrice } from '@/lib/utils/pricing';
+import { log } from '@/lib/monitoring/system-log';
 
 // Apple App Store 영수증 검증
 async function verifyAppleReceipt(receipt: string) {
@@ -101,7 +103,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
   }
 
-  const { platform, receipt, productId, purchaseToken } = await request.json();
+  const { platform, receipt, productId, purchaseToken, restore } = await request.json();
 
   // 영수증 검증
   let verification;
@@ -120,6 +122,12 @@ export async function POST(request: Request) {
   }
 
   if (!verification.valid) {
+    log.error('iap', 'iap_verification_failed', {
+      userId: user.id,
+      userEmail: user.email,
+      message: verification.error || '영수증 검증 실패',
+      metadata: { platform, productId, hasReceipt: !!receipt, hasToken: !!purchaseToken },
+    });
     return NextResponse.json({ error: verification.error || '영수증 검증에 실패했습니다.' }, { status: 400 });
   }
 
@@ -131,16 +139,35 @@ export async function POST(request: Request) {
 
   const serviceClient = await createServiceClient();
 
-  // 영수증 replay attack 방지: 동일 transactionId 중복 체크
+  // 동일 transactionId 중복 체크
+  //   - 같은 user이면 멱등(이미 sync된 상태 → 200 success 반환)
+  //   - 다른 user이면 replay attack → 409 거부
   if (verification.transactionId) {
     const { data: existingTx } = await serviceClient
       .from('subscriptions')
-      .select('id')
+      .select('id, user_id, status')
       .eq('payment_key', verification.transactionId)
       .maybeSingle();
 
     if (existingTx) {
-      return NextResponse.json({ error: '이미 처리된 영수증입니다.' }, { status: 409 });
+      if (existingTx.user_id !== user.id) {
+        log.warn('iap', 'receipt_cross_account', {
+          userId: user.id,
+          userEmail: user.email,
+          metadata: { platform, transactionId: verification.transactionId, existingUserId: existingTx.user_id },
+        });
+        return NextResponse.json(
+          { error: '이 영수증은 다른 계정에 귀속되어 있습니다.' },
+          { status: 409 },
+        );
+      }
+      // 같은 user + 같은 transactionId → 이미 sync됨. 복원 케이스도 이 경로로 들어와 성공 처리.
+      return NextResponse.json({
+        ok: true,
+        alreadySynced: true,
+        subscriptionId: existingTx.id,
+        status: existingTx.status,
+      });
     }
   }
 
@@ -191,8 +218,59 @@ export async function POST(request: Request) {
     .single();
 
   if (subError) {
+    log.error('iap', 'subscription_insert_failed', {
+      userId: user.id,
+      userEmail: user.email,
+      message: subError.message,
+      metadata: { platform, productId: verification.productId, transactionId: verification.transactionId },
+    });
     return NextResponse.json({ error: subError.message }, { status: 500 });
   }
+
+  // payments 테이블에도 기록 → 관리자 통합 대시보드에서 카카오페이/토스/애플/구글 한 눈에 보이도록
+  const chargedAmount = getPlanPrice(subInfo.planSlug, subInfo.billingCycle as 'monthly' | 'yearly');
+  try {
+    await serviceClient
+      .from('payments')
+      .insert({
+        user_id: user.id,
+        subscription_id: subscription.id,
+        payment_id: verification.transactionId || `iap_${Date.now()}`,
+        portone_payment_id: null,
+        amount: chargedAmount,
+        status: 'paid',
+        billing_cycle: subInfo.billingCycle,
+        plan_slug: subInfo.planSlug,
+        payment_method: paymentProvider, // 'apple_iap' | 'google_play'
+      });
+  } catch { /* non-critical — payments schema may differ in some envs */ }
+
+  try {
+    await serviceClient
+      .from('payment_history')
+      .insert({
+        user_id: user.id,
+        subscription_id: subscription.id,
+        payment_id: verification.transactionId || `iap_${Date.now()}`,
+        amount: chargedAmount,
+        status: 'paid',
+        billing_cycle: subInfo.billingCycle,
+        plan_slug: subInfo.planSlug,
+      });
+  } catch { /* non-critical */ }
+
+  log.info('iap', restore ? 'iap_restored' : 'iap_purchased', {
+    userId: user.id,
+    userEmail: user.email,
+    metadata: {
+      provider: paymentProvider,
+      plan: subInfo.planSlug,
+      cycle: subInfo.billingCycle,
+      amount: chargedAmount,
+      transactionId: verification.transactionId,
+      productId: verification.productId,
+    },
+  });
 
   // usage_tracking 갱신
   const year = now.getFullYear();

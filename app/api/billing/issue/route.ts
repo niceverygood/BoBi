@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { payWithBillingKey } from '@/lib/portone/server';
+import { getPlanPrice } from '@/lib/utils/pricing';
+import { log } from '@/lib/monitoring/system-log';
 
 export async function POST(request: Request) {
     const supabase = await createClient();
@@ -32,7 +34,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: '존재하지 않는 플랜입니다.' }, { status: 400 });
     }
 
-    let amount = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
+    let amount = getPlanPrice(plan.slug, billingCycle);
 
     // 쿠폰 할인 적용 (검증 포함)
     let validatedCouponId: string | null = null;
@@ -87,7 +89,11 @@ export async function POST(request: Request) {
 
     if (existingSub && existingSub.plan) {
         const oldPlan = existingSub.plan as Record<string, any>;
-        const oldAmount = billingCycle === 'yearly' ? (oldPlan.price_yearly || 0) : (oldPlan.price_monthly || 0);
+        // 비례 차감용 — 알 수 없는 슬러그(레거시)면 차감 포기(0)하고 전액 과금
+        let oldAmount = 0;
+        try {
+            if (oldPlan?.slug) oldAmount = getPlanPrice(oldPlan.slug, billingCycle);
+        } catch { /* legacy plan — skip prorate */ }
 
         if (oldAmount > 0 && oldAmount < amount) {
             // 남은 기간 비례 계산
@@ -298,6 +304,19 @@ export async function POST(request: Request) {
                 payment_method: paymentMethod || 'card',
             });
     } catch { /* non-critical */ }
+
+    log.info('billing', 'payment_issued', {
+        userId: user.id,
+        userEmail: user.email,
+        metadata: {
+            provider: paymentMethod || 'card',
+            amount,
+            plan: actualPlan.slug,
+            cycle: billingCycle,
+            paymentId: finalPaymentId,
+            coupon: couponCode || null,
+        },
+    });
 
     // 쿠폰 사용 기록
     if (validatedCouponId) {

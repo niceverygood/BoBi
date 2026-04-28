@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Crown, ArrowLeft, Sparkles } from 'lucide-react';
+import { Crown, ArrowLeft, Sparkles, Loader2 } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import { apiFetch } from '@/lib/api/client';
 import type { PlanFeatures } from '@/types/subscription';
@@ -15,12 +16,23 @@ interface FeatureGateProps {
     title: string;
     description?: string;
     children: React.ReactNode;
+    /** 접근 불가 시 표시 대신 이 경로로 리다이렉트 (마중물 업그레이드 페이지로 유도) */
+    redirectTo?: string;
 }
 
-export default function FeatureGate({ feature, title, description, children }: FeatureGateProps) {
+export default function FeatureGate({ feature, title, description, children, redirectTo }: FeatureGateProps) {
+    const router = useRouter();
     const { isFeatureEnabled, plan, loading } = useSubscription();
     const [trialEligible, setTrialEligible] = useState(false);
-    const [trialDays, setTrialDays] = useState(7);
+    const [trialDays, setTrialDays] = useState(3);
+
+    // 접근 불가 + 리다이렉트 지정 시 즉시 이동 (마중물 페이지)
+    useEffect(() => {
+        if (loading || !redirectTo) return;
+        if (!isFeatureEnabled(feature)) {
+            router.replace(redirectTo);
+        }
+    }, [loading, feature, redirectTo, isFeatureEnabled, router]);
 
     useEffect(() => {
         if (loading || plan.slug !== 'free') return;
@@ -43,6 +55,15 @@ export default function FeatureGate({ feature, title, description, children }: F
 
     if (isFeatureEnabled(feature)) {
         return <>{children}</>;
+    }
+
+    // 리다이렉트 모드: 이동 대기 중 로더 표시 (깜빡임 방지)
+    if (redirectTo) {
+        return (
+            <div className="flex justify-center py-20">
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            </div>
+        );
     }
 
     return (

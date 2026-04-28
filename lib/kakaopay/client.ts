@@ -209,3 +209,55 @@ export async function kakaoPayStatus(sid: string): Promise<{ status: string; ava
         available_at: data.available_at,
     };
 }
+
+// ── 6. 결제 취소 (Cancel) ──────────────────────────────
+// 이미 완료된 결제(approve / subscription)를 취소·환불한다.
+// 체험 플로우에서 SID 등록 시 임시 청구된 100원을 즉시 환불하는 용도로도 사용.
+// https://developers.kakaopay.com/docs/payment/online/single-payment#payment-cancel
+export interface KakaoPayCancelRequest {
+    tid: string;
+    cancelAmount: number;
+    cancelTaxFreeAmount?: number;
+    cancelVatAmount?: number;
+}
+
+export interface KakaoPayCancelResponse {
+    aid: string;
+    tid: string;
+    cid: string;
+    status: string;
+    partner_order_id?: string;
+    partner_user_id?: string;
+    payment_method_type?: string;
+    amount?: { total: number; tax_free: number; vat: number };
+    approved_cancel_amount?: { total: number; tax_free: number; vat: number };
+    canceled_amount?: { total: number; tax_free: number; vat: number };
+    cancel_available_amount?: { total: number; tax_free: number; vat: number };
+    item_name?: string;
+    created_at?: string;
+    approved_at?: string;
+    canceled_at?: string;
+}
+
+export async function kakaoPayCancel(params: KakaoPayCancelRequest): Promise<KakaoPayCancelResponse> {
+    const body = {
+        cid: CID,
+        tid: params.tid,
+        cancel_amount: params.cancelAmount,
+        cancel_tax_free_amount: params.cancelTaxFreeAmount ?? 0,
+        ...(params.cancelVatAmount !== undefined ? { cancel_vat_amount: params.cancelVatAmount } : {}),
+    };
+
+    const response = await fetch(`${KAKAOPAY_API_BASE}/cancel`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error_message || errData.msg || `카카오페이 결제 취소 실패 (${response.status})`);
+    }
+
+    return response.json();
+}

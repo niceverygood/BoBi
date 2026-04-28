@@ -13,6 +13,7 @@ import FeatureGate from '@/components/common/FeatureGate';
 import { DISEASE_COST_DATA, getDiseaseCostByCategory, type DiseaseCostInfo } from '@/lib/receipt/disease-cost-data';
 import { apiFetch } from '@/lib/api/client';
 import type { AccidentReceipt } from '@/types/accident-receipt';
+import TrackFeatureUse from '@/components/analytics/TrackFeatureUse';
 
 const CATEGORY_COLORS: Record<string, string> = {
     '암': 'bg-rose-100 text-rose-700 border-rose-200',
@@ -132,6 +133,7 @@ function AccidentReceiptContent() {
 
     return (
         <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+            <TrackFeatureUse feature="accident_receipt" />
             {/* 헤더 */}
             <div className="flex items-center gap-3">
                 <Link href={fromRiskReport ? '/dashboard/risk-report' : '/dashboard'}>
@@ -344,7 +346,7 @@ function AccidentReceiptContent() {
 
 export default function AccidentReceiptPage() {
     return (
-        <FeatureGate feature="virtual_receipt" title="가상 영수증">
+        <FeatureGate feature="virtual_receipt" title="가상 영수증" redirectTo="/upgrade/virtual-receipt">
             <Suspense fallback={
                 <div className="max-w-4xl mx-auto py-12">
                     <LoadingSpinner text="페이지 로딩 중..." size="lg" />

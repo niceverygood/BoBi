@@ -10,13 +10,14 @@ type FetchedPlan = {
 
 /**
  * 사용자의 활성 플랜을 조회한다. 없으면 무료로 간주.
+ * 3일 무료체험(status='trialing') 사용자는 체험 중인 플랜(보통 basic)으로 취급한다.
  */
 export async function getUserPlan(supabase: SupabaseClient, userId: string): Promise<FetchedPlan> {
     const { data } = await supabase
         .from('subscriptions')
         .select('plan:subscription_plans(slug, features)')
         .eq('user_id', userId)
-        .eq('status', 'active')
+        .in('status', ['active', 'trialing'])
         .order('updated_at', { ascending: false })
         .limit(1);
 
@@ -37,4 +38,13 @@ export function canAccessProFeature(
     const val = features[feature];
     if (val !== undefined) return val === true;
     return PRO_PLAN_SLUGS.has(plan.slug);
+}
+
+/**
+ * CODEF 자동 조회(진료정보/건강검진/약관/보험 조회) 사용 가능 여부.
+ * 무료 플랜은 막고, 베이직 이상(체험 포함) 허용.
+ */
+export function canAccessCodef(plan: FetchedPlan): boolean {
+    if (!plan) return false;
+    return plan.slug !== 'free';
 }

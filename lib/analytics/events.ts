@@ -22,19 +22,29 @@ export type EventName =
     | 'analysis_started'
     | 'analysis_completed'
     | 'analysis_failed'
+    | 'analysis_limit_reached'          // 무료 한도 소진 — 결제 윈도우
     // 리포트
     | 'risk_report_generated'
     | 'future_me_generated'
     | 'future_me_pdf_downloaded'
     | 'future_me_shared_kakao'
+    // 기능 사용 (설계사 journey 퍼널)
+    | 'feature_used'                    // props.feature: medical|health|receipt|future|risk_report
     // 대시보드 / 리텐션 (A/B 테스트 대상)
     | 'dashboard_viewed'
     | 'dashboard_followup_shown'       // 팔로업 위젯 노출
     | 'dashboard_followup_clicked'     // 팔로업 클릭
     | 'dashboard_kpi_viewed'
+    // 튜토리얼 (간접 체험 → 결제 전환)
+    | 'tutorial_viewed'
+    | 'tutorial_step_shown'            // props.step_id, props.step_index
+    | 'tutorial_completed'
+    | 'tutorial_cta_clicked'           // 튜토리얼 → 실제 분석 CTA 클릭
     // 결제
     | 'subscribe_page_viewed'
-    | 'checkout_started'
+    | 'subscribe_plan_selected'        // props.plan_slug
+    | 'subscribe_method_selected'      // props.method
+    | 'checkout_started'               // 결제 버튼 클릭 (PG 호출 직전)
     | 'checkout_completed'
     | 'checkout_failed'
     | 'coupon_applied'

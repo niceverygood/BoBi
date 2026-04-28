@@ -11,13 +11,13 @@ import { Label } from '@/components/ui/label';
 import {
     ArrowLeft, Sparkles, Loader2, AlertTriangle, Download,
     ShieldCheck, ShieldAlert, ShieldOff,
-    MessageCircle, Users, DollarSign,
+    Users, DollarSign,
 } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import FeatureGate from '@/components/common/FeatureGate';
-import SendKakaoDialog from '@/components/future-me/SendKakaoDialog';
 import { apiFetch } from '@/lib/api/client';
 import type { FutureMeResult, FutureMeScenario, CategoryAmount } from '@/types/future-me';
+import TrackFeatureUse from '@/components/analytics/TrackFeatureUse';
 
 interface CustomerCardData {
     customer: { id: string; name: string; birth_date: string | null; gender: string | null; phone?: string | null };
@@ -69,9 +69,6 @@ function FutureMeContent() {
     const [additionalPremium, setAdditionalPremium] = useState('');
 
     const [result, setResult] = useState<FutureMeResult | null>(null);
-    const [reportId, setReportId] = useState<string | null>(null);
-    const [customerPhone, setCustomerPhone] = useState<string>('');
-    const [kakaoOpen, setKakaoOpen] = useState(false);
     const [generating, setGenerating] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [pdfLoading, setPdfLoading] = useState(false);
@@ -86,7 +83,6 @@ function FutureMeContent() {
             try {
                 const data = await apiFetch<CustomerCardData>(`/api/customers/${customerId}`);
                 setCustomerData(data);
-                if (data.customer.phone) setCustomerPhone(data.customer.phone);
                 if (!data.summary.riskReport || data.summary.riskReport.riskItems.length === 0) {
                     setCustomerError('이 고객의 질병위험도 리포트가 없습니다. 먼저 병력 분석과 위험도 리포트를 생성해주세요.');
                 }
@@ -131,7 +127,6 @@ function FutureMeContent() {
                 },
             });
             setResult(data.result);
-            setReportId(data.reportId);
             // 분석 완료 이벤트
             import('@/lib/analytics/events').then(({ track }) => {
                 track('future_me_generated', {
@@ -160,15 +155,6 @@ function FutureMeContent() {
         } finally {
             setPdfLoading(false);
         }
-    };
-
-    const handleSendKakao = async () => {
-        if (!result) return;
-        if (!reportId) {
-            setError('리포트 저장이 완료되지 않아 발송할 수 없습니다. 잠시 후 다시 시도해주세요.');
-            return;
-        }
-        setKakaoOpen(true);
     };
 
     const handleAnalyzeAnother = () => {
@@ -216,6 +202,7 @@ function FutureMeContent() {
 
     return (
         <div className="max-w-3xl mx-auto space-y-5 animate-fade-in pb-8">
+            <TrackFeatureUse feature="future_me" />
             {/* 헤더 */}
             <div className="flex items-center gap-2">
                 <Link href={`/dashboard/customers/${customerId}`}>
@@ -456,13 +443,6 @@ function FutureMeContent() {
 
                     {/* 액션 버튼 영역 */}
                     <div className="space-y-2 no-print">
-                        <Button
-                            onClick={handleSendKakao}
-                            className="w-full h-12 bg-gradient-primary hover:opacity-90 text-base font-semibold"
-                        >
-                            <MessageCircle className="w-5 h-5 mr-2" />
-                            카카오톡으로 고객에게 전송
-                        </Button>
                         <div className="grid grid-cols-2 gap-2">
                             <Button
                                 variant="outline"
@@ -483,18 +463,6 @@ function FutureMeContent() {
                             </Button>
                         </div>
                     </div>
-
-                    {/* 카카오톡 발송 다이얼로그 */}
-                    {result && (
-                        <SendKakaoDialog
-                            open={kakaoOpen}
-                            onOpenChange={setKakaoOpen}
-                            reportId={reportId}
-                            result={result}
-                            defaultPhone={customerPhone}
-                            defaultCustomerName={customerData?.customer.name || ''}
-                        />
-                    )}
                 </>
             )}
         </div>
@@ -912,7 +880,7 @@ function SelfPayCategoryCell({ label, amount }: { label: string; amount: number 
 
 export default function FutureMePage() {
     return (
-        <FeatureGate feature="future_me" title="미래의 나">
+        <FeatureGate feature="future_me" title="미래의 나" redirectTo="/upgrade/future-me">
             <Suspense fallback={
                 <div className="max-w-3xl mx-auto py-12">
                     <LoadingSpinner text="페이지 로딩 중..." size="lg" />

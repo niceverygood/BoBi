@@ -16,12 +16,56 @@ import { getPlatform, isNative, type AppPlatform } from '@/lib/iap/platform';
 import { openExternal } from '@/lib/open-external';
 import EnterpriseInquiryDialog from '@/components/subscribe/EnterpriseInquiryDialog';
 import { SocialProofInline } from '@/components/common/SocialProof';
+import { track } from '@/lib/analytics/events';
 
 // 개인 플랜 아이콘 (팀 플랜은 엔터프라이즈 문의로 대체됨)
 const PLAN_ICONS: Record<string, typeof Zap> = {
     basic: Zap,
     pro: Crown,
 };
+
+// IAP 영수증을 받았으나 서버 sync가 실패한 경우 보관할 페이로드.
+// 재시도(또는 다음 페이지 진입)에서 /api/iap/verify로 다시 전송한다.
+type PendingIapReceipt = {
+    platform: AppPlatform;
+    receipt?: string;
+    productId: string;
+    purchaseToken?: string;
+    savedAt: number;
+};
+
+const PENDING_IAP_KEY = 'bobi:pending_iap_receipt';
+
+function loadPendingIapReceipt(): PendingIapReceipt | null {
+    if (typeof window === 'undefined') return null;
+    try {
+        const raw = window.localStorage.getItem(PENDING_IAP_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as PendingIapReceipt;
+        // 7일 이상 묵은 영수증은 폐기 — Apple/Google이 그 사이 환불·소멸 처리했을 수 있음
+        if (Date.now() - parsed.savedAt > 7 * 24 * 60 * 60 * 1000) {
+            window.localStorage.removeItem(PENDING_IAP_KEY);
+            return null;
+        }
+        return parsed;
+    } catch {
+        return null;
+    }
+}
+
+function savePendingIapReceipt(payload: PendingIapReceipt) {
+    if (typeof window === 'undefined') return;
+    try {
+        window.localStorage.setItem(PENDING_IAP_KEY, JSON.stringify(payload));
+    } catch { /* 용량 초과 등은 무시 */ }
+}
+
+function clearPendingIapReceipt() {
+    if (typeof window === 'undefined') return;
+    try {
+        window.localStorage.removeItem(PENDING_IAP_KEY);
+    } catch { /* ignore */ }
+}
 
 export default function SubscribePage() {
     return (
@@ -51,9 +95,12 @@ function SubscribeContent() {
     const [iapReady, setIapReady] = useState(false);
     const [enterpriseDialogOpen, setEnterpriseDialogOpen] = useState(false);
 
-    // 7일 무료 체험
+    // IAP 결제는 됐는데 서버 sync가 실패한 영수증을 localStorage에 보관해 재시도 가능하게 함
+    const [pendingReceipt, setPendingReceipt] = useState<PendingIapReceipt | null>(null);
+
+    // 3일 무료 체험
     const [trialEligible, setTrialEligible] = useState(false);
-    const [trialDays, setTrialDays] = useState(7);
+    const [trialDays, setTrialDays] = useState(3);
     const [useTrial, setUseTrial] = useState(false);
     const [trialChecked, setTrialChecked] = useState(false);
 
@@ -78,6 +125,22 @@ function SubscribeContent() {
         const detectedPlatform = getPlatform();
         setPlatform(detectedPlatform);
 
+        track('subscribe_page_viewed', {
+            plan_param: planParam || null,
+            coupon_param: couponParam || null,
+            platform: detectedPlatform,
+            current_plan: currentPlan?.slug || null,
+        });
+
+        // 카카오페이 체험 성공 후 돌아온 URL 감지 → 체험 시작 이벤트
+        if (searchParams.get('trial') === '1') {
+            const provider = searchParams.get('status') === 'success' ? 'kakaopay' : 'tosspayments';
+            track('trial_started', {
+                provider,
+                plan_slug: planParam || 'basic',
+            });
+        }
+
         // 네이티브 앱이면 인앱결제 초기화
         if (detectedPlatform !== 'web') {
             import('@/lib/iap/store').then(({ initializeStore }) => {
@@ -101,6 +164,10 @@ function SubscribeContent() {
                 if (name) setUserName(name);
             });
         });
+
+        // 직전 IAP 결제가 서버 sync에 실패한 경우 영수증이 보관돼 있으면 재시도 안내 표시
+        const pending = loadPendingIapReceipt();
+        if (pending) setPendingReceipt(pending);
     }, []);
 
     useEffect(() => {
@@ -109,14 +176,15 @@ function SubscribeContent() {
         }
     }, [planParam]);
 
-    // 체험 모드일 때 결제 수단을 토스로 강제 (현재 토스만 지원)
+    // 체험 모드일 때 결제 수단 제한:
+    //   토스·카카오페이는 체험 지원. 신용카드(이니시스)는 미지원 → 토스로 강제.
     useEffect(() => {
-        if (useTrial && trialEligible && paymentMethod !== 'tosspayments') {
+        if (useTrial && trialEligible && paymentMethod === 'card') {
             setPaymentMethod('tosspayments');
         }
     }, [useTrial, trialEligible, paymentMethod]);
 
-    // 선택 플랜에 대한 7일 무료 체험 자격 체크
+    // 선택 플랜에 대한 3일 무료 체험 자격 체크
     useEffect(() => {
         if (subLoading) return;
         const fetchEligibility = async () => {
@@ -359,6 +427,52 @@ function SubscribeContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedPlan, billingCycle]);
 
+    // 기존 Apple/Google 구독 복원 — StoreKit이 "이미 구독 중"을 반환하거나
+    // 과거에 결제됐지만 서버 sync가 실패한 상태를 수동 복구할 때 사용.
+    const handleIAPRestore = async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const { restorePurchases } = await import('@/lib/iap/store');
+            const result = await restorePurchases();
+
+            if (!result.success) {
+                setError(result.error || '구매 복원에 실패했습니다.');
+                setLoading(false);
+                return;
+            }
+
+            if (!result.receipt && !result.transactionId) {
+                setError('복원된 구독 정보를 찾지 못했습니다. 고객센터로 문의해주세요.');
+                setLoading(false);
+                return;
+            }
+
+            // 서버에 영수증 전송 — /api/iap/verify는 restore에도 멱등적으로 동작
+            const productId = result.productId
+                || `kr.bobi.app.${selectedPlan}.${billingCycle}`;
+
+            await apiFetch('/api/iap/verify', {
+                method: 'POST',
+                body: {
+                    platform,
+                    receipt: result.receipt,
+                    productId,
+                    purchaseToken: result.transactionId || result.receipt,
+                    restore: true,
+                },
+            });
+
+            setSuccess(true);
+        } catch (err) {
+            console.error('[IAP] Restore error:', err);
+            setError((err as Error).message || '구매 복원 중 오류가 발생했습니다.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // 인앱결제 (iOS / Android)
     const handleIAPSubscribe = async () => {
         setLoading(true);
@@ -382,28 +496,75 @@ function SubscribeContent() {
                 return;
             }
 
+            const productId = `kr.bobi.app.${selectedPlan}.${billingCycle}`;
             console.log('[IAP] Sending receipt to server:', {
                 platform,
                 hasReceipt: !!result.receipt,
                 hasToken: !!result.transactionId,
-                productId: `kr.bobi.app.${selectedPlan}.${billingCycle}`,
+                productId,
             });
 
-            // 서버에 영수증 검증 요청
-            await apiFetch('/api/iap/verify', {
-                method: 'POST',
-                body: {
+            // 서버 검증은 별도 try — 영수증은 수령했는데 서버 sync만 실패한 경우
+            // localStorage에 보관해 사용자가 재시도(또는 자동 재시도)할 수 있도록 한다.
+            try {
+                await apiFetch('/api/iap/verify', {
+                    method: 'POST',
+                    body: {
+                        platform,
+                        receipt: result.receipt,
+                        productId,
+                        purchaseToken: result.transactionId || result.receipt,
+                    },
+                });
+                clearPendingIapReceipt();
+                setSuccess(true);
+            } catch (verifyErr) {
+                savePendingIapReceipt({
                     platform,
                     receipt: result.receipt,
-                    productId: `kr.bobi.app.${selectedPlan}.${billingCycle}`,
+                    productId,
                     purchaseToken: result.transactionId || result.receipt,
-                },
-            });
-
-            setSuccess(true);
+                    savedAt: Date.now(),
+                });
+                setPendingReceipt(loadPendingIapReceipt());
+                setError(
+                    `결제는 완료되었으나 서버 동기화에 실패했습니다 (${(verifyErr as Error).message}). ` +
+                    `아래 "결제 동기화" 버튼을 눌러 다시 시도해주세요. 영수증은 안전하게 보관되어 있어 추가 결제는 발생하지 않습니다.`
+                );
+            }
         } catch (err) {
             console.error('[IAP] Subscribe error:', err);
             setError((err as Error).message || '결제 처리 중 오류가 발생했습니다.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 보관해둔 IAP 영수증을 다시 서버에 전송 — 첫 결제 후 sync 실패 시 사용
+    const handleIAPResync = async () => {
+        const pending = loadPendingIapReceipt();
+        if (!pending) {
+            setError('재시도할 영수증이 없습니다.');
+            return;
+        }
+        setLoading(true);
+        setError(null);
+        try {
+            await apiFetch('/api/iap/verify', {
+                method: 'POST',
+                body: {
+                    platform: pending.platform,
+                    receipt: pending.receipt,
+                    productId: pending.productId,
+                    purchaseToken: pending.purchaseToken,
+                    restore: true,
+                },
+            });
+            clearPendingIapReceipt();
+            setPendingReceipt(null);
+            setSuccess(true);
+        } catch (err) {
+            setError(`재시도 실패: ${(err as Error).message}. 잠시 후 다시 시도하시거나 고객센터로 문의해주세요.`);
         } finally {
             setLoading(false);
         }
@@ -422,6 +583,9 @@ function SubscribeContent() {
                     billingCycle,
                     ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
                     ...(appliedCoupon?.upgradeToPlan ? { upgradePlanSlug: appliedCoupon.upgradeToPlan } : {}),
+                    // 체험 자격 + 베이직 월간일 때만 체험 의도 전달.
+                    // 서버에서도 재검증되므로 클라이언트 조작 안전.
+                    ...(useTrial && trialEligible ? { intent: 'trial' } : {}),
                 },
             });
 
@@ -635,6 +799,15 @@ function SubscribeContent() {
 
     // 웹 결제: 금액 0원이면 무료 쿠폰 처리, 아니면 결제 수단별 분기
     const handleWebSubscribe = async () => {
+        track('checkout_started', {
+            plan_slug: selectedPlan,
+            billing_cycle: billingCycle,
+            payment_method: paymentMethod,
+            amount,
+            use_trial: useTrial && trialEligible,
+            has_coupon: !!appliedCoupon,
+        });
+
         // 쿠폰 적용으로 0원인 경우 결제 없이 바로 구독 생성
         if (amount === 0 && appliedCoupon) {
             return handleFreeCouponSubscribe();
@@ -652,6 +825,9 @@ function SubscribeContent() {
 
     if (success) {
         const isTrialSuccess = searchParams.get('trial') === '1';
+        // 카카오페이로 체험 시작한 경우 (status=success) — 100원 환불 안내를 보여줌
+        // (토스페이먼츠는 toss_status=success 를 사용하므로 구분 가능)
+        const isKakaoPayTrial = isTrialSuccess && searchParams.get('status') === 'success';
         return (
             <div className="max-w-lg mx-auto mt-12 animate-fade-in">
                 <Card className="border-0 shadow-xl text-center">
@@ -684,6 +860,14 @@ function SubscribeContent() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
+                        {isKakaoPayTrial && (
+                            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-left">
+                                <p className="text-xs text-amber-900 dark:text-amber-200 leading-relaxed">
+                                    <strong>카카오페이 알림:</strong> 정기결제 등록을 위해 <strong>100원이 결제 후 즉시 환불</strong>되었습니다.
+                                    카카오페이 앱에서 결제·환불 이력이 함께 보일 수 있으며, 실제 청구 금액은 <strong>0원</strong>입니다.
+                                </p>
+                            </div>
+                        )}
                         <Button
                             onClick={() => router.push('/dashboard')}
                             className="w-full h-11 bg-gradient-primary hover:opacity-90"
@@ -708,7 +892,10 @@ function SubscribeContent() {
         );
     }
 
-    const trialActive = useTrial && trialEligible && paymentMethod === 'tosspayments' && platform === 'web';
+    // 체험 가능 결제수단: 토스·카카오페이 (신용카드는 체험 미지원 → 일반 결제)
+    const trialActive = useTrial && trialEligible
+        && (paymentMethod === 'tosspayments' || paymentMethod === 'kakaopay')
+        && platform === 'web';
 
     const paymentLabel = trialActive
         ? `✨ ${trialDays}일 무료 체험 시작`
@@ -750,6 +937,42 @@ function SubscribeContent() {
             {/* 사회적 증거 — 결제 직전 안심 */}
             <SocialProofInline />
 
+            {/* IAP 결제는 됐는데 서버 sync 실패한 영수증이 보관돼 있으면 재시도 안내 */}
+            {pendingReceipt && !success && (
+                <Card className="border-amber-200 bg-amber-50">
+                    <CardContent className="flex items-start gap-3 py-4">
+                        <Loader2 className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+                        <div className="flex-1 space-y-2">
+                            <p className="text-sm font-medium text-amber-900">
+                                결제는 완료되었으나 서버 동기화가 끝나지 않은 영수증이 있습니다.
+                            </p>
+                            <p className="text-xs text-amber-800">
+                                상품: {pendingReceipt.productId} · 저장 시각: {new Date(pendingReceipt.savedAt).toLocaleString('ko-KR')}
+                            </p>
+                            <div className="flex gap-2 pt-1">
+                                <Button
+                                    size="sm"
+                                    onClick={handleIAPResync}
+                                    disabled={loading}
+                                    className="bg-amber-600 hover:bg-amber-700 text-white"
+                                >
+                                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : '결제 동기화'}
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => { clearPendingIapReceipt(); setPendingReceipt(null); }}
+                                    disabled={loading}
+                                    className="text-amber-700"
+                                >
+                                    <X className="w-4 h-4 mr-1" /> 닫기
+                                </Button>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
             <div className="grid lg:grid-cols-5 gap-6">
                 {/* Left: Plan Selection */}
                 <div className="lg:col-span-3 space-y-4">
@@ -768,7 +991,10 @@ function SubscribeContent() {
                                 return (
                                     <button
                                         key={slug}
-                                        onClick={() => setSelectedPlan(slug)}
+                                        onClick={() => {
+                                            setSelectedPlan(slug);
+                                            track('subscribe_plan_selected', { plan_slug: slug });
+                                        }}
                                         className={cn(
                                             'w-full p-4 rounded-xl border-2 text-left transition-all',
                                             selectedPlan === slug
@@ -1057,7 +1283,7 @@ function SubscribeContent() {
                                     </div>
                                 )}
 
-                                {/* 7일 무료 체험 — 베이직 선택 + 자격 있음 + 월간일 때만 노출 */}
+                                {/* 3일 무료 체험 — 베이직 선택 + 자격 있음 + 월간일 때만 노출 */}
                                 {trialChecked && trialEligible && selectedPlan === 'basic' && billingCycle === 'monthly' && platform === 'web' && (
                                     <div className="rounded-xl border-2 border-violet-200 bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/20 dark:to-violet-900/10 p-4 space-y-3">
                                         <div className="flex items-start gap-3">
@@ -1092,9 +1318,10 @@ function SubscribeContent() {
                                             </label>
                                         </div>
                                         {useTrial && (
-                                            <p className="text-[11px] text-violet-600 dark:text-violet-400 leading-relaxed pl-6">
-                                                💳 결제 수단은 <strong>토스 카드</strong>로 자동 설정됩니다. 오늘은 0원, {trialDays}일 후 {planInfo.priceMonthly.toLocaleString()}원이 청구됩니다.
-                                            </p>
+                                            <div className="text-[11px] text-violet-600 dark:text-violet-400 leading-relaxed pl-6">
+                                                💳 체험 가능 결제수단: <strong>카카오페이</strong> 또는 <strong>토스 카드</strong>
+                                                {' '}· 상세 결제 흐름은 아래 결제 요약에서 확인하세요.
+                                            </div>
                                         )}
                                     </div>
                                 )}
@@ -1105,7 +1332,10 @@ function SubscribeContent() {
                                         <p className="text-sm font-medium">결제 수단</p>
                                         <div className="grid grid-cols-3 gap-2">
                                             <button
-                                                onClick={() => setPaymentMethod('kakaopay')}
+                                                onClick={() => {
+                                                    setPaymentMethod('kakaopay');
+                                                    track('subscribe_method_selected', { method: 'kakaopay' });
+                                                }}
                                                 disabled={billingCycle === 'yearly'}
                                                 className={cn(
                                                     'p-2.5 rounded-lg border-2 text-center text-xs transition-all',
@@ -1118,7 +1348,10 @@ function SubscribeContent() {
                                                 카카오페이
                                             </button>
                                             <button
-                                                onClick={() => setPaymentMethod('tosspayments')}
+                                                onClick={() => {
+                                                    setPaymentMethod('tosspayments');
+                                                    track('subscribe_method_selected', { method: 'tosspayments' });
+                                                }}
                                                 className={cn(
                                                     'p-2.5 rounded-lg border-2 text-center text-xs transition-all relative',
                                                     paymentMethod === 'tosspayments'
@@ -1130,7 +1363,10 @@ function SubscribeContent() {
                                                 <span className="absolute -top-1.5 -right-1 bg-blue-500 text-white text-[9px] px-1 rounded font-semibold">쉬움</span>
                                             </button>
                                             <button
-                                                onClick={() => setPaymentMethod('card')}
+                                                onClick={() => {
+                                                    setPaymentMethod('card');
+                                                    track('subscribe_method_selected', { method: 'card' });
+                                                }}
                                                 className={cn(
                                                     'p-2.5 rounded-lg border-2 text-center text-xs transition-all',
                                                     paymentMethod === 'card'
@@ -1146,6 +1382,15 @@ function SubscribeContent() {
                                             {paymentMethod === 'tosspayments' && '토스페이먼츠 안전결제 · 카드번호 + 휴대폰 본인인증만으로 등록 (공동인증서 불필요)'}
                                             {paymentMethod === 'card' && 'KG이니시스를 통한 안전결제 (국내 주요 카드사 지원)'}
                                         </p>
+                                        {/* 카카오페이 + 체험 시 100원 임시결제/즉시환불 고지 (결제수단 선택 영역) */}
+                                        {paymentMethod === 'kakaopay' && useTrial && trialEligible && (
+                                            <div className="mt-2 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40">
+                                                <p className="text-[11px] text-amber-800 dark:text-amber-200 leading-relaxed">
+                                                    <strong>알림:</strong> 카카오페이 정기결제 등록 방식상 <strong>100원이 먼저 결제</strong>되었다가
+                                                    {' '}<strong>즉시 자동 환불</strong>됩니다. (실제 순 결제 금액 0원 · 카카오페이 앱에서 결제/환불 이력 확인 가능)
+                                                </p>
+                                            </div>
+                                        )}
                                         {billingCycle === 'yearly' && (
                                             <p className="text-[11px] text-amber-600">연간 결제는 신용카드(토스·이니시스)만 가능합니다.</p>
                                         )}
@@ -1186,6 +1431,31 @@ function SubscribeContent() {
                                     </div>
                                 )}
 
+                                {/* 최종 결제 요약 — 체험 시 오늘 청구 금액 명확 고지 */}
+                                {trialActive && (
+                                    <div className="p-4 rounded-xl bg-violet-50 dark:bg-violet-950/20 border-2 border-violet-300 dark:border-violet-800">
+                                        <p className="text-sm font-semibold text-violet-900 dark:text-violet-200 mb-2">
+                                            📋 오늘 결제 안내
+                                        </p>
+                                        <div className="space-y-1.5 text-xs text-violet-800 dark:text-violet-200">
+                                            {paymentMethod === 'kakaopay' ? (
+                                                <>
+                                                    <p>• 카카오페이 승인 시 <strong>100원</strong>이 먼저 결제됩니다.</p>
+                                                    <p>• 승인 직후 해당 <strong>100원은 자동으로 전액 환불</strong>됩니다. (순 결제 0원)</p>
+                                                    <p>• {trialDays}일 뒤 <strong>{planInfo.priceMonthly.toLocaleString()}원</strong>이 등록된 결제수단으로 자동 청구됩니다.</p>
+                                                    <p>• {trialDays}일 이내 설정 &gt; 구독 관리에서 해지 시 <strong>결제 0원</strong>.</p>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <p>• 오늘은 <strong>결제 0원</strong> (카드 등록만 진행).</p>
+                                                    <p>• {trialDays}일 뒤 <strong>{planInfo.priceMonthly.toLocaleString()}원</strong>이 등록된 카드로 자동 청구됩니다.</p>
+                                                    <p>• {trialDays}일 이내 설정 &gt; 구독 관리에서 해지 시 <strong>결제 0원</strong>.</p>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* 네이티브에서 쿠폰 적용 시 IAP 버튼 숨김 (웹 결제 링크 사용) */}
                                 {!(platform !== 'web' && appliedCoupon) && (
                                 <Button
@@ -1205,6 +1475,18 @@ function SubscribeContent() {
                                         </>
                                     )}
                                 </Button>
+                                )}
+
+                                {/* iOS/Android — 기존 구독이 있는데 앱에 반영 안 됐을 때 복원 */}
+                                {platform !== 'web' && (
+                                    <button
+                                        type="button"
+                                        onClick={handleIAPRestore}
+                                        disabled={loading || subLoading || !iapReady}
+                                        className="w-full text-xs text-primary underline underline-offset-4 py-2 disabled:opacity-50"
+                                    >
+                                        이미 구독 중이신가요? 구매 복원
+                                    </button>
                                 )}
 
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">

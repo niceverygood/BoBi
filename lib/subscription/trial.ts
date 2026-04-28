@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 /** 무료 체험 기간(일) */
-export const TRIAL_DAYS = 7;
+export const TRIAL_DAYS = 3;
 
 /** 체험 지원 플랜 */
 export const TRIAL_ELIGIBLE_PLANS = ['basic'] as const;

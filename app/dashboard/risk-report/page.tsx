@@ -12,6 +12,7 @@ import FeatureGate from '@/components/common/FeatureGate';
 import { apiFetch } from '@/lib/api/client';
 import { createClient } from '@/lib/supabase/client';
 import type { RiskReport } from '@/types/risk-report';
+import TrackFeatureUse from '@/components/analytics/TrackFeatureUse';
 
 function RiskReportContent() {
     const searchParams = useSearchParams();
@@ -127,6 +128,7 @@ function RiskReportContent() {
 
     return (
         <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+            <TrackFeatureUse feature="risk_report" />
             {/* 헤더 */}
             <div className="flex items-center gap-3">
                 <Link href={`/dashboard/analyze?analysisId=${analysisId}`}>
@@ -206,7 +208,7 @@ function RiskReportContent() {
 
 export default function RiskReportPage() {
     return (
-        <FeatureGate feature="risk_report" title="질병 위험도 리포트">
+        <FeatureGate feature="risk_report" title="질병 위험도 리포트" redirectTo="/upgrade/risk-report">
             <Suspense fallback={
                 <div className="max-w-4xl mx-auto py-12">
                     <LoadingSpinner text="페이지 로딩 중..." size="lg" />

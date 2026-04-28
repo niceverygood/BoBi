@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
     FileSearch, ArrowRight, HeartPulse, Receipt, Stethoscope,
-    Users, Star, Clock, TrendingUp, Eye,
+    Users, Star, Clock, TrendingUp, Eye, HelpCircle, Sparkles,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -109,21 +109,59 @@ export default function DashboardPage() {
 
     return (
         <div className="space-y-8 animate-fade-in">
-            {/* 인사말 */}
-            <div>
-                <h1 className="text-2xl sm:text-3xl font-bold">
-                    {loading ? <Skeleton className="h-9 w-64" /> : `안녕하세요, ${userName}님 👋`}
-                </h1>
-                <p className="text-muted-foreground mt-1">
-                    {loading ? <Skeleton className="h-5 w-80 mt-1" /> : `오늘도 성공적인 상담 되세요. 이번 달 남은 분석 ${displayRemaining}건입니다.`}
-                </p>
+            {/* 인사말 + 도움말 */}
+            <div className="flex items-start justify-between gap-3">
+                <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold">
+                        {loading ? <Skeleton className="h-9 w-64" /> : `안녕하세요, ${userName}님 👋`}
+                    </h1>
+                    <p className="text-muted-foreground mt-1">
+                        {loading ? <Skeleton className="h-5 w-80 mt-1" /> : `오늘도 성공적인 상담 되세요. 이번 달 남은 분석 ${displayRemaining}건입니다.`}
+                    </p>
+                </div>
+                <Link href="/dashboard/tutorial">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs shrink-0"
+                        aria-label="튜토리얼 — 5가지 기능 간접 체험"
+                    >
+                        <HelpCircle className="w-3.5 h-3.5 mr-1" />
+                        튜토리얼
+                    </Button>
+                </Link>
             </div>
 
-            {/* 🎁 베이직 7일 무료 체험 프로모션 (무료 유저 + 자격 있을 때만) */}
+            {/* 🎁 베이직 3일 무료 체험 프로모션 (무료 유저 + 자격 있을 때만) */}
             <TrialPromoBanner />
 
-            {/* 📊 사회적 증거 — 무료 유저에게 집중 노출 */}
-            {plan.slug === 'free' && !loading && <SocialProofStrip compact />}
+            {/* 📊 사회적 증거 — 무료 유저에게 집중 노출 + 튜토리얼 CTA */}
+            {plan.slug === 'free' && !loading && (
+                <SocialProofStrip
+                    compact
+                    leadingAction={
+                        <Link
+                            href="/dashboard/tutorial"
+                            aria-label="튜토리얼 이용해보기 — 5가지 기능 간접 체험"
+                            className="group relative overflow-hidden rounded-xl bg-[#1a56db] text-white shadow-sm hover:bg-[#1a56db]/90 transition-colors text-left p-3"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                                    <Sparkles className="w-4 h-4" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="font-bold text-sm leading-tight break-keep">
+                                        튜토리얼 이용해보기
+                                    </p>
+                                    <p className="text-[11px] text-white/80 mt-0.5 break-keep">
+                                        5가지 기능 간접 체험 →
+                                    </p>
+                                </div>
+                            </div>
+                        </Link>
+                    }
+                />
+            )}
 
             {/* ⭐ 팔로업 필요 고객 (리텐션 핵심 — 최상단 배치) */}
             <FollowupsWidget />

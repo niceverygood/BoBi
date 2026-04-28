@@ -113,7 +113,7 @@ export default function PricingPage() {
                         return (
                             <Card
                                 key={slug}
-                                className={`border-0 shadow-lg relative overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 flex flex-col ${isRecommended ? 'ring-2 ring-primary' : ''}`}
+                                className={`border-0 shadow-lg relative overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 flex flex-col h-full ${isRecommended ? 'ring-2 ring-primary' : ''}`}
                             >
                                 {isRecommended && (
                                     <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-bl-lg">
@@ -128,7 +128,7 @@ export default function PricingPage() {
                                         <CardTitle className="text-xl">{plan.name}</CardTitle>
                                         {slug === 'basic' && (
                                             <Badge className="bg-violet-600 text-white text-[10px] px-2 py-0.5">
-                                                7일 무료 체험
+                                                3일 무료 체험
                                             </Badge>
                                         )}
                                     </div>
@@ -144,7 +144,7 @@ export default function PricingPage() {
                                                 </p>
                                                 {slug === 'basic' && (
                                                     <p className="text-xs text-violet-600 font-semibold mt-1">
-                                                        ✨ 첫 7일 무료 · 언제든 해지 가능
+                                                        ✨ 첫 3일 무료 · 언제든 해지 가능
                                                     </p>
                                                 )}
                                             </>
@@ -181,7 +181,7 @@ export default function PricingPage() {
                                             className={`w-full h-11 ${isRecommended ? 'bg-gradient-primary hover:opacity-90' : ''}`}
                                             variant={isRecommended ? 'default' : 'outline'}
                                         >
-                                            {slug === 'free' ? '무료로 시작' : slug === 'basic' ? '7일 무료 체험 시작' : '구독 시작하기'}
+                                            {slug === 'free' ? '무료로 시작' : slug === 'basic' ? '3일 무료 체험 시작' : '구독 시작하기'}
                                         </Button>
                                     </Link>
                                 </CardContent>
@@ -286,7 +286,7 @@ export default function PricingPage() {
                         return (
                             <Card
                                 key={slug}
-                                className={`border-0 shadow-lg relative overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 flex flex-col ${isRecommended ? 'ring-2 ring-primary' : ''}`}
+                                className={`border-0 shadow-lg relative overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 flex flex-col h-full ${isRecommended ? 'ring-2 ring-primary' : ''}`}
                             >
                                 {isRecommended && (
                                     <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-bl-lg">

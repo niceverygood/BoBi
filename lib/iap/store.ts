@@ -177,8 +177,13 @@ export async function purchase(plan: PlanSlug, cycle: BillingCycle): Promise<Pur
         });
       };
 
-      // 이벤트 구독
+      // 이벤트 구독 — verified(성공) / 에러·취소 이벤트도 함께 캐치해 "결제 진행 중..." 무한로딩 방지
       store.when().verified(onVerified);
+      // CdvPurchase는 에러 상황에 따라 여러 이벤트가 존재. 가용한 것만 시도.
+      try { store.when().rejected(onError); } catch { /* 플러그인 버전에 따라 미지원 */ }
+      try { store.when().error(onError); } catch { /* 플러그인 버전에 따라 미지원 */ }
+      try { store.when().cancelled(() => onError(new Error('결제가 취소되었습니다.'))); } catch { /* ignore */ }
+      try { store.error((err: any) => onError(err)); } catch { /* ignore */ }
 
       // 30초 타임아웃
       setTimeout(() => {
@@ -186,7 +191,7 @@ export async function purchase(plan: PlanSlug, cycle: BillingCycle): Promise<Pur
           resolved = true;
           resolve({
             success: false,
-            error: '결제 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.',
+            error: '결제 응답 시간이 초과되었습니다. 이미 구독 중이시면 아래 "구매 복원" 버튼을 눌러주세요.',
           });
         }
       }, 30000);
@@ -216,17 +221,82 @@ export async function purchase(plan: PlanSlug, cycle: BillingCycle): Promise<Pur
   }
 }
 
-export async function restorePurchases(): Promise<PurchaseResult> {
+/**
+ * 기존 Apple/Google 구독을 복원. 애플/구글에서 active한 구독의 영수증·transactionId를
+ * 반환 — 호출자가 /api/iap/verify로 POST하여 DB와 sync한다.
+ *
+ * 반환되는 productId는 상품 ID(예: 'kr.bobi.app.basic.monthly')로, verify 엔드포인트의
+ * productId 파라미터로 그대로 전달 가능.
+ */
+export async function restorePurchases(): Promise<PurchaseResult & { productId?: string }> {
   if (!storeReady || !store) {
     return { success: false, error: '인앱결제를 초기화할 수 없습니다.' };
   }
 
-  try {
-    await store.restorePurchases();
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: '구매 복원에 실패했습니다.' };
-  }
+  return new Promise((resolve) => {
+    let resolved = false;
+
+    const onApproved = (transaction: any) => {
+      if (resolved) return;
+
+      const platform = getPlatform();
+      let receiptData: string | undefined;
+      let transactionId: string | undefined;
+      let productId: string | undefined;
+
+      // 트랜잭션에서 receipt / transactionId / productId 추출
+      if (platform === 'ios') {
+        receiptData = transaction.appStoreReceipt
+          || transaction.nativePurchase?.appStoreReceipt
+          || transaction.receipt;
+        transactionId = transaction.transactionId || transaction.id;
+      } else {
+        receiptData = transaction.purchaseToken || transaction.receipt;
+        transactionId = transaction.transactionId || transaction.purchaseToken || transaction.id;
+      }
+      productId = transaction.products?.[0]?.id
+        || transaction.productId
+        || transaction.id;
+
+      if (!receiptData && !transactionId) {
+        // 빈 트랜잭션 — 다음 것을 기다림
+        return;
+      }
+
+      resolved = true;
+      try { transaction.finish && transaction.finish(); } catch { /* ignore */ }
+      resolve({ success: true, receipt: receiptData, transactionId, productId });
+    };
+
+    // 애플/구글이 active 구독 이벤트를 다시 쏘면 그 중 첫 번째를 캐치
+    try { store.when().approved(onApproved); } catch { /* ignore */ }
+
+    // 15초 타임아웃 — 복원할 구독이 없으면 여기서 빠져나옴
+    setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        resolve({ success: false, error: '복원할 구독이 없습니다. 이미 다른 계정으로 구매하셨거나 아직 구매 이력이 없습니다.' });
+      }
+    }, 15000);
+
+    // 복원 트리거
+    try {
+      const p = store.restorePurchases();
+      if (p && typeof p.catch === 'function') {
+        p.catch((err: any) => {
+          if (!resolved) {
+            resolved = true;
+            resolve({ success: false, error: err?.message || '구매 복원에 실패했습니다.' });
+          }
+        });
+      }
+    } catch (err) {
+      if (!resolved) {
+        resolved = true;
+        resolve({ success: false, error: (err as Error).message || '구매 복원에 실패했습니다.' });
+      }
+    }
+  });
 }
 
 // 크레딧 구매 (소모성 아이템) — 이벤트 기반 처리

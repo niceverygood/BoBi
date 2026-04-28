@@ -1,4 +1,4 @@
--- 베이직 플랜 7일 무료 체험 지원
+-- 베이직 플랜 3일 무료 체험 지원
 --
 -- 변경 사항:
 --   1. subscriptions 테이블: trial_ends_at, trial_used 컬럼 + 'trialing' status 허용

@@ -21,7 +21,13 @@ export const SOCIAL_PROOF_STATS = {
     nps: '4.8',
 } as const;
 
-export function SocialProofStrip({ compact = false }: { compact?: boolean }) {
+export function SocialProofStrip({
+    compact = false,
+    leadingAction,
+}: {
+    compact?: boolean;
+    leadingAction?: React.ReactNode;
+}) {
     const items = [
         {
             icon: Users,
@@ -53,8 +59,13 @@ export function SocialProofStrip({ compact = false }: { compact?: boolean }) {
         },
     ];
 
+    const cols = leadingAction
+        ? 'grid-cols-2 md:grid-cols-5'
+        : 'grid-cols-2 md:grid-cols-4';
+
     return (
-        <div className={`grid gap-3 ${compact ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2 md:grid-cols-4'}`}>
+        <div className={`grid gap-3 ${cols}`}>
+            {leadingAction}
             {items.map(({ icon: Icon, label, value, color, bg }) => (
                 <Card key={label} className="border-0 shadow-sm">
                     <CardContent className={compact ? 'p-3' : 'p-4'}>

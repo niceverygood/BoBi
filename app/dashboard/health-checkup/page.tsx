@@ -13,6 +13,7 @@ import {
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { apiFetch } from '@/lib/api/client';
 import type { HealthCheckupPreview, DiseaseRiskPrediction } from '@/lib/codef/client';
+import TrackFeatureUse from '@/components/analytics/TrackFeatureUse';
 
 interface HealthCheckupResults {
     checkup?: {
@@ -875,6 +876,7 @@ function HealthCheckupContent() {
 
     return (
         <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
+            <TrackFeatureUse feature="health_checkup" />
             <div className="flex items-center gap-3">
                 <Link href="/dashboard">
                     <Button variant="ghost" size="icon"><ArrowLeft className="w-4 h-4" /></Button>
