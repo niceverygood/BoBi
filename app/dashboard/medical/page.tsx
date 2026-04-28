@@ -849,10 +849,15 @@ function MedicalInfoContent() {
                 <div className="space-y-3">
                     <h2 className="text-lg font-semibold flex items-center gap-2">
                         <Stethoscope className="w-5 h-5 text-blue-600" />
-                        진료 기록
+                        진료 · 처방 기록
                         <Badge variant="secondary" className="text-xs">{medicalTreatRecords.length}건</Badge>
                     </h2>
-                    {medicalTreatRecords.map((record, idx) => (
+                    <p className="text-xs text-muted-foreground -mt-1">
+                        병원 방문(심평원)과 처방조제 받은 약국(건보공단)이 함께 표시됩니다. 색상으로 구분됩니다.
+                    </p>
+                    {medicalTreatRecords.map((record, idx) => {
+                        const isPharmacy = record.resTreatType === '처방조제';
+                        return (
                         <Card key={idx} className="border-0 shadow-sm overflow-hidden">
                             <button
                                 onClick={() => toggleRecord(idx)}
@@ -860,11 +865,30 @@ function MedicalInfoContent() {
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-start gap-3 min-w-0 flex-1">
-                                        <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0 mt-0.5">
-                                            <Building2 className="w-4 h-4 text-blue-600" />
+                                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                                            isPharmacy
+                                                ? 'bg-emerald-100 dark:bg-emerald-900/30'
+                                                : 'bg-blue-100 dark:bg-blue-900/30'
+                                        }`}>
+                                            {isPharmacy
+                                                ? <Pill className="w-4 h-4 text-emerald-600" />
+                                                : <Building2 className="w-4 h-4 text-blue-600" />
+                                            }
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="font-semibold text-sm truncate">{record.resHospitalName || '의료기관'}</p>
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                <p className="font-semibold text-sm truncate">{record.resHospitalName || (isPharmacy ? '약국' : '의료기관')}</p>
+                                                <Badge
+                                                    variant="outline"
+                                                    className={`text-[10px] px-1.5 py-0 ${
+                                                        isPharmacy
+                                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800'
+                                                            : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800'
+                                                    }`}
+                                                >
+                                                    {isPharmacy ? '약국' : '병원'}
+                                                </Badge>
+                                            </div>
                                             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                                                 <Calendar className="w-3 h-3" />
                                                 <span>{formatDate(record.resTreatStartDate)}</span>
@@ -895,9 +919,14 @@ function MedicalInfoContent() {
 
                             {expandedRecords.has(idx) && (
                                 <div className="px-4 pb-4 pt-0 border-t">
+                                    {isPharmacy && (
+                                        <p className="text-[11px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 rounded-md px-2 py-1.5 mt-3">
+                                            ℹ️ 처방전을 받아 약을 조제한 약국입니다. 직접 방문하지 않으셨더라도 처방 데이터가 건강보험공단에 기록됩니다.
+                                        </p>
+                                    )}
                                     <div className="grid grid-cols-2 gap-3 py-3 text-xs">
                                         <div>
-                                            <span className="text-muted-foreground">내원일수</span>
+                                            <span className="text-muted-foreground">{isPharmacy ? '조제일수' : '내원일수'}</span>
                                             <p className="font-medium mt-0.5">{record.resVisitDays || '-'}일</p>
                                         </div>
                                         <div>
@@ -944,7 +973,8 @@ function MedicalInfoContent() {
                                 </div>
                             )}
                         </Card>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 
