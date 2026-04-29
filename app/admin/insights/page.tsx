@@ -88,7 +88,9 @@ const POSITIVE_WHEN_UP: Record<string, boolean> = {
 };
 
 export default function InsightsPage() {
-    const { isAdmin, loading: adminLoading } = useAdmin();
+    // hasAdminAccess: super + sub admin 모두 허용 (다른 /admin/* 페이지와 일관).
+    // 이전엔 isAdmin (super only)이라 sub-admin은 빈 화면을 봤음 + 사이드바에선 메뉴가 보이는 모순.
+    const { hasAdminAccess, loading: adminLoading, email } = useAdmin();
     const router = useRouter();
 
     const [period, setPeriod] = useState<PeriodType>('daily');
@@ -128,15 +130,50 @@ export default function InsightsPage() {
     };
 
     useEffect(() => {
-        if (!adminLoading && !isAdmin) {
+        if (!adminLoading && !hasAdminAccess) {
             router.replace('/dashboard');
             return;
         }
-        if (isAdmin) fetchLatest(period);
-    }, [isAdmin, adminLoading, period, router, fetchLatest]);
+        if (hasAdminAccess) fetchLatest(period);
+    }, [hasAdminAccess, adminLoading, period, router, fetchLatest]);
 
-    if (adminLoading || !isAdmin) {
-        return null;
+    // 권한 확인 중에도 layout(헤더·사이드바)을 그려서 빈 화면이 안 보이게 함.
+    // 이전엔 `return null`로 인해 sub-admin 또는 useAdmin race condition 시 완전 빈 화면이 떴음.
+    if (adminLoading) {
+        return (
+            <div className="min-h-screen bg-muted/30">
+                <Header />
+                <Sidebar />
+                <MobileNav />
+                <main className="md:pl-64 pt-16 pb-24">
+                    <div className="max-w-6xl mx-auto px-4 py-16 text-center text-sm text-muted-foreground">
+                        권한 확인 중...
+                    </div>
+                </main>
+            </div>
+        );
+    }
+
+    if (!hasAdminAccess) {
+        return (
+            <div className="min-h-screen bg-muted/30">
+                <Header />
+                <Sidebar />
+                <MobileNav />
+                <main className="md:pl-64 pt-16 pb-24">
+                    <div className="max-w-6xl mx-auto px-4 py-16 text-center">
+                        <Sparkles className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
+                        <h3 className="font-semibold mb-1">접근 권한이 없습니다</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                            AI 인사이트는 관리자 전용입니다. {email ? `(현재 로그인: ${email})` : ''}
+                        </p>
+                        <Button variant="outline" size="sm" onClick={() => router.replace('/dashboard')}>
+                            대시보드로 이동
+                        </Button>
+                    </div>
+                </main>
+            </div>
+        );
     }
 
     return (
