@@ -625,16 +625,18 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
 
     // HIRA(심평원) 조회 날짜 규칙:
     // - endDate: 오늘이 아닌 어제까지만 (당일 데이터 미반영)
-    // - startDate: HIRA 본인 진료내역은 최대 5년 보관. 보험설계사 인수심사용으로 5년치 필요.
-    //   과거 1년으로 제한된 적이 있었으나 마케팅·AI 프롬프트는 5년 기준으로 작성되어 데이터 누락이 있었음.
+    // - startDate: 최대 1년 전까지 — HIRA 단건 조회는 1년 초과 시 CF-13001
+    //   ("조회할 수 없는 기간 체크 오류") 발생. 5년치가 필요하면 별도로 1년 단위 chunk 호출 구현 필요.
     const now = new Date();
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     const endDate = params.endDate || yesterday.toISOString().slice(0, 10).replace(/-/g, '');
 
-    const fiveYearsAgo = new Date(yesterday);
-    fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
-    const startDate = params.startDate || fiveYearsAgo.toISOString().slice(0, 10).replace(/-/g, '');
+    const oneYearAgo = new Date(yesterday);
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    // setFullYear가 윤년 경계에서 다음달로 넘기는 경우(예: 2/29 → 3/1) 방어 — 하루 더 빼서 안전 마진
+    oneYearAgo.setDate(oneYearAgo.getDate() + 1);
+    const startDate = params.startDate || oneYearAgo.toISOString().slice(0, 10).replace(/-/g, '');
 
     const isSmsLogin = params.loginType === '2';
 
@@ -770,15 +772,17 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
 }> {
     const token = await getAccessToken();
 
-    // HIRA 조회 날짜 규칙: 어제까지, 자동차보험 진료내역도 HIRA 정책상 최대 5년 보관.
+    // HIRA 조회 날짜 규칙: 어제까지, 자동차보험 진료내역도 단건 조회는 최대 1년치만 허용.
+    // 1년 초과 시 CF-13001 ("조회할 수 없는 기간 체크 오류") 반환.
     const now = new Date();
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     const endDate = params.endDate || yesterday.toISOString().slice(0, 10).replace(/-/g, '');
 
-    const fiveYearsAgo = new Date(yesterday);
-    fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
-    const startDate = params.startDate || fiveYearsAgo.toISOString().slice(0, 10).replace(/-/g, '');
+    const oneYearAgo = new Date(yesterday);
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    oneYearAgo.setDate(oneYearAgo.getDate() + 1);
+    const startDate = params.startDate || oneYearAgo.toISOString().slice(0, 10).replace(/-/g, '');
 
     const isSmsLogin = params.loginType === '2';
 
