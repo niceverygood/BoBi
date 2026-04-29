@@ -18,6 +18,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import MobileNav from '@/components/layout/MobileNav';
 import { apiFetch } from '@/lib/api/client';
 import { openExternal } from '@/lib/open-external';
+import { isNative } from '@/lib/iap/platform';
 import { toast } from 'sonner';
 
 interface AdminStats {
@@ -612,8 +613,8 @@ export default function AdminPage() {
                     {/* Promo Code Cleanup - 총괄관리자만 */}
                     {isAdmin && <PromoSubCleanup />}
 
-                    {/* Quick Actions - 총괄관리자만 */}
-                    {isAdmin && (
+                    {/* Quick Actions - 총괄관리자 + 웹에서만 (네이티브 앱은 외부 브라우저 노출 방지) */}
+                    {isAdmin && !isNative() && (
                     <div>
                         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
                             빠른 작업
