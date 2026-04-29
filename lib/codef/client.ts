@@ -727,6 +727,72 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
     return { records };
 }
 
+/**
+ * HIRA 내진료정보를 1년 단위 chunk로 N번 호출해 다년치 합산 결과 반환.
+ *
+ * HIRA 단건 조회 한도: 최대 1년 (초과 시 CF-13001).
+ * 5년치를 받으려면 1년씩 5번 분할 호출이 유일한 방법.
+ *
+ * 동작:
+ * - 첫 호출은 params 그대로 — 2-Way 인증 트리거를 위임
+ * - 2-Way 필요 응답이면 그대로 반환 (caller가 사용자 인증 처리 후 재호출)
+ * - 첫 호출이 데이터를 받으면(인증 완료 상태) 추가 (years-1)번 호출로 더 옛날 기간 수집
+ * - 추가 chunk 중 일부 실패는 partial success로 처리(받은 것까지 반환)
+ */
+export async function fetchMyMedicalInfoChunked(
+    params: HiraMedicalRequest,
+    years: number = 5,
+): Promise<{
+    records: HiraMedicalRecord[];
+    requires2Way?: boolean;
+    twoWayData?: Record<string, unknown>;
+}> {
+    const firstResult = await fetchMyMedicalInfo(params);
+
+    // 2-Way 인증 필요 → caller에게 위임. chunked 호출은 인증 완료 후 재호출 시 진행됨.
+    if (firstResult.requires2Way) {
+        return firstResult;
+    }
+
+    const allRecords = [...firstResult.records];
+    if (years <= 1) {
+        return { records: allRecords };
+    }
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    for (let i = 1; i < years; i++) {
+        const chunkEnd = new Date(yesterday);
+        chunkEnd.setFullYear(chunkEnd.getFullYear() - i);
+        const chunkStart = new Date(chunkEnd);
+        chunkStart.setFullYear(chunkStart.getFullYear() - 1);
+        chunkStart.setDate(chunkStart.getDate() + 1);
+
+        const chunkParams: HiraMedicalRequest = {
+            ...params,
+            startDate: chunkStart.toISOString().slice(0, 10).replace(/-/g, ''),
+            endDate: chunkEnd.toISOString().slice(0, 10).replace(/-/g, ''),
+        };
+
+        try {
+            const chunkResult = await fetchMyMedicalInfo(chunkParams);
+            if (chunkResult.requires2Way) {
+                // 추가 chunk가 재인증을 요구하면 partial 반환 (사용자 1회 인증으로 모두 받는 게 목표)
+                console.warn(`[HIRA chunked medical] year ${i + 1} chunk requires re-auth — stopping`);
+                break;
+            }
+            allRecords.push(...chunkResult.records);
+            console.log(`[HIRA chunked medical] year ${i + 1} (${chunkParams.startDate}~${chunkParams.endDate}): ${chunkResult.records.length}건`);
+        } catch (err) {
+            // CF-00025 (세션 중복) 등 일부 chunk 실패는 partial success로 처리
+            console.warn(`[HIRA chunked medical] year ${i + 1} chunk failed:`, (err as Error).message);
+        }
+    }
+
+    return { records: allRecords };
+}
+
 // ─── HIRA 자동차보험 진료정보 조회 API ───────────────
 // 건강보험심사평가원 내 진료정보 열람(자동차보험)
 // /v1/kr/public/hw/hira-list/my-car-insurance
@@ -870,6 +936,61 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
     }
 
     return { records };
+}
+
+/**
+ * HIRA 자동차보험 진료내역을 1년 단위 chunk로 N번 호출해 다년치 합산.
+ * 동작 패턴은 fetchMyMedicalInfoChunked와 동일.
+ */
+export async function fetchMyCarInsuranceChunked(
+    params: HiraMedicalRequest,
+    years: number = 5,
+): Promise<{
+    records: HiraCarInsuranceRecord[];
+    requires2Way?: boolean;
+    twoWayData?: Record<string, unknown>;
+}> {
+    const firstResult = await fetchMyCarInsurance(params);
+
+    if (firstResult.requires2Way) {
+        return firstResult;
+    }
+
+    const allRecords = [...firstResult.records];
+    if (years <= 1) {
+        return { records: allRecords };
+    }
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    for (let i = 1; i < years; i++) {
+        const chunkEnd = new Date(yesterday);
+        chunkEnd.setFullYear(chunkEnd.getFullYear() - i);
+        const chunkStart = new Date(chunkEnd);
+        chunkStart.setFullYear(chunkStart.getFullYear() - 1);
+        chunkStart.setDate(chunkStart.getDate() + 1);
+
+        const chunkParams: HiraMedicalRequest = {
+            ...params,
+            startDate: chunkStart.toISOString().slice(0, 10).replace(/-/g, ''),
+            endDate: chunkEnd.toISOString().slice(0, 10).replace(/-/g, ''),
+        };
+
+        try {
+            const chunkResult = await fetchMyCarInsurance(chunkParams);
+            if (chunkResult.requires2Way) {
+                console.warn(`[HIRA chunked car] year ${i + 1} chunk requires re-auth — stopping`);
+                break;
+            }
+            allRecords.push(...chunkResult.records);
+            console.log(`[HIRA chunked car] year ${i + 1} (${chunkParams.startDate}~${chunkParams.endDate}): ${chunkResult.records.length}건`);
+        } catch (err) {
+            console.warn(`[HIRA chunked car] year ${i + 1} chunk failed:`, (err as Error).message);
+        }
+    }
+
+    return { records: allRecords };
 }
 
 // ─── 심평원 내가먹는약 한눈에 API ──────────────

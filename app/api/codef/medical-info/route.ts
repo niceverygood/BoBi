@@ -4,13 +4,19 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import {
     fetchMyMedicalInfo,
-    fetchMyCarInsurance,
+    fetchMyMedicalInfoChunked,
+    fetchMyCarInsuranceChunked,
     fetchMyMedicine,
     type HiraMedicalRequest,
 } from '@/lib/codef/client';
 import { getUserPlan, canAccessCodef } from '@/lib/subscription/access';
 
-export const maxDuration = 120;
+// HIRA chunked 호출(최대 5번 sequential × 30~60초)로 5년치 진료기록 수집 → 최대 5분 가량 소요.
+// Vercel Pro 플랜의 maxDuration 한도(300초)에 맞춰 설정.
+export const maxDuration = 300;
+
+// 진료내역 조회 기간 (년). HIRA 단건 호출 한도(1년)를 지키며 chunked 분할 호출.
+const MEDICAL_QUERY_YEARS = 5;
 
 export async function POST(request: Request) {
     try {
@@ -122,7 +128,8 @@ export async function POST(request: Request) {
 
             if (is2WayCompletion && effectiveQueryType === 'medical') {
                 // 2-Way 완료 시: 내진료정보(A) 발사 → 0.5초 후 내가먹는약(B) 발사 → 둘 다 수집
-                const medicalPromise = fetchMyMedicalInfo(params);
+                // 내진료정보는 chunked로 최대 MEDICAL_QUERY_YEARS년치 (HIRA 단건 1년 제한 회피)
+                const medicalPromise = fetchMyMedicalInfoChunked(params, MEDICAL_QUERY_YEARS);
 
                 const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
                 await delay(500);
@@ -161,8 +168,10 @@ export async function POST(request: Request) {
                     console.log(`[HIRA] 내가먹는약 다건요청 성공: ${medicineResult.records.length}건`);
                 }
             } else {
-                // 첫 요청 (2-Way 트리거) 또는 both 모드
-                const medicalResult = await fetchMyMedicalInfo(params);
+                // 첫 요청 (2-Way 트리거) 또는 both 모드.
+                // chunked 호출은 내부에서 첫 호출이 2-Way 응답이면 바로 그 결과를 반환하므로 안전.
+                // 인증 완료 후 본 분기에 다시 들어오는 경우는 거의 없지만, 들어와도 chunked가 처리.
+                const medicalResult = await fetchMyMedicalInfoChunked(params, MEDICAL_QUERY_YEARS);
 
                 if (medicalResult.requires2Way) {
                     console.log('[HIRA] 2-Way 인증 요청됨 (medical)');
@@ -190,9 +199,9 @@ export async function POST(request: Request) {
             }
         }
 
-        // 자동차보험 조회
+        // 자동차보험 조회 (chunked 5년치)
         if (effectiveQueryType === 'car') {
-            const carResult = await fetchMyCarInsurance(params);
+            const carResult = await fetchMyCarInsuranceChunked(params, MEDICAL_QUERY_YEARS);
 
             if (carResult.requires2Way) {
                 console.log('[HIRA] 2-Way 인증 요청됨 (car)');
