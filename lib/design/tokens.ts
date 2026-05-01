@@ -1,69 +1,30 @@
 // lib/design/tokens.ts
-// BoBi 디자인 시스템 — Toss 스타일 모노크롬 + 의료 도메인 teal 액센트.
+// BoBi 디자인 시스템 v2 — Pure Monochrome.
 //
-// 사용 원칙:
-// 1. 페이지 배경/카드/표 → neutral 회색 스케일만
-// 2. 강조(클릭/액션) → brand (단일 indigo)
-// 3. 의료·진료·건강 분석 컴포넌트만 → medical (teal)
-// 4. 상태(status) → soft tint 배지 (saturated 색 사용 금지)
-// 5. 결제수단(provider)은 카드 색 X, 작은 컬러 점만 (4px)
+// 원칙:
+// 1. 컬러는 0개 (UI 크롬에 의미 없는 색 사용 금지)
+// 2. 강조/식별은 텍스트 + 아이콘 + 굵기·크기·간격으로
+// 3. 단 하나 예외: 위험 액션(환불/취소 버튼)은 red-600 한 가지만
+// 4. 의료 도메인 액센트(teal)도 일단 보류 — 1차 안정화 후 별도 PR 검토
+//
+// 색이 정말 필요한 경우:
+// - 진단·차트 시각화 (결과 화면)
+// - 위험 행동 경고 (모달, 토스트의 destructive)
+// → 그 경우에만 직접 className으로 색 지정
 
-// ─── 컬러 ────────────────────────────────────────────────
-
-/** 중립 회색 — 페이지·카드·텍스트의 95%를 차지 */
-export const neutral = {
-    50: '#F9FAFB',
-    100: '#F3F4F6',
-    200: '#E5E7EB',
-    300: '#D1D5DB',
-    400: '#9CA3AF',
-    500: '#6B7280',
-    600: '#4B5563',
-    700: '#374151',
-    800: '#1F2937',
-    900: '#111827',
-} as const;
-
-/** 브랜드 — 클릭/액션/링크에만 사용 (Indigo) */
-export const brand = {
-    50: '#EEF2FF',
-    100: '#E0E7FF',
-    500: '#6366F1',
-    600: '#4F46E5',
-    700: '#4338CA',
-} as const;
-
-/** 의료 도메인 액센트 — 진료·건강 분석 컴포넌트에만 (Teal) */
-export const medical = {
-    50: '#F0FDFA',
-    100: '#CCFBF1',
-    500: '#14B8A6',
-    600: '#0D9488',
-    700: '#0F766E',
-} as const;
-
-/** 상태 컬러 — 모두 soft tint (saturated 사용 금지) */
-export const status = {
-    success: { bg: '#DCFCE7', text: '#14532D', border: '#BBF7D0' }, // emerald
-    warning: { bg: '#FEF3C7', text: '#78350F', border: '#FDE68A' }, // amber
-    danger:  { bg: '#FEE2E2', text: '#7F1D1D', border: '#FECACA' }, // red
-    info:    { bg: '#DBEAFE', text: '#1E3A8A', border: '#BFDBFE' }, // blue
-    neutral: { bg: '#F3F4F6', text: '#374151', border: '#E5E7EB' }, // gray
-} as const;
+import {
+    Check,
+    X,
+    RotateCcw,
+    AlertCircle,
+    Clock,
+    Sparkles,
+    type LucideIcon,
+} from 'lucide-react';
 
 // ─── 결제수단 (Provider) ────────────────────────────────
-// 카드 색 X. 작은 컬러 점(4px)으로만 식별. label은 그대로 유지.
+// 색 식별 폐기 — 라벨로만 구분. 점은 시각 리듬용 회색 단일색.
 export type ProviderKey = 'kakaopay' | 'tosspayments' | 'inicis' | 'apple_iap' | 'google_play' | 'card' | 'all';
-
-export const PROVIDER_DOT_COLOR: Record<ProviderKey, string> = {
-    kakaopay:     '#FFCD00', // 카카오 노랑 (점 4px만)
-    tosspayments: '#3182F6', // 토스 파랑
-    inicis:       '#7C3AED', // 보라
-    apple_iap:    '#525252', // 무채색 (검정 → 다른 점들과 톤 일치 위해 회색 6)
-    google_play:  '#34A853', // 구글 초록
-    card:         '#9CA3AF', // 회색
-    all:          '#6B7280',
-};
 
 export const PROVIDER_LABEL: Record<ProviderKey, string> = {
     kakaopay:     '카카오페이',
@@ -75,38 +36,46 @@ export const PROVIDER_LABEL: Record<ProviderKey, string> = {
     all:          '전체',
 };
 
-// ─── 헬퍼 ────────────────────────────────────────────────
+/**
+ * Provider 점 색상 — 모두 회색 (#9CA3AF, gray-400).
+ * 사용처에서 단일 색으로 표시. 식별은 라벨 텍스트가 담당.
+ */
+export const PROVIDER_DOT_COLOR_NEUTRAL = '#9CA3AF';
 
-/** 결제 상태 → soft tint 배지 클래스. 사용처: badge variant="status" 와 함께. */
-export function statusBadgeClass(s: 'paid' | 'success' | 'cancelled' | 'refunded' | 'failed' | 'pending' | string) {
-    const map: Record<string, string> = {
-        paid:      'bg-emerald-50 text-emerald-700 border-emerald-200',
-        success:   'bg-emerald-50 text-emerald-700 border-emerald-200',
-        active:    'bg-emerald-50 text-emerald-700 border-emerald-200',
-        cancelled: 'bg-red-50 text-red-700 border-red-200',
-        refunded:  'bg-amber-50 text-amber-700 border-amber-200',
-        failed:    'bg-red-50 text-red-700 border-red-200',
-        pending:   'bg-blue-50 text-blue-700 border-blue-200',
-        trialing:  'bg-blue-50 text-blue-700 border-blue-200',
-        past_due:  'bg-amber-50 text-amber-700 border-amber-200',
-    };
-    return map[s] || 'bg-gray-50 text-gray-700 border-gray-200';
+// ─── 상태 (Status) ──────────────────────────────────────
+// 색 식별 폐기 — 아이콘 + 텍스트로 구분. 배지 배경은 모두 회색 50.
+type StatusKey = 'paid' | 'success' | 'active' | 'cancelled' | 'refunded' | 'failed' | 'pending' | 'trialing' | 'past_due';
+
+const STATUS_META: Record<string, { label: string; icon: LucideIcon }> = {
+    paid:      { label: '결제완료', icon: Check },
+    success:   { label: '완료',     icon: Check },
+    active:    { label: '활성',     icon: Check },
+    cancelled: { label: '취소',     icon: X },
+    refunded:  { label: '환불',     icon: RotateCcw },
+    failed:    { label: '실패',     icon: AlertCircle },
+    pending:   { label: '대기',     icon: Clock },
+    trialing:  { label: '체험중',   icon: Sparkles },
+    past_due:  { label: '결제실패', icon: AlertCircle },
+};
+
+/** 상태 → 회색 통일 배지 클래스 */
+export function statusBadgeClass(_s: string) {
+    return 'bg-gray-50 text-gray-700 border-gray-200';
 }
 
-/** 결제 상태 한국어 라벨 */
+/** 상태 한국어 라벨 (cancelledBy 분기 포함) */
 export function statusLabel(s: string, cancelledBy?: string | null) {
-    if (s === 'paid' || s === 'success') return '결제완료';
-    if (s === 'cancelled') return cancelledBy === 'admin' ? '관리자 취소' : '본인 취소';
-    if (s === 'refunded') return '환불';
-    if (s === 'failed')   return '실패';
-    if (s === 'pending')  return '대기';
-    if (s === 'active')   return '활성';
-    if (s === 'trialing') return '체험중';
-    if (s === 'past_due') return '결제실패';
-    return s;
+    if (s === 'cancelled') return cancelledBy === 'admin' ? '관리자 취소' : '취소';
+    return STATUS_META[s]?.label || s;
 }
 
-/** payment_method/provider 문자열을 정규화된 ProviderKey로 매핑 */
+/** 상태에 해당하는 아이콘 — 없으면 null */
+export function statusIcon(s: string): LucideIcon | null {
+    return STATUS_META[s]?.icon || null;
+}
+
+// ─── Provider helper ───────────────────────────────────
+
 export function inferProvider(value: unknown): ProviderKey {
     const raw = String(value || '').toLowerCase();
     if (raw.includes('kakao')) return 'kakaopay';
@@ -118,7 +87,7 @@ export function inferProvider(value: unknown): ProviderKey {
     return 'card';
 }
 
-// ─── 라운드/그림자/타이포 ──────────────────────────────
+// ─── 라운드/타이포 ─────────────────────────────────────
 
 export const radius = {
     sm: '4px',
@@ -128,12 +97,17 @@ export const radius = {
     pill: '9999px',
 } as const;
 
-/** 그림자는 최소화 — 1단계만 사용 권장 */
-export const shadow = {
-    none: 'shadow-none',
-    sm:   'shadow-sm',
-    md:   'shadow',
-} as const;
-
-/** 숫자/금액에는 tabular-nums + font-mono. 이걸 className으로 쓰면 됨. */
+/** 숫자/금액에는 tabular-nums + font-mono. */
 export const NUMERIC_CLASS = 'font-mono tabular-nums';
+
+// ─── Deprecated (PR #19/#20에서 import. v2에서 단일 회색으로 수렴) ────
+/** @deprecated v2: 모든 provider가 단일 회색. PROVIDER_DOT_COLOR_NEUTRAL 직접 사용 권장. */
+export const PROVIDER_DOT_COLOR: Record<ProviderKey, string> = {
+    kakaopay: PROVIDER_DOT_COLOR_NEUTRAL,
+    tosspayments: PROVIDER_DOT_COLOR_NEUTRAL,
+    inicis: PROVIDER_DOT_COLOR_NEUTRAL,
+    apple_iap: PROVIDER_DOT_COLOR_NEUTRAL,
+    google_play: PROVIDER_DOT_COLOR_NEUTRAL,
+    card: PROVIDER_DOT_COLOR_NEUTRAL,
+    all: PROVIDER_DOT_COLOR_NEUTRAL,
+};

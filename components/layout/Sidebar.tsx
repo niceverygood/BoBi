@@ -65,8 +65,8 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                 <Link href="/dashboard" className="flex items-center gap-3 overflow-hidden">
                     <BobiLogo size="md" className="shrink-0" />
                     {!collapsed && (
-                        <span className="text-lg font-bold tracking-tight whitespace-nowrap">
-                            보비 <span className="text-primary">BoBi</span>
+                        <span className="text-lg font-bold tracking-tight whitespace-nowrap text-gray-900">
+                            보비 <span className="text-gray-500 font-medium">BoBi</span>
                         </span>
                     )}
                 </Link>
@@ -146,31 +146,31 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                 })}
             </nav>
 
-            {/* Plan info */}
+            {/* Plan info — 디자인 v2: 그라디언트 + 색 강조 제거, 회색 단일 톤 */}
             {!collapsed && (
                 <div className="p-3">
-                    <div className="p-4 rounded-xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/10">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Crown className="w-4 h-4 text-primary" />
+                    <div className="p-3 rounded-md bg-gray-50 border border-gray-200">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                            <Crown className="w-3.5 h-3.5 text-gray-500" />
                             {loading ? (
                                 <Skeleton className="h-4 w-20" />
                             ) : (
-                                <span className="text-sm font-semibold">
+                                <span className="text-xs font-semibold text-gray-900">
                                     {plan.display_name} 플랜
                                 </span>
                             )}
                         </div>
-                        <p className="text-sm text-foreground/70 mb-3">
+                        <p className="text-xs text-gray-600 mb-2.5">
                             이번 달 남은 분석: {loading ? (
                                 <Skeleton className="h-3 w-10 inline-block align-middle" />
                             ) : (
-                                <span className="font-bold text-primary">
+                                <span className="font-semibold text-gray-900 tabular-nums">
                                     {displayRemaining}
                                 </span>
                             )}
                         </p>
                         <Link href="/pricing">
-                            <Button variant="outline" size="sm" className="w-full text-xs h-9">
+                            <Button variant="outline" size="sm" className="w-full text-xs h-8 border-gray-200 text-gray-700 hover:bg-white">
                                 {plan.slug === 'free' ? '플랜 업그레이드' : '플랜 관리'}
                             </Button>
                         </Link>

@@ -20,7 +20,7 @@ import { apiFetch } from '@/lib/api/client';
 import { openExternal } from '@/lib/open-external';
 import { isNative } from '@/lib/iap/platform';
 import { toast } from 'sonner';
-import { PROVIDER_DOT_COLOR, PROVIDER_LABEL, statusBadgeClass, statusLabel, NUMERIC_CLASS, type ProviderKey } from '@/lib/design/tokens';
+import { PROVIDER_LABEL, PROVIDER_DOT_COLOR_NEUTRAL, statusBadgeClass, statusLabel, statusIcon, NUMERIC_CLASS, type ProviderKey } from '@/lib/design/tokens';
 
 interface AdminStats {
     totalUsers: number;
@@ -1466,30 +1466,27 @@ function PromoSubCleanup() {
 }
 
 // ─── 결제내역 컴포넌트 ──────────────────────
-// 디자인 시스템 v1 (Toss 모노크롬 스타일): provider별 카드 색 제거 → 4px 컬러 점만으로 식별.
-// PROVIDER_LABEL / PROVIDER_DOT_COLOR / statusBadgeClass / NUMERIC_CLASS 는
-// lib/design/tokens.ts 에서 import (파일 최상단).
+// 디자인 시스템 v2 (Pure Monochrome): 컬러 0개. 식별은 라벨·아이콘으로만.
 const ALL_PROVIDERS: ProviderKey[] = ['all', 'kakaopay', 'tosspayments', 'inicis', 'apple_iap', 'google_play', 'card'];
 const FILTERABLE_PROVIDERS: ProviderKey[] = ['kakaopay', 'tosspayments', 'inicis', 'apple_iap', 'google_play', 'card'];
 
-/** Provider 식별용 컬러 점 (4px) — 카드 채움 색 대체 */
-function ProviderDot({ provider }: { provider: ProviderKey | string }) {
-    const key = (provider as ProviderKey) in PROVIDER_DOT_COLOR ? (provider as ProviderKey) : 'card';
+/** Provider 작은 회색 점 — 시각 리듬용 (식별은 라벨이 담당) */
+function ProviderDot() {
     return (
         <span
             aria-hidden
-            className="inline-block w-2 h-2 rounded-full shrink-0"
-            style={{ backgroundColor: PROVIDER_DOT_COLOR[key] }}
+            className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
+            style={{ backgroundColor: PROVIDER_DOT_COLOR_NEUTRAL }}
         />
     );
 }
 
-/** Provider 표시 (도트 + 라벨, 색 채움 없음) */
+/** Provider 표시 (점 + 라벨, 모두 회색) */
 function ProviderLabel({ provider }: { provider: ProviderKey | string }) {
     const key = (provider as ProviderKey) in PROVIDER_LABEL ? (provider as ProviderKey) : 'card';
     return (
-        <span className="inline-flex items-center gap-1.5 text-xs">
-            <ProviderDot provider={key} />
+        <span className="inline-flex items-center gap-1.5 text-xs text-gray-700">
+            <ProviderDot />
             {PROVIDER_LABEL[key]}
         </span>
     );
@@ -1532,7 +1529,9 @@ function PaymentHistory() {
 
     const providerBadge = (provider: unknown) => {
         const key = String(provider || 'card') as ProviderKey;
-        return <ProviderLabel provider={key} />;
+        const label = PROVIDER_LABEL[key in PROVIDER_LABEL ? key : 'card'];
+        // 디자인 v2: 점 제거 — 라벨 텍스트만 (정보 밀도 + 깔끔)
+        return <span className="text-xs text-gray-700">{label}</span>;
     };
 
     const matchesSearch = useCallback((row: Record<string, unknown>) => {
@@ -1625,9 +1624,11 @@ function PaymentHistory() {
 
     const statusBadge = (status: unknown, cancelledBy?: unknown) => {
         const s = String(status);
-        // 디자인 시스템 v1: saturated 배경 → soft tint (옅은 배경 + 진한 글자)
+        // 디자인 시스템 v2: 색 폐기 → 아이콘 + 텍스트로 구분 (모두 회색 50 배경)
+        const Icon = statusIcon(s);
         return (
-            <Badge variant="soft" className={`${statusBadgeClass(s)} text-[10px]`}>
+            <Badge variant="soft" className={`${statusBadgeClass(s)} text-[10px] inline-flex items-center gap-1`}>
+                {Icon && <Icon className="w-2.5 h-2.5" />}
                 {statusLabel(s, cancelledBy === 'admin' ? 'admin' : null)}
             </Badge>
         );
@@ -1668,20 +1669,21 @@ function PaymentHistory() {
                     ))}
                 </div>
 
+                {/* 검색바 — 가장 자주 쓰는 액션이라 크기·위계 강화 */}
                 <div className="mt-3 relative">
-                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="이메일 · 이름 · user_id · 결제ID 로 검색"
-                        className="w-full pl-7 pr-8 py-1.5 text-xs border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                        placeholder="이메일, 이름, 사용자ID, 결제ID로 검색"
+                        className="w-full pl-9 pr-9 py-2 text-sm border border-gray-200 rounded-md bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
                     />
                     {searchQuery && (
                         <button
                             type="button"
                             onClick={() => setSearchQuery('')}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-base leading-none"
                             aria-label="검색어 지우기"
                         >
                             ×
@@ -1689,42 +1691,40 @@ function PaymentHistory() {
                     )}
                 </div>
 
-                {/* 결제수단별 집계 카드 — 모노크롬 + 컬러 점 4px만으로 식별 */}
+                {/* 결제수단별 집계 — 카드 그리드 → 1줄 인라인 요약 (정보 위계 단순화) */}
                 {tab === 'payments' && Object.keys(summary).length > 0 && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mt-3">
-                        {FILTERABLE_PROVIDERS.map(key => {
-                            const s = summary[key];
-                            if (!s || s.count === 0) return null;
-                            return (
-                                <div key={key} className="border border-gray-200 rounded-md p-2 bg-white">
-                                    <div className="flex items-center gap-1.5 text-[10px] text-gray-600 mb-0.5">
-                                        <ProviderDot provider={key} />
-                                        {PROVIDER_LABEL[key]}
+                    <div className="mt-3 px-3 py-2 border border-gray-200 rounded-md bg-gray-50/40">
+                        <div className="flex items-center gap-x-5 gap-y-2 flex-wrap text-xs">
+                            {FILTERABLE_PROVIDERS.map(key => {
+                                const s = summary[key];
+                                if (!s || s.count === 0) return null;
+                                return (
+                                    <div key={key} className="inline-flex items-center gap-1.5 text-gray-700">
+                                        <span className="text-gray-500">{PROVIDER_LABEL[key]}</span>
+                                        <span className={`font-semibold text-gray-900 ${NUMERIC_CLASS}`}>{s.paidAmount.toLocaleString()}원</span>
+                                        <span className={`text-gray-400 ${NUMERIC_CLASS}`}>({s.paidCount}건)</span>
                                     </div>
-                                    <div className={`text-sm font-semibold text-gray-900 ${NUMERIC_CLASS}`}>{s.paidAmount.toLocaleString()}원</div>
-                                    <div className={`text-[10px] text-gray-500 ${NUMERIC_CLASS}`}>{s.paidCount}건 결제 · 전체 {s.count}건</div>
-                                </div>
-                            );
-                        })}
+                                );
+                            })}
+                        </div>
                     </div>
                 )}
 
-                {/* Provider 필터 칩 — 선택 시만 채우고 미선택은 흰 배경 + 컬러 점 */}
+                {/* Provider 필터 칩 — 회색 단색 (선택만 채움). 비선택은 점 X, 라벨만 */}
                 {tab === 'payments' && (
-                    <div className="flex gap-1.5 mt-3 flex-wrap">
+                    <div className="flex gap-1 mt-3 flex-wrap">
                         {ALL_PROVIDERS.map(key => {
                             const active = providerFilter === key;
                             return (
                                 <button
                                     key={key}
                                     onClick={() => setProviderFilter(key)}
-                                    className={`px-2.5 py-1 rounded-full text-[11px] border inline-flex items-center gap-1.5 transition ${
+                                    className={`px-2.5 py-1 rounded-md text-[11px] inline-flex items-center transition ${
                                         active
-                                            ? 'bg-gray-900 text-white border-gray-900'
-                                            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                                            ? 'bg-gray-900 text-white'
+                                            : 'text-gray-600 hover:bg-gray-100'
                                     }`}
                                 >
-                                    {key !== 'all' && <ProviderDot provider={key} />}
                                     {PROVIDER_LABEL[key]}
                                 </button>
                             );
