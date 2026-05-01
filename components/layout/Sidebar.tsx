@@ -122,10 +122,11 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                             key={item.href}
                             href={item.href}
                             className={cn(
-                                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
+                                'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors',
+                                // 디자인 v1: 진한 brand 채움 → 회색 9 채움 (또는 회색 100 hover)
                                 isActive
-                                    ? 'bg-primary text-primary-foreground shadow-sm'
-                                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                                    ? 'bg-gray-900 text-white'
+                                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
                                 collapsed && 'justify-center px-2'
                             )}
                         >
@@ -134,7 +135,7 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                                 <span className="flex items-center gap-2 flex-1">
                                     {item.title}
                                     {showProLock && (
-                                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 font-normal border-violet-300 text-violet-600 bg-violet-50 dark:bg-violet-950/20">
+                                        <Badge variant="soft" className="text-[9px] px-1.5 py-0 h-4 font-normal border-gray-200 text-gray-600 bg-gray-50">
                                             PRO
                                         </Badge>
                                     )}
