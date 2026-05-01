@@ -19,6 +19,10 @@ const badgeVariants = cva(
         ghost:
           "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
         link: "text-primary underline-offset-4 hover:underline",
+        // soft: BoBi 디자인 시스템 v1 — 옅은 배경 + 진한 글자 + 얇은 테두리.
+        // 호출부에서 색상 클래스(bg-emerald-50 text-emerald-700 border-emerald-200 등)를
+        // className으로 직접 지정. statusBadgeClass(s) 헬퍼와 함께 사용 권장.
+        soft: "border bg-transparent",
       },
     },
     defaultVariants: {
