@@ -1,22 +1,50 @@
 // app/api/codef/medical-info/route.ts
 // HIRA 내진료정보열람 + 자동차보험 + NHIS 진료투약 통합 조회 API
+//
+// 누적 조회 정책:
+//   HIRA 단건 호출은 정책상 1년치만 허용. 5년치를 모으려면 사용자가 1년 윈도우 단위로
+//   여러 번 인증해야 한다. 이 라우트는 한 번의 인증으로 1년치를 받아 user_medical_records
+//   테이블에 누적 저장한다. UI는 누적된 윈도우를 보여주고, 비어있는 윈도우만 추가 인증을
+//   요청한다 (GET /api/codef/medical-info/accumulated 참조).
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
 import {
     fetchMyMedicalInfo,
-    fetchMyMedicalInfoChunked,
-    fetchMyCarInsuranceChunked,
+    fetchMyCarInsurance,
     fetchMyMedicine,
     type HiraMedicalRequest,
 } from '@/lib/codef/client';
 import { getUserPlan, canAccessCodef } from '@/lib/subscription/access';
 
-// HIRA chunked 호출(최대 5번 sequential × 30~60초)로 5년치 진료기록 수집 → 최대 5분 가량 소요.
-// Vercel Pro 플랜의 maxDuration 한도(300초)에 맞춰 설정.
-export const maxDuration = 300;
+// 단건 호출(HIRA 1년 한도) — 일반적으로 30~60초. 누적 조회는 사용자가 여러 번 호출.
+export const maxDuration = 120;
 
-// 진료내역 조회 기간 (년). HIRA 단건 호출 한도(1년)를 지키며 chunked 분할 호출.
-const MEDICAL_QUERY_YEARS = 5;
+/**
+ * yyyyMMdd(string) 또는 undefined를 받아 'YYYY-MM-DD' 형태로 정규화.
+ * - input이 yyyyMMdd 형식이면 그대로 변환
+ * - undefined이면 base 기준으로 yearOffset년 이동 (default base = 어제)
+ *
+ * fetchMyMedicalInfo의 default 기간(어제 ~ 1년 전)과 일치하도록 계산.
+ */
+function computePeriodDate(input: string | undefined, base?: string, yearOffset: number = 0): string {
+    if (input && /^\d{8}$/.test(input)) {
+        return `${input.slice(0, 4)}-${input.slice(4, 6)}-${input.slice(6, 8)}`;
+    }
+    if (input && /^\d{4}-\d{2}-\d{2}$/.test(input)) {
+        return input;
+    }
+    // base가 'YYYY-MM-DD' 형식이면 그 기준으로 yearOffset 이동
+    if (base) {
+        const d = new Date(base + 'T00:00:00Z');
+        d.setUTCFullYear(d.getUTCFullYear() + yearOffset);
+        if (yearOffset < 0) d.setUTCDate(d.getUTCDate() + 1); // 윤년 방어
+        return d.toISOString().slice(0, 10);
+    }
+    // 그 외엔 어제 기준 (fetchMyMedicalInfo의 default endDate와 동일)
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().slice(0, 10);
+}
 
 export async function POST(request: Request) {
     try {
@@ -128,8 +156,9 @@ export async function POST(request: Request) {
 
             if (is2WayCompletion && effectiveQueryType === 'medical') {
                 // 2-Way 완료 시: 내진료정보(A) 발사 → 0.5초 후 내가먹는약(B) 발사 → 둘 다 수집
-                // 내진료정보는 chunked로 최대 MEDICAL_QUERY_YEARS년치 (HIRA 단건 1년 제한 회피)
-                const medicalPromise = fetchMyMedicalInfoChunked(params, MEDICAL_QUERY_YEARS);
+                // HIRA 정책상 1회 인증으로 1년치만 받을 수 있어 chunked 호출은 폐기. 더 옛날 데이터가
+                // 필요하면 frontend가 다른 startDate/endDate로 다시 인증을 진행한다.
+                const medicalPromise = fetchMyMedicalInfo(params);
 
                 const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
                 await delay(500);
@@ -168,10 +197,8 @@ export async function POST(request: Request) {
                     console.log(`[HIRA] 내가먹는약 다건요청 성공: ${medicineResult.records.length}건`);
                 }
             } else {
-                // 첫 요청 (2-Way 트리거) 또는 both 모드.
-                // chunked 호출은 내부에서 첫 호출이 2-Way 응답이면 바로 그 결과를 반환하므로 안전.
-                // 인증 완료 후 본 분기에 다시 들어오는 경우는 거의 없지만, 들어와도 chunked가 처리.
-                const medicalResult = await fetchMyMedicalInfoChunked(params, MEDICAL_QUERY_YEARS);
+                // 첫 요청 (2-Way 트리거) 또는 both 모드 — 단건 호출 (1년치)
+                const medicalResult = await fetchMyMedicalInfo(params);
 
                 if (medicalResult.requires2Way) {
                     console.log('[HIRA] 2-Way 인증 요청됨 (medical)');
@@ -199,9 +226,9 @@ export async function POST(request: Request) {
             }
         }
 
-        // 자동차보험 조회 (chunked 5년치)
+        // 자동차보험 조회 (1년치)
         if (effectiveQueryType === 'car') {
-            const carResult = await fetchMyCarInsuranceChunked(params, MEDICAL_QUERY_YEARS);
+            const carResult = await fetchMyCarInsurance(params);
 
             if (carResult.requires2Way) {
                 console.log('[HIRA] 2-Way 인증 요청됨 (car)');
@@ -225,6 +252,35 @@ export async function POST(request: Request) {
         // both의 car 단계에서는 이전 medical 결과를 합침
         if (previousMedical && !result.medical) {
             result.medical = previousMedical;
+        }
+
+        // 받은 1년치 데이터를 user_medical_records에 영구 저장 — 누적 조회 시스템.
+        // 같은 (user, type, period) 조합은 ON CONFLICT로 갱신.
+        // params.startDate/endDate가 없으면 fetchMyMedicalInfo가 자동으로 어제 기준 1년 전~어제로 잡음.
+        try {
+            const svc = await createServiceClient();
+            const periodEnd = computePeriodDate(params.endDate);
+            const periodStart = computePeriodDate(params.startDate, periodEnd, -1);
+
+            const rowsToSave: Array<{ record_type: string; records: unknown[] }> = [];
+            if (result.medical?.records) rowsToSave.push({ record_type: 'medical', records: result.medical.records });
+            if (result.carInsurance?.records) rowsToSave.push({ record_type: 'car_insurance', records: result.carInsurance.records });
+            if (result.myMedicine?.records) rowsToSave.push({ record_type: 'medicine', records: result.myMedicine.records });
+
+            for (const row of rowsToSave) {
+                await svc.from('user_medical_records').upsert({
+                    user_id: user.id,
+                    record_type: row.record_type,
+                    period_start: periodStart,
+                    period_end: periodEnd,
+                    records: row.records,
+                    record_count: row.records.length,
+                    fetched_at: new Date().toISOString(),
+                }, { onConflict: 'user_id,record_type,period_start,period_end' });
+            }
+        } catch (saveErr) {
+            // DB 저장 실패는 사용자 흐름을 막지 않음 — 받은 데이터는 응답으로 그대로 반환
+            console.error('[HIRA] user_medical_records upsert 실패:', (saveErr as Error).message);
         }
 
         return NextResponse.json({
