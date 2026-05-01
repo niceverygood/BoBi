@@ -20,6 +20,7 @@ import { apiFetch } from '@/lib/api/client';
 import { openExternal } from '@/lib/open-external';
 import { isNative } from '@/lib/iap/platform';
 import { toast } from 'sonner';
+import { PROVIDER_DOT_COLOR, PROVIDER_LABEL, statusBadgeClass, statusLabel, NUMERIC_CLASS, type ProviderKey } from '@/lib/design/tokens';
 
 interface AdminStats {
     totalUsers: number;
@@ -1479,15 +1480,34 @@ function PromoSubCleanup() {
 }
 
 // ─── 결제내역 컴포넌트 ──────────────────────
-const PROVIDER_META: Record<string, { label: string; className: string }> = {
-    all: { label: '전체', className: 'bg-slate-100 text-slate-700 border-slate-200' },
-    kakaopay: { label: '카카오페이', className: 'bg-yellow-100 text-yellow-800 border-yellow-300' },
-    tosspayments: { label: '토스페이먼츠', className: 'bg-blue-100 text-blue-700 border-blue-200' },
-    inicis: { label: 'KG이니시스', className: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
-    apple_iap: { label: 'Apple 앱결제', className: 'bg-slate-900 text-white border-slate-900' },
-    google_play: { label: 'Google 앱결제', className: 'bg-green-100 text-green-700 border-green-200' },
-    card: { label: '신용카드', className: 'bg-gray-100 text-gray-700 border-gray-200' },
-};
+// 디자인 시스템 v1 (Toss 모노크롬 스타일): provider별 카드 색 제거 → 4px 컬러 점만으로 식별.
+// PROVIDER_LABEL / PROVIDER_DOT_COLOR / statusBadgeClass / NUMERIC_CLASS 는
+// lib/design/tokens.ts 에서 import (파일 최상단).
+const ALL_PROVIDERS: ProviderKey[] = ['all', 'kakaopay', 'tosspayments', 'inicis', 'apple_iap', 'google_play', 'card'];
+const FILTERABLE_PROVIDERS: ProviderKey[] = ['kakaopay', 'tosspayments', 'inicis', 'apple_iap', 'google_play', 'card'];
+
+/** Provider 식별용 컬러 점 (4px) — 카드 채움 색 대체 */
+function ProviderDot({ provider }: { provider: ProviderKey | string }) {
+    const key = (provider as ProviderKey) in PROVIDER_DOT_COLOR ? (provider as ProviderKey) : 'card';
+    return (
+        <span
+            aria-hidden
+            className="inline-block w-2 h-2 rounded-full shrink-0"
+            style={{ backgroundColor: PROVIDER_DOT_COLOR[key] }}
+        />
+    );
+}
+
+/** Provider 표시 (도트 + 라벨, 색 채움 없음) */
+function ProviderLabel({ provider }: { provider: ProviderKey | string }) {
+    const key = (provider as ProviderKey) in PROVIDER_LABEL ? (provider as ProviderKey) : 'card';
+    return (
+        <span className="inline-flex items-center gap-1.5 text-xs">
+            <ProviderDot provider={key} />
+            {PROVIDER_LABEL[key]}
+        </span>
+    );
+}
 
 type ProviderSummary = Record<string, { count: number; paidCount: number; paidAmount: number; refundedAmount: number }>;
 
@@ -1525,9 +1545,8 @@ function PaymentHistory() {
     useEffect(() => { fetchData(); }, [fetchData]);
 
     const providerBadge = (provider: unknown) => {
-        const key = String(provider || 'card');
-        const meta = PROVIDER_META[key] || { label: key, className: 'bg-slate-100 text-slate-700 border-slate-200' };
-        return <Badge variant="outline" className={`${meta.className} text-[10px]`}>{meta.label}</Badge>;
+        const key = String(provider || 'card') as ProviderKey;
+        return <ProviderLabel provider={key} />;
     };
 
     const matchesSearch = useCallback((row: Record<string, unknown>) => {
@@ -1620,35 +1639,47 @@ function PaymentHistory() {
 
     const statusBadge = (status: unknown, cancelledBy?: unknown) => {
         const s = String(status);
-        if (s === 'paid' || s === 'success') return <Badge className="bg-green-500 text-white text-[10px]">결제완료</Badge>;
-        if (s === 'cancelled') return <Badge className="bg-red-500 text-white text-[10px]">{cancelledBy === 'admin' ? '관리자 취소' : '본인 취소'}</Badge>;
-        if (s === 'refunded') return <Badge className="bg-orange-500 text-white text-[10px]">환불</Badge>;
-        return <Badge variant="outline" className="text-[10px]">{s}</Badge>;
+        // 디자인 시스템 v1: saturated 배경 → soft tint (옅은 배경 + 진한 글자)
+        return (
+            <Badge variant="soft" className={`${statusBadgeClass(s)} text-[10px]`}>
+                {statusLabel(s, cancelledBy === 'admin' ? 'admin' : null)}
+            </Badge>
+        );
     };
 
     return (
-        <Card className="border-0 shadow-md mb-8">
+        // 디자인 시스템 v1: 큰 그림자 → border + 작은 그림자
+        <Card className="border border-gray-200 shadow-sm mb-8">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                        <CreditCard className="w-5 h-5" />
+                    <CardTitle className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                        <CreditCard className="w-4 h-4 text-gray-700" />
                         결제 관리
                     </CardTitle>
                     <Button size="sm" variant="ghost" onClick={fetchData} className="text-xs">새로고침</Button>
                 </div>
                 {actionMsg && (
-                    <p className={`text-xs mt-1 ${actionMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>{actionMsg.text}</p>
+                    <p className={`text-xs mt-1 ${actionMsg.type === 'success' ? 'text-emerald-700' : 'text-red-700'}`}>{actionMsg.text}</p>
                 )}
-                <div className="flex gap-2 mt-2 flex-wrap">
-                    <Button size="sm" variant={tab === 'payments' ? 'default' : 'outline'} onClick={() => setTab('payments')}>
-                        결제내역 ({filteredPayments.length})
-                    </Button>
-                    <Button size="sm" variant={tab === 'active' ? 'default' : 'outline'} onClick={() => setTab('active')}>
-                        활성 구독 ({activeSubs.length})
-                    </Button>
-                    <Button size="sm" variant={tab === 'cancelled' ? 'default' : 'outline'} onClick={() => setTab('cancelled')}>
-                        취소/해지 ({cancelledSubs.length + cancelledPayments.length})
-                    </Button>
+                {/* 탭 버튼 — 선택 시만 진한 회색, 미선택은 흰 배경 (모노크롬) */}
+                <div className="flex gap-1 mt-2 flex-wrap p-1 bg-gray-100 rounded-md w-fit">
+                    {([
+                        { key: 'payments' as const, label: '결제내역', count: filteredPayments.length },
+                        { key: 'active' as const, label: '활성 구독', count: activeSubs.length },
+                        { key: 'cancelled' as const, label: '취소/해지', count: cancelledSubs.length + cancelledPayments.length },
+                    ]).map(t => (
+                        <button
+                            key={t.key}
+                            onClick={() => setTab(t.key)}
+                            className={`px-3 py-1 rounded text-xs transition ${
+                                tab === t.key
+                                    ? 'bg-white text-gray-900 shadow-sm font-medium'
+                                    : 'text-gray-600 hover:text-gray-900'
+                            }`}
+                        >
+                            {t.label} ({t.count})
+                        </button>
+                    ))}
                 </div>
 
                 <div className="mt-3 relative">
@@ -1672,39 +1703,43 @@ function PaymentHistory() {
                     )}
                 </div>
 
-                {/* 결제수단별 집계 카드 — 카카오페이/토스/애플/구글 한 눈에 */}
+                {/* 결제수단별 집계 카드 — 모노크롬 + 컬러 점 4px만으로 식별 */}
                 {tab === 'payments' && Object.keys(summary).length > 0 && (
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mt-3">
-                        {(['kakaopay', 'tosspayments', 'inicis', 'apple_iap', 'google_play', 'card'] as const).map(key => {
+                        {FILTERABLE_PROVIDERS.map(key => {
                             const s = summary[key];
                             if (!s || s.count === 0) return null;
-                            const meta = PROVIDER_META[key];
                             return (
-                                <div key={key} className={`border rounded-lg p-2 ${meta.className}`}>
-                                    <div className="text-[10px] opacity-80">{meta.label}</div>
-                                    <div className="text-sm font-semibold">{s.paidAmount.toLocaleString()}원</div>
-                                    <div className="text-[10px] opacity-70">{s.paidCount}건 결제 · 전체 {s.count}건</div>
+                                <div key={key} className="border border-gray-200 rounded-md p-2 bg-white">
+                                    <div className="flex items-center gap-1.5 text-[10px] text-gray-600 mb-0.5">
+                                        <ProviderDot provider={key} />
+                                        {PROVIDER_LABEL[key]}
+                                    </div>
+                                    <div className={`text-sm font-semibold text-gray-900 ${NUMERIC_CLASS}`}>{s.paidAmount.toLocaleString()}원</div>
+                                    <div className={`text-[10px] text-gray-500 ${NUMERIC_CLASS}`}>{s.paidCount}건 결제 · 전체 {s.count}건</div>
                                 </div>
                             );
                         })}
                     </div>
                 )}
 
-                {/* Provider 필터 칩 */}
+                {/* Provider 필터 칩 — 선택 시만 채우고 미선택은 흰 배경 + 컬러 점 */}
                 {tab === 'payments' && (
-                    <div className="flex gap-1 mt-3 flex-wrap">
-                        {(['all', 'kakaopay', 'tosspayments', 'inicis', 'apple_iap', 'google_play', 'card'] as const).map(key => {
-                            const meta = PROVIDER_META[key];
+                    <div className="flex gap-1.5 mt-3 flex-wrap">
+                        {ALL_PROVIDERS.map(key => {
                             const active = providerFilter === key;
                             return (
                                 <button
                                     key={key}
                                     onClick={() => setProviderFilter(key)}
-                                    className={`px-2.5 py-1 rounded-full text-[11px] border transition ${
-                                        active ? 'bg-primary text-primary-foreground border-primary' : `${meta.className} hover:opacity-80`
+                                    className={`px-2.5 py-1 rounded-full text-[11px] border inline-flex items-center gap-1.5 transition ${
+                                        active
+                                            ? 'bg-gray-900 text-white border-gray-900'
+                                            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
                                     }`}
                                 >
-                                    {meta.label}
+                                    {key !== 'all' && <ProviderDot provider={key} />}
+                                    {PROVIDER_LABEL[key]}
                                 </button>
                             );
                         })}
@@ -1728,23 +1763,23 @@ function PaymentHistory() {
                         const provider = String(p.provider || p.payment_method || '').toLowerCase();
                         const refundable = isPaid && (provider.includes('kakao') || provider.includes('toss'));
                         return (
-                        <tr key={i} className={`border-b hover:bg-muted/30 ${p.status === 'cancelled' || p.status === 'refunded' ? 'bg-red-50/50' : ''}`}>
-                            <td className="p-2 whitespace-nowrap">{fmtDate(String(p.created_at))}</td>
-                            <td className="p-2">{String(p.user_email || '-')}</td>
-                            <td className="p-2">{String(p.user_name || '-')}</td>
+                        <tr key={i} className={`border-b border-gray-100 hover:bg-gray-50 ${p.status === 'cancelled' || p.status === 'refunded' ? 'bg-gray-50/60' : ''}`}>
+                            <td className={`p-2 whitespace-nowrap text-gray-700 ${NUMERIC_CLASS}`}>{fmtDate(String(p.created_at))}</td>
+                            <td className="p-2 text-gray-900">{String(p.user_email || '-')}</td>
+                            <td className="p-2 text-gray-700">{String(p.user_name || '-')}</td>
                             <td className="p-2">{providerBadge(p.provider || p.payment_method)}</td>
-                            <td className="p-2"><Badge variant="outline" className="text-[10px]">{String(p.plan_slug || p.plan_id || '-')}</Badge></td>
-                            <td className="p-2">{p.billing_cycle === 'yearly' ? '연간' : '월간'}</td>
-                            <td className={`p-2 text-right font-mono ${p.status === 'cancelled' ? 'line-through text-red-500' : ''}`}>{(Number(p.amount) || 0).toLocaleString()}원</td>
+                            <td className="p-2"><Badge variant="soft" className="bg-gray-50 text-gray-700 border-gray-200 text-[10px]">{String(p.plan_slug || p.plan_id || '-')}</Badge></td>
+                            <td className="p-2 text-gray-600">{p.billing_cycle === 'yearly' ? '연간' : '월간'}</td>
+                            <td className={`p-2 text-right ${NUMERIC_CLASS} text-gray-900 ${p.status === 'cancelled' ? 'line-through text-gray-400' : ''}`}>{(Number(p.amount) || 0).toLocaleString()}원</td>
                             <td className="p-2">{statusBadge(p.status, p.cancelled_by)}</td>
-                            <td className="p-2 text-muted-foreground truncate max-w-[120px]">{String(p.payment_id || p.portone_payment_id || '')}</td>
+                            <td className={`p-2 text-gray-400 truncate max-w-[120px] ${NUMERIC_CLASS}`}>{String(p.payment_id || p.portone_payment_id || '')}</td>
                             <td className="p-2">
                                 {p.user_id ? (
                                     <button
                                         type="button"
                                         onClick={() => { navigator.clipboard?.writeText(String(p.user_id)); toast.success('가맹점회원ID 복사됨'); }}
                                         title={`클릭하여 복사: ${String(p.user_id)}`}
-                                        className="font-mono text-[10px] text-muted-foreground hover:text-foreground hover:underline"
+                                        className={`${NUMERIC_CLASS} text-[10px] text-gray-400 hover:text-gray-700 hover:underline`}
                                     >
                                         {String(p.user_id).slice(0, 8)}…
                                     </button>
@@ -1756,12 +1791,12 @@ function PaymentHistory() {
                                         size="sm"
                                         variant="outline"
                                         onClick={() => openRefund(p)}
-                                        className="h-7 px-2 text-[10px] border-red-300 text-red-600 hover:bg-red-50"
+                                        className="h-7 px-2 text-[10px] border-gray-200 text-gray-700 hover:bg-gray-50"
                                     >
                                         환불
                                     </Button>
                                 ) : isPaid ? (
-                                    <span className="text-[10px] text-muted-foreground" title="앱결제·이니시스는 PG 어드민에서 직접 환불">PG어드민</span>
+                                    <span className="text-[10px] text-gray-400" title="앱결제·이니시스는 PG 어드민에서 직접 환불">PG어드민</span>
                                 ) : null}
                             </td>
                         </tr>
@@ -1804,17 +1839,17 @@ function PaymentHistory() {
                     <div className="space-y-4">
                         {cancelledPayments.length > 0 && (
                         <div>
-                            <p className="text-xs font-semibold text-muted-foreground mb-2">결제 취소 ({cancelledPayments.length}건)</p>
-                            <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b bg-red-50/50">
-                                <th className="text-left p-2">일시</th><th className="text-left p-2">이메일</th><th className="text-left p-2">이름</th>
-                                <th className="text-left p-2">플랜</th><th className="text-right p-2">금액</th><th className="text-left p-2">취소주체</th>
+                            <p className="text-xs font-semibold text-gray-500 mb-2">결제 취소 ({cancelledPayments.length}건)</p>
+                            <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-gray-200 bg-gray-50">
+                                <th className="text-left p-2 text-gray-600 font-medium">일시</th><th className="text-left p-2 text-gray-600 font-medium">이메일</th><th className="text-left p-2 text-gray-600 font-medium">이름</th>
+                                <th className="text-left p-2 text-gray-600 font-medium">플랜</th><th className="text-right p-2 text-gray-600 font-medium">금액</th><th className="text-left p-2 text-gray-600 font-medium">취소주체</th>
                             </tr></thead><tbody>{cancelledPayments.map((p, i) => (
-                                <tr key={i} className="border-b bg-red-50/30">
-                                    <td className="p-2 whitespace-nowrap">{fmtDate(String(p.cancelled_at || p.created_at))}</td>
-                                    <td className="p-2">{String(p.user_email || '-')}</td>
-                                    <td className="p-2">{String(p.user_name || '-')}</td>
-                                    <td className="p-2"><Badge variant="outline" className="text-[10px]">{String(p.plan_slug || p.plan_id || '-')}</Badge></td>
-                                    <td className="p-2 text-right font-mono line-through text-red-500">{(Number(p.amount) || 0).toLocaleString()}원</td>
+                                <tr key={i} className="border-b border-gray-100 bg-gray-50/40">
+                                    <td className={`p-2 whitespace-nowrap text-gray-700 ${NUMERIC_CLASS}`}>{fmtDate(String(p.cancelled_at || p.created_at))}</td>
+                                    <td className="p-2 text-gray-900">{String(p.user_email || '-')}</td>
+                                    <td className="p-2 text-gray-700">{String(p.user_name || '-')}</td>
+                                    <td className="p-2"><Badge variant="soft" className="bg-gray-50 text-gray-700 border-gray-200 text-[10px]">{String(p.plan_slug || p.plan_id || '-')}</Badge></td>
+                                    <td className={`p-2 text-right ${NUMERIC_CLASS} line-through text-gray-400`}>{(Number(p.amount) || 0).toLocaleString()}원</td>
                                     <td className="p-2">{statusBadge(p.status, p.cancelled_by)}</td>
                                 </tr>
                             ))}</tbody></table></div>
@@ -1822,19 +1857,19 @@ function PaymentHistory() {
                         )}
                         {cancelledSubs.length > 0 && (
                         <div>
-                            <p className="text-xs font-semibold text-muted-foreground mb-2">구독 해지 ({cancelledSubs.length}건)</p>
-                            <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b bg-slate-50">
-                                <th className="text-left p-2">해지일</th><th className="text-left p-2">이메일</th><th className="text-left p-2">이름</th>
-                                <th className="text-left p-2">플랜</th><th className="text-left p-2">취소주체</th>
+                            <p className="text-xs font-semibold text-gray-500 mb-2">구독 해지 ({cancelledSubs.length}건)</p>
+                            <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-gray-200 bg-gray-50">
+                                <th className="text-left p-2 text-gray-600 font-medium">해지일</th><th className="text-left p-2 text-gray-600 font-medium">이메일</th><th className="text-left p-2 text-gray-600 font-medium">이름</th>
+                                <th className="text-left p-2 text-gray-600 font-medium">플랜</th><th className="text-left p-2 text-gray-600 font-medium">취소주체</th>
                             </tr></thead><tbody>{cancelledSubs.map((s, i) => {
                                 const plan = s.plan as { display_name?: string } | null;
                                 return (
-                                <tr key={i} className="border-b hover:bg-muted/30">
-                                    <td className="p-2 whitespace-nowrap">{fmtDate(String(s.cancelled_at || s.updated_at || s.created_at))}</td>
-                                    <td className="p-2">{String(s.user_email || '-')}</td>
-                                    <td className="p-2">{String(s.user_name || '-')}</td>
-                                    <td className="p-2"><Badge variant="outline" className="text-[10px]">{plan?.display_name || '-'}</Badge></td>
-                                    <td className="p-2">{s.cancelled_by === 'admin' ? <Badge className="bg-red-500 text-white text-[10px]">관리자</Badge> : <Badge variant="outline" className="text-[10px]">본인</Badge>}</td>
+                                <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
+                                    <td className={`p-2 whitespace-nowrap text-gray-700 ${NUMERIC_CLASS}`}>{fmtDate(String(s.cancelled_at || s.updated_at || s.created_at))}</td>
+                                    <td className="p-2 text-gray-900">{String(s.user_email || '-')}</td>
+                                    <td className="p-2 text-gray-700">{String(s.user_name || '-')}</td>
+                                    <td className="p-2"><Badge variant="soft" className="bg-gray-50 text-gray-700 border-gray-200 text-[10px]">{plan?.display_name || '-'}</Badge></td>
+                                    <td className="p-2">{s.cancelled_by === 'admin' ? <Badge variant="soft" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px]">관리자</Badge> : <Badge variant="soft" className="bg-gray-50 text-gray-700 border-gray-200 text-[10px]">본인</Badge>}</td>
                                 </tr>);
                             })}</tbody></table></div>
                         </div>
