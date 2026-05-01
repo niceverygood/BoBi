@@ -240,33 +240,46 @@ export default function AdminPage() {
                 <Header title={isAdmin ? '관리자 대시보드' : '코드 관리'} />
 
                 <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
-                    {/* Admin Badge */}
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isAdmin ? 'bg-gradient-to-br from-red-500 to-orange-500' : 'bg-gradient-to-br from-blue-500 to-cyan-500'}`}>
-                            <Shield className="w-5 h-5 text-white" />
+                    {/* 헤더 + 통계 + 액션을 1줄에 통합 — 디자인 시스템 v1 (정보 위계 단순화) */}
+                    <div className="flex items-start justify-between mb-6 flex-wrap gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-md bg-gray-100 flex items-center justify-center">
+                                <Shield className="w-4 h-4 text-gray-700" />
+                            </div>
+                            <div>
+                                <h2 className="text-base font-semibold text-gray-900">{isAdmin ? '총괄 관리자' : '코드 관리자'}</h2>
+                                <p className="text-xs text-gray-500">
+                                    {isAdmin ? '시스템 전체 현황을 관리합니다' : '프로모션 코드를 발행하고 관리합니다'}
+                                </p>
+                            </div>
+                            <Badge variant="soft" className="ml-2 bg-gray-50 text-gray-600 border-gray-200 text-[10px]">
+                                {isAdmin ? 'ADMIN' : 'MANAGER'}
+                            </Badge>
                         </div>
-                        <div>
-                            <h2 className="text-xl font-bold">{isAdmin ? '총괄 관리자' : '코드 관리자'}</h2>
-                            <p className="text-sm text-muted-foreground">
-                                {isAdmin ? '시스템 전체 현황을 관리합니다' : '프로모션 코드를 발행하고 관리합니다'}
-                            </p>
-                        </div>
-                        <Badge variant={isAdmin ? 'destructive' : 'default'} className="ml-auto">
-                            {isAdmin ? 'ADMIN' : 'MANAGER'}
-                        </Badge>
+                        {/* AI 인사이트는 우측 상단 작은 링크로 — 그라디언트 배너 제거 */}
+                        {isAdmin && (
+                            <Link
+                                href="/admin/insights"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs text-gray-700 hover:bg-gray-100 transition"
+                            >
+                                <Sparkles className="w-3.5 h-3.5 text-gray-500" />
+                                AI 인사이트
+                                <span className="text-[10px] text-gray-400">NEW</span>
+                            </Link>
+                        )}
                     </div>
 
                     {error && (
-                        <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-2">
-                            <AlertCircle className="w-5 h-5 text-destructive" />
-                            <p className="text-sm text-destructive">{error}</p>
+                        <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-md flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4 text-red-700" />
+                            <p className="text-xs text-red-700">{error}</p>
                         </div>
                     )}
 
                     {/* Plan change feedback */}
                     {planMessage && (
-                        <div className={`mb-4 p-3 rounded-lg flex items-center gap-2 text-sm ${planMessage.type === 'success'
-                            ? 'bg-green-50 text-green-700 border border-green-200'
+                        <div className={`mb-4 p-3 rounded-md flex items-center gap-2 text-xs ${planMessage.type === 'success'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                             : 'bg-red-50 text-red-700 border border-red-200'
                             }`}>
                             {planMessage.type === 'success'
@@ -277,59 +290,32 @@ export default function AdminPage() {
                         </div>
                     )}
 
-                    {/* Stats Cards - 총괄관리자만 */}
+                    {/* 통계 — 4개 카드 그리드 → 1줄 인라인 요약 (디자인 v1: 정보 밀도 압축) */}
                     {isAdmin && (
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                        {[
-                            { label: '전체 사용자', value: stats?.totalUsers ?? 0, icon: Users, color: 'bg-blue-100 text-blue-600' },
-                            { label: '총 분석 건수', value: stats?.totalAnalyses ?? 0, icon: BarChart3, color: 'bg-green-100 text-green-600' },
-                            { label: 'PDF 업로드', value: stats?.totalUploads ?? 0, icon: FileText, color: 'bg-purple-100 text-purple-600' },
-                            { label: '결제 건수', value: stats?.totalPayments ?? 0, icon: CreditCard, color: 'bg-amber-100 text-amber-600' },
-                        ].map((stat) => {
-                            const Icon = stat.icon;
-                            return (
-                                <Card key={stat.label} className="border-0 shadow-md">
-                                    <CardContent className="p-4 sm:p-5">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <p className="text-xs sm:text-sm text-muted-foreground">{stat.label}</p>
-                                                <p className="text-xl sm:text-2xl font-bold mt-1">
-                                                    {statsLoading ? '...' : stat.value}
-                                                </p>
-                                            </div>
-                                            <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center ${stat.color}`}>
-                                                <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
-                                            </div>
+                        <div className="mb-6 px-4 py-3 border border-gray-200 rounded-md bg-white">
+                            <div className="flex items-center gap-x-6 gap-y-2 flex-wrap text-sm">
+                                {[
+                                    { label: '전체 사용자', value: stats?.totalUsers ?? 0, icon: Users },
+                                    { label: '총 분석 건수', value: stats?.totalAnalyses ?? 0, icon: BarChart3 },
+                                    { label: 'PDF 업로드', value: stats?.totalUploads ?? 0, icon: FileText },
+                                    { label: '결제 건수', value: stats?.totalPayments ?? 0, icon: CreditCard },
+                                ].map((stat) => {
+                                    const Icon = stat.icon;
+                                    return (
+                                        <div key={stat.label} className="flex items-center gap-2">
+                                            <Icon className="w-3.5 h-3.5 text-gray-400" />
+                                            <span className="text-xs text-gray-500">{stat.label}</span>
+                                            <span className="font-semibold text-gray-900 tabular-nums">
+                                                {statsLoading ? '...' : stat.value.toLocaleString()}
+                                            </span>
                                         </div>
-                                    </CardContent>
-                                </Card>
-                            );
-                        })}
-                    </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
                     )}
 
-                    {/* AI 인사이트 진입 - 총괄관리자만 */}
-                    {isAdmin && (
-                        <Link href="/admin/insights" className="block mb-8">
-                            <Card className="border-0 shadow-md bg-gradient-to-r from-violet-50 via-fuchsia-50 to-pink-50 hover:shadow-lg transition-shadow cursor-pointer">
-                                <CardContent className="p-5 flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-violet-600 flex items-center justify-center flex-shrink-0">
-                                        <Sparkles className="w-6 h-6 text-white" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <h3 className="font-bold text-base flex items-center gap-2">
-                                            AI 인사이트
-                                            <Badge className="bg-violet-600 text-white text-[10px]">NEW</Badge>
-                                        </h3>
-                                        <p className="text-xs text-muted-foreground mt-0.5">
-                                            결제 전환·잔존율을 일/주 단위로 AI가 분석하고 원인 가설과 개선안을 제시합니다
-                                        </p>
-                                    </div>
-                                    <ChevronDown className="w-5 h-5 text-violet-600 -rotate-90" />
-                                </CardContent>
-                            </Card>
-                        </Link>
-                    )}
+                    {/* AI 인사이트는 페이지 헤더 우측 상단의 작은 링크로 통합되었음 (그라디언트 배너 제거) */}
 
                     {/* 결제내역 - 총괄관리자만 */}
                     {isAdmin && <PaymentHistory />}

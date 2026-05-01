@@ -59,7 +59,7 @@ export const PROVIDER_DOT_COLOR: Record<ProviderKey, string> = {
     kakaopay:     '#FFCD00', // 카카오 노랑 (점 4px만)
     tosspayments: '#3182F6', // 토스 파랑
     inicis:       '#7C3AED', // 보라
-    apple_iap:    '#000000', // 검정
+    apple_iap:    '#525252', // 무채색 (검정 → 다른 점들과 톤 일치 위해 회색 6)
     google_play:  '#34A853', // 구글 초록
     card:         '#9CA3AF', // 회색
     all:          '#6B7280',
