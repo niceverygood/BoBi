@@ -104,18 +104,33 @@ function MedicalInfoContent() {
 
     const MAX_ACCUMULATION_YEARS = 5;
 
-    // 다음 인증할 1년 윈도우 계산:
-    // - 누적 0개 → 최근 1년 (server default)
-    // - 누적 N개 (N < 5) → 가장 옛날 period_start의 직전 1년
-    // - 누적 5개 이상 → null (더 이상 모을 필요 없음)
+    // 누적 진료기록의 실제 커버 기간(년) 계산.
+    // HIRA가 1번 인증으로 5년치를 다 주므로 보통 1윈도우=5년이지만, 사용자가 직접 짧은
+    // 기간을 지정한 경우엔 윈도우가 여러 개 쌓일 수 있어 모든 윈도우를 union으로 계산.
+    const computeCoveredYears = (windows: AccumulatedWindow[]): number => {
+        const medical = windows.filter(w => w.record_type === 'medical');
+        if (medical.length === 0) return 0;
+        const oldestStart = medical.reduce((min, w) => (w.period_start < min ? w.period_start : min), medical[0].period_start);
+        const latestEnd = medical.reduce((max, w) => (w.period_end > max ? w.period_end : max), medical[0].period_end);
+        const ms = new Date(latestEnd).getTime() - new Date(oldestStart).getTime();
+        return Math.max(0, Math.round(ms / (1000 * 60 * 60 * 24 * 365.25)));
+    };
+
+    // 다음 추가로 받을 기간 계산:
+    // - 누적 0개 → 기본 5년치 (server default)
+    // - 5년 미만 누적 → 가장 옛날 period_start 이전의 1년치 (점진 누적)
+    // - 5년 이상 누적 → null (HIRA 정책상 그 이상은 없음)
     const computeNextChunk = (windows: AccumulatedWindow[]): { startDate?: string; endDate?: string; label: string } | null => {
         const medical = windows
             .filter(w => w.record_type === 'medical')
             .sort((a, b) => a.period_start.localeCompare(b.period_start));
 
-        if (medical.length >= MAX_ACCUMULATION_YEARS) return null;
-        if (medical.length === 0) return { label: '최근 1년 진료기록' };
+        if (medical.length === 0) return { label: '최근 5년 진료기록' };
 
+        const covered = computeCoveredYears(windows);
+        if (covered >= MAX_ACCUMULATION_YEARS) return null;
+
+        // 부분 누적 케이스 — 가장 옛날 period_start 직전 1년치 추가
         const oldestStart = new Date(medical[0].period_start + 'T00:00:00Z');
         const newEnd = new Date(oldestStart);
         newEnd.setUTCDate(newEnd.getUTCDate() - 1);
@@ -132,7 +147,7 @@ function MedicalInfoContent() {
     };
 
     const nextChunk = computeNextChunk(accumulatedWindows);
-    const collectedYears = accumulatedWindows.filter(w => w.record_type === 'medical').length;
+    const collectedYears = computeCoveredYears(accumulatedWindows);
 
     // 고지분석 관련
     const [analyzing, setAnalyzing] = useState(false);
@@ -529,7 +544,7 @@ function MedicalInfoContent() {
                             진료정보 조회
                         </h1>
                         <p className="text-sm text-muted-foreground mt-0.5">
-                            건강보험심사평가원(HIRA) 데이터 기반 조회 — 1회 인증당 1년치
+                            건강보험심사평가원(HIRA) 최근 5년치 진료내역 조회
                         </p>
                     </div>
                 </div>
@@ -897,10 +912,10 @@ function MedicalInfoContent() {
                                 </p>
                                 <p className="text-xs text-muted-foreground">
                                     {collectedYears === 0
-                                        ? '심평원 정책상 1회 인증당 1년치만 조회됩니다. 추가 인증으로 최대 5년치까지 누적 가능합니다.'
+                                        ? '심평원에서 최대 5년 전까지 진료내역을 조회합니다.'
                                         : nextChunk
-                                        ? `다음 윈도우: ${nextChunk.label}`
-                                        : '최대 누적 기간(5년)에 도달했습니다.'}
+                                        ? `추가 가능 기간: ${nextChunk.label}`
+                                        : '최대 조회 기간(5년)에 도달했습니다.'}
                                 </p>
                                 {/* 진행률 바 */}
                                 <div className="mt-2 h-1.5 bg-slate-200 rounded-full overflow-hidden">
