@@ -91,6 +91,49 @@ function MedicalInfoContent() {
     const [myMedicineRecords, setMyMedicineRecords] = useState<MyMedicineRecord[]>([]);
     const [expandedRecords, setExpandedRecords] = useState<Set<number>>(new Set());
 
+    // 누적 조회 (HIRA 1년 정책 우회 — 사용자가 1년 윈도우 단위로 여러 번 인증해 5년치를 모음)
+    type AccumulatedWindow = {
+        record_type: 'medical' | 'car_insurance' | 'medicine';
+        period_start: string;
+        period_end: string;
+        record_count: number;
+        fetched_at: string;
+    };
+    const [accumulatedWindows, setAccumulatedWindows] = useState<AccumulatedWindow[]>([]);
+    const [accumulatedLoaded, setAccumulatedLoaded] = useState(false);
+
+    const MAX_ACCUMULATION_YEARS = 5;
+
+    // 다음 인증할 1년 윈도우 계산:
+    // - 누적 0개 → 최근 1년 (server default)
+    // - 누적 N개 (N < 5) → 가장 옛날 period_start의 직전 1년
+    // - 누적 5개 이상 → null (더 이상 모을 필요 없음)
+    const computeNextChunk = (windows: AccumulatedWindow[]): { startDate?: string; endDate?: string; label: string } | null => {
+        const medical = windows
+            .filter(w => w.record_type === 'medical')
+            .sort((a, b) => a.period_start.localeCompare(b.period_start));
+
+        if (medical.length >= MAX_ACCUMULATION_YEARS) return null;
+        if (medical.length === 0) return { label: '최근 1년 진료기록' };
+
+        const oldestStart = new Date(medical[0].period_start + 'T00:00:00Z');
+        const newEnd = new Date(oldestStart);
+        newEnd.setUTCDate(newEnd.getUTCDate() - 1);
+        const newStart = new Date(newEnd);
+        newStart.setUTCFullYear(newStart.getUTCFullYear() - 1);
+        newStart.setUTCDate(newStart.getUTCDate() + 1);
+
+        const fmt = (d: Date) => d.toISOString().slice(0, 10);
+        return {
+            startDate: fmt(newStart).replace(/-/g, ''),
+            endDate: fmt(newEnd).replace(/-/g, ''),
+            label: `${fmt(newStart)} ~ ${fmt(newEnd)} 진료기록`,
+        };
+    };
+
+    const nextChunk = computeNextChunk(accumulatedWindows);
+    const collectedYears = accumulatedWindows.filter(w => w.record_type === 'medical').length;
+
     // 고지분석 관련
     const [analyzing, setAnalyzing] = useState(false);
     const [privacyConsent, setPrivacyConsent] = useState(false);
@@ -145,8 +188,44 @@ function MedicalInfoContent() {
         ...(isSmsAuth ? { authMethod: '0' } : {}),
         telecom: needsTelecomParam ? telecom : '',
         queryType,
+        // 누적 조회: 비어있는 1년 윈도우만 추가 인증. nextChunk이 명시한 startDate/endDate를 서버에 전달.
+        ...(nextChunk?.startDate ? { startDate: nextChunk.startDate, endDate: nextChunk.endDate } : {}),
         ...extraFields,
     });
+
+    // 누적 진료기록 로드 — 페이지 진입 또는 새 인증 후 호출
+    const fetchAccumulated = async () => {
+        try {
+            const data = await apiFetch<{
+                windows: AccumulatedWindow[];
+                merged: { medical: HiraMedicalRecord[]; car_insurance: HiraCarInsuranceRecord[]; medicine: MyMedicineRecord[] };
+                tableMissing?: boolean;
+            }>('/api/codef/medical-info/accumulated');
+
+            setAccumulatedWindows(data.windows || []);
+            setAccumulatedLoaded(true);
+
+            // 누적된 데이터가 있으면 즉시 결과 화면에 반영
+            if (data.merged && (data.merged.medical.length > 0 || data.merged.car_insurance.length > 0 || data.merged.medicine.length > 0)) {
+                applyResults({
+                    medical: { records: data.merged.medical },
+                    carInsurance: { records: data.merged.car_insurance },
+                    myMedicine: { records: data.merged.medicine },
+                });
+                setStep('results');
+            }
+        } catch {
+            // 로그인 직후·테이블 미마이그레이션 환경에서는 조용히 빈 상태로 시작
+            setAccumulatedLoaded(true);
+        }
+    };
+
+    // 페이지 진입 시 누적 데이터 자동 로드
+    useEffect(() => {
+        if (planLoading || plan.slug === 'free') return;
+        fetchAccumulated();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [planLoading, plan.slug]);
 
     // 로딩 단계 자동 업데이트
     const startLoadingPhases = () => {
@@ -213,6 +292,8 @@ function MedicalInfoContent() {
 
             applyResults(data);
             setStep('results');
+            // 새 1년 윈도우가 DB에 저장됐으니 누적 상태 갱신 → "이전 1년 더 보기" 버튼이 다음 윈도우로 갱신됨
+            void fetchAccumulated();
         } catch (err) {
             setError((err as Error).message);
         } finally {
@@ -448,10 +529,30 @@ function MedicalInfoContent() {
                             진료정보 조회
                         </h1>
                         <p className="text-sm text-muted-foreground mt-0.5">
-                            건강보험심사평가원(HIRA) 데이터 기반 조회
+                            건강보험심사평가원(HIRA) 데이터 기반 조회 — 1회 인증당 1년치
                         </p>
                     </div>
                 </div>
+
+                {/* 누적 상태 안내 — 이미 받은 데이터가 있으면 진행률 표시 */}
+                {accumulatedLoaded && collectedYears > 0 && (
+                    <Card className="border-0 shadow-sm bg-slate-50">
+                        <CardContent className="p-4">
+                            <p className="text-sm font-semibold mb-1">
+                                현재 수집됨: {collectedYears} / {MAX_ACCUMULATION_YEARS}년
+                            </p>
+                            <p className="text-xs text-muted-foreground mb-2">
+                                {nextChunk ? `이번 인증으로 추가될 기간: ${nextChunk.label}` : '최대 누적 기간 도달'}
+                            </p>
+                            <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-slate-700 transition-all"
+                                    style={{ width: `${(collectedYears / MAX_ACCUMULATION_YEARS) * 100}%` }}
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* 조회 유형 선택 */}
                 <Card className="border-0 shadow-sm">
@@ -776,13 +877,60 @@ function MedicalInfoContent() {
                     </Button>
                     <div>
                         <h1 className="text-xl font-bold">조회 결과</h1>
-                        <p className="text-sm text-muted-foreground">{userName}님의 진료정보</p>
+                        <p className="text-sm text-muted-foreground">{userName ? `${userName}님의 진료정보` : '진료정보 누적 결과'}</p>
                     </div>
                 </div>
                 <Button variant="outline" size="sm" onClick={reset}>
                     새로 조회
                 </Button>
             </div>
+
+            {/* 누적 진행률 + 이전 1년 더 보기 버튼 — HIRA는 1회 인증당 1년치만 허용,
+                여러 번 인증해 5년치까지 누적 가능 */}
+            {accumulatedLoaded && (
+                <Card className="border-0 shadow-sm bg-slate-50">
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between flex-wrap gap-3">
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold mb-1">
+                                    수집된 진료기록: {collectedYears} / {MAX_ACCUMULATION_YEARS}년
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    {collectedYears === 0
+                                        ? '심평원 정책상 1회 인증당 1년치만 조회됩니다. 추가 인증으로 최대 5년치까지 누적 가능합니다.'
+                                        : nextChunk
+                                        ? `다음 윈도우: ${nextChunk.label}`
+                                        : '최대 누적 기간(5년)에 도달했습니다.'}
+                                </p>
+                                {/* 진행률 바 */}
+                                <div className="mt-2 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-slate-700 transition-all"
+                                        style={{ width: `${(collectedYears / MAX_ACCUMULATION_YEARS) * 100}%` }}
+                                    />
+                                </div>
+                            </div>
+                            {nextChunk && (
+                                <Button
+                                    size="sm"
+                                    variant="default"
+                                    onClick={() => {
+                                        // 폼으로 돌아가서 다음 1년 윈도우 인증 진행
+                                        setStep('form');
+                                        setTwoWayData(null);
+                                        setSessionId(null);
+                                        setBothStep(null);
+                                        setError(null);
+                                    }}
+                                    disabled={loading}
+                                >
+                                    이전 1년 더 보기
+                                </Button>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* 요약 카드 */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
