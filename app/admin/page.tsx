@@ -256,15 +256,15 @@ export default function AdminPage() {
                                 {isAdmin ? 'ADMIN' : 'MANAGER'}
                             </Badge>
                         </div>
-                        {/* AI 인사이트는 우측 상단 작은 링크로 — 그라디언트 배너 제거 */}
+                        {/* AI 인사이트 — 인라인 텍스트 링크 (브랜드 블루 화이트리스트 #4) */}
                         {isAdmin && (
                             <Link
                                 href="/admin/insights"
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs text-gray-700 hover:bg-gray-100 transition"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-brand-600 hover:text-brand-700 hover:underline transition-colors"
                             >
-                                <Sparkles className="w-3.5 h-3.5 text-gray-500" />
+                                <Sparkles className="w-3.5 h-3.5" />
                                 AI 인사이트
-                                <span className="text-[10px] text-gray-400">NEW</span>
+                                <span className="text-[10px] text-gray-400 no-underline">NEW</span>
                             </Link>
                         )}
                     </div>
@@ -340,7 +340,7 @@ export default function AdminPage() {
                                         placeholder="이메일, 이름, 소속, UID, 전화번호 검색..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                        className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-600"
                                     />
                                 </div>
                             </div>
@@ -493,7 +493,7 @@ export default function AdminPage() {
                                                     value={u.plan_slug}
                                                     disabled={changingPlan === u.id}
                                                     onChange={(e) => handlePlanChange(u.id, u.email, e.target.value)}
-                                                    className="appearance-none pl-2 pr-6 py-1 text-xs border rounded-md bg-background cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+                                                    className="appearance-none pl-2 pr-6 py-1 text-xs border rounded-md bg-background cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-600/20 disabled:opacity-50"
                                                 >
                                                     <option value="free">무료</option>
                                                     <option value="basic">베이직</option>
@@ -821,7 +821,7 @@ function SubAdminManager() {
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <input
-                                className="w-full pl-9 pr-3 py-2.5 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                className="w-full pl-9 pr-3 py-2.5 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-600"
                                 placeholder="이메일 또는 이름으로 검색..."
                                 value={searchQuery}
                                 onChange={e => handleSearchChange(e.target.value)}
@@ -890,7 +890,7 @@ function SubAdminManager() {
                         <div className="col-span-2">
                             <label className="text-xs font-medium mb-1 block">이메일 (직접 입력) *</label>
                             <input
-                                className="w-full px-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                className="w-full px-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-brand-600/20"
                                 placeholder="위에서 검색하거나 직접 입력"
                                 value={newEmail}
                                 onChange={e => setNewEmail(e.target.value)}
@@ -900,7 +900,7 @@ function SubAdminManager() {
                         <div>
                             <label className="text-xs font-medium mb-1 block">카카오톡 ID (선택)</label>
                             <input
-                                className="w-full px-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                className="w-full px-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-brand-600/20"
                                 placeholder="kakao_id"
                                 value={newKakaoId}
                                 onChange={e => setNewKakaoId(e.target.value)}
@@ -909,7 +909,7 @@ function SubAdminManager() {
                         <div>
                             <label className="text-xs font-medium mb-1 block">메모 (선택)</label>
                             <input
-                                className="w-full px-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                className="w-full px-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-brand-600/20"
                                 placeholder="원금융서비스 팀장"
                                 value={newNote}
                                 onChange={e => setNewNote(e.target.value)}
@@ -1135,7 +1135,7 @@ function PromoCodeManager() {
                             <label className="text-xs font-medium mb-1 block">쿠폰 코드 *</label>
                             <div className="flex gap-2">
                                 <input
-                                    className="flex-1 px-3 py-2 border rounded-lg text-sm bg-background font-mono uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                    className="flex-1 px-3 py-2 border rounded-lg text-sm bg-background font-mono uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-brand-600/20"
                                     placeholder="BOBI-XXXXX"
                                     value={newCode}
                                     onChange={e => setNewCode(e.target.value.toUpperCase())}
@@ -1148,7 +1148,7 @@ function PromoCodeManager() {
                         <div className="col-span-2 sm:col-span-1">
                             <label className="text-xs font-medium mb-1 block">설명</label>
                             <input
-                                className="w-full px-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                className="w-full px-3 py-2 border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-brand-600/20"
                                 placeholder="오픈 기념 30% 할인 프로모션"
                                 value={newDesc}
                                 onChange={e => setNewDesc(e.target.value)}
@@ -1677,7 +1677,7 @@ function PaymentHistory() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="이메일, 이름, 사용자ID, 결제ID로 검색"
-                        className="w-full pl-9 pr-9 py-2 text-sm border border-gray-200 rounded-md bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+                        className="w-full pl-9 pr-9 py-2 text-sm border border-gray-200 rounded-md bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-600"
                     />
                     {searchQuery && (
                         <button
@@ -1941,7 +1941,7 @@ function RefundConfirmModal({
                         onChange={(e) => onReasonChange(e.target.value)}
                         placeholder="예: 사용자 요청, 중복 결제 등"
                         disabled={refunding}
-                        className="w-full px-2 py-1.5 text-xs border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="w-full px-2 py-1.5 text-xs border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-brand-600/20"
                     />
                 </div>
 
@@ -2111,7 +2111,7 @@ function SystemLogs() {
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter') fetchLogs(); }}
-                            className="w-full pl-8 pr-2 py-1.5 border rounded text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            className="w-full pl-8 pr-2 py-1.5 border rounded text-xs bg-background focus:outline-none focus:ring-2 focus:ring-brand-600/20"
                         />
                     </div>
                 </div>
