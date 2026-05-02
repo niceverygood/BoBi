@@ -41,6 +41,14 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* BoBi 브랜드 블루 스케일 — 한 페이지 5~7곳에만. 사용 규칙은 lib/design/tokens.ts 참고. */
+  --color-brand-50: #EFF6FF;
+  --color-brand-100: #DBEAFE;
+  --color-brand-500: #3B82F6;
+  --color-brand-600: #1a56db;
+  --color-brand-700: #1E40AF;
+  --color-brand-800: #1E3A8A;
 }
 
 :root {

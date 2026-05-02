@@ -123,9 +123,9 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                             href={item.href}
                             className={cn(
                                 'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors',
-                                // 디자인 v1: 진한 brand 채움 → 회색 9 채움 (또는 회색 100 hover)
+                                // 디자인 v2.1: 활성 메뉴는 BoBi 브랜드 블루 (현재 위치 표시 — 화이트리스트 #2)
                                 isActive
-                                    ? 'bg-gray-900 text-white'
+                                    ? 'bg-brand-600 text-white'
                                     : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
                                 collapsed && 'justify-center px-2'
                             )}

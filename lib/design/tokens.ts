@@ -1,11 +1,11 @@
 // lib/design/tokens.ts
-// BoBi 디자인 시스템 v2 — Pure Monochrome.
+// BoBi 디자인 시스템 v2.1 — Monochrome + Brand Accent.
 //
 // 원칙:
-// 1. 컬러는 0개 (UI 크롬에 의미 없는 색 사용 금지)
-// 2. 강조/식별은 텍스트 + 아이콘 + 굵기·크기·간격으로
-// 3. 단 하나 예외: 위험 액션(환불/취소 버튼)은 red-600 한 가지만
-// 4. 의료 도메인 액센트(teal)도 일단 보류 — 1차 안정화 후 별도 PR 검토
+// 1. 회색 99% + BoBi 블루 1% + semantic 1% 미만
+// 2. 강조/식별은 텍스트 + 아이콘 + 굵기·크기·간격이 1차, 색은 보조
+// 3. 위험 액션(환불/취소)은 red-600 단일 톤
+// 4. 브랜드 블루(brand-600 = #1a56db)는 한 페이지에 5~7곳만 — 규칙은 BRAND_BLUE_USAGE 참고
 //
 // 색이 정말 필요한 경우:
 // - 진단·차트 시각화 (결과 화면)
@@ -21,6 +21,39 @@ import {
     Sparkles,
     type LucideIcon,
 } from 'lucide-react';
+
+// ─── BoBi 브랜드 블루 ──────────────────────────────────
+// CSS 토큰은 app/globals.css의 @theme 블록에 동기화되어 있음.
+// Tailwind 유틸리티: bg-brand-{50,100,500,600,700,800}, text-brand-*, ring-brand-*
+export const BRAND_BLUE = {
+    50:  '#EFF6FF',
+    100: '#DBEAFE',
+    500: '#3B82F6',
+    600: '#1a56db', // ★ 메인 — 로고, 활성 nav, primary CTA
+    700: '#1E40AF', // hover, active press
+    800: '#1E3A8A',
+} as const;
+
+/**
+ * 브랜드 블루 사용 위치 화이트리스트 (참조용).
+ * "이 자리에 블루를 쓰면 사용자가 무엇을 더 잘하게 되는가?" 답이 안 나오면 회색.
+ *
+ * 허용:
+ * 1. 로고 마크 (BobiLogo)
+ * 2. 활성 nav 메뉴 (bg-brand-600 text-white)
+ * 3. Primary CTA 버튼 (bg-brand-600 hover:bg-brand-700)
+ * 4. 인라인 링크 (text-brand-600 hover:text-brand-700 hover:underline)
+ * 5. Focus ring (focus:ring-2 focus:ring-brand-600)
+ * 6. (선택) 체크박스/토글 활성
+ * 7. (선택) 차트 메인 시리즈 (#1a56db)
+ *
+ * 금지:
+ * - 통계 숫자, 헤딩 텍스트, 카드 테두리/배경
+ * - 본문 강조 (굵기·크기로 처리)
+ * - 아이콘 배경 박스
+ * - semantic 상태 (성공/경고/실패) 대체
+ */
+export const BRAND_BLUE_USAGE = 'see comment above' as const;
 
 // ─── 결제수단 (Provider) ────────────────────────────────
 // 색 식별 폐기 — 라벨로만 구분. 점은 시각 리듬용 회색 단일색.
