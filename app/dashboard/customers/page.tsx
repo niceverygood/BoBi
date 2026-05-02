@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Users, Plus, Search, ArrowRight, FileSearch, HeartPulse, Activity, Loader2 } from 'lucide-react';
+import { Users, Plus, Search, ArrowRight, HeartPulse, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { apiFetch } from '@/lib/api/client';
 
@@ -67,8 +67,8 @@ export default function CustomersPage() {
         <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-2">
-                        <Users className="w-6 h-6 text-primary" />
+                    <h1 className="text-2xl font-bold flex items-center gap-2 text-gray-900">
+                        <Users className="w-6 h-6 text-gray-500" />
                         고객 카드
                     </h1>
                     <p className="text-muted-foreground text-sm mt-1">고객별 보험 데이터를 한눈에 관리하세요</p>
@@ -78,9 +78,9 @@ export default function CustomersPage() {
                 </Button>
             </div>
 
-            {/* 고객 추가 */}
+            {/* 고객 추가 — 폼 카드 좌측 강조선은 회색 (브랜드 액센트 자리 차지하지 않도록) */}
             {showAdd && (
-                <Card className="border-0 shadow-md border-l-4 border-l-primary">
+                <Card className="border-0 shadow-md border-l-4 border-l-gray-300">
                     <CardContent className="p-4">
                         <div className="flex gap-3">
                             <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="고객 이름" className="flex-1" />
@@ -133,34 +133,39 @@ export default function CustomersPage() {
                             <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
                                 <CardContent className="p-4">
                                     <div className="flex items-center gap-4">
-                                        {/* 아바타 */}
-                                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                            <span className="text-lg font-bold text-primary">{c.name.charAt(0)}</span>
+                                        {/* 아바타 — 회색 단색 */}
+                                        <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                                            <span className="text-lg font-bold text-gray-600">{c.name.charAt(0)}</span>
                                         </div>
 
                                         {/* 정보 */}
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
-                                                <p className="font-semibold">{c.name}</p>
+                                                <p className="font-semibold text-gray-900">{c.name}</p>
                                                 {c.gender && <Badge variant="outline" className="text-[10px]">{c.gender === 'male' ? '남' : '여'}</Badge>}
                                             </div>
-                                            <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
+                                            <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
                                                 {c.phone && <span>{c.phone}</span>}
                                                 {c.birth_date && <span>{c.birth_date}</span>}
                                             </div>
                                         </div>
 
-                                        {/* 분석 현황 */}
+                                        {/* 분석 현황 — 분석건수 텍스트와 중복되는 파랑 배지는 제거. S2/위험분석 완료는 회색 outline */}
                                         <div className="flex items-center gap-2 shrink-0">
-                                            {c.analysisCount > 0 && (
+                                            {(c.hasStep2 || c.hasRiskReport) && (
                                                 <div className="flex gap-1">
-                                                    <Badge className="text-[10px] bg-blue-500"><FileSearch className="w-2.5 h-2.5" /></Badge>
-                                                    {c.hasStep2 && <Badge className="text-[10px] bg-green-500">S2</Badge>}
-                                                    {c.hasRiskReport && <Badge className="text-[10px] bg-red-500"><HeartPulse className="w-2.5 h-2.5" /></Badge>}
+                                                    {c.hasStep2 && (
+                                                        <Badge variant="outline" className="text-[10px] border-gray-200 text-gray-600">S2</Badge>
+                                                    )}
+                                                    {c.hasRiskReport && (
+                                                        <Badge variant="outline" className="text-[10px] border-gray-200 text-gray-600 px-1.5" title="위험도 분석 완료">
+                                                            <HeartPulse className="w-2.5 h-2.5" />
+                                                        </Badge>
+                                                    )}
                                                 </div>
                                             )}
-                                            <span className="text-xs text-muted-foreground">{c.analysisCount}건</span>
-                                            <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                                            <span className="text-xs text-gray-500 tabular-nums">{c.analysisCount}건</span>
+                                            <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-gray-700 transition-colors" />
                                         </div>
                                     </div>
                                 </CardContent>
