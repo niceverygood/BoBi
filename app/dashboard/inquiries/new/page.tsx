@@ -106,7 +106,7 @@ export default function NewInquiryPage() {
                             </div>
                         )}
 
-                        <Button type="submit" disabled={loading} className="w-full h-12 bg-gradient-primary hover:opacity-90 gap-2">
+                        <Button type="submit" disabled={loading} className="w-full h-12 gap-2">
                             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                             {loading ? '등록 중...' : '문의 등록'}
                         </Button>

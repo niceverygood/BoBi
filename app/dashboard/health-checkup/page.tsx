@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import {
     ArrowLeft, Loader2, HeartPulse, Activity, Brain, Stethoscope,
-    AlertCircle, TrendingUp, TrendingDown, Shield, Minus, Sparkles,
+    AlertCircle, TrendingUp, TrendingDown, Shield, Minus, Sparkles, CheckCircle2,
 } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { apiFetch } from '@/lib/api/client';
@@ -578,13 +578,13 @@ function HealthCheckupContent() {
                 )}
 
                 {customerIdFromQuery && autoSyncStatus === 'success' && syncedAnalysisId && (
-                    <div className="flex items-start gap-3 rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50 to-indigo-50 p-4">
-                        <Sparkles className="w-5 h-5 text-violet-600 shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                         <div className="flex-1 text-sm">
-                            <p className="font-semibold text-violet-900">
-                                질병위험도 리포트에 자동 반영되었습니다 ✨
+                            <p className="font-semibold text-emerald-900">
+                                질병위험도 리포트에 자동 반영되었습니다
                             </p>
-                            <p className="text-xs text-violet-700 leading-relaxed mt-1">
+                            <p className="text-xs text-emerald-700 leading-relaxed mt-1">
                                 이 고객의 최신 분석에 오늘 조회한 건강검진 수치가 통합되어
                                 질병 위험도·상대 위험도 예측이 재계산되었습니다.
                             </p>
@@ -635,10 +635,10 @@ function HealthCheckupContent() {
 
                 {/* 분석 리포트 통합 — 자동 연동이 성공하거나 대기 중이 아닌 경우에만 수동 옵션 표시 */}
                 {recentAnalyses.length > 0 && autoSyncStatus !== 'success' && autoSyncStatus !== 'syncing' && (
-                    <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-violet-50 border-blue-100">
+                    <Card className="border border-gray-200 shadow-md bg-gray-50">
                         <CardHeader className="pb-3">
                             <CardTitle className="text-base flex items-center gap-2">
-                                <Sparkles className="w-5 h-5 text-[#1a56db]" />
+                                <Sparkles className="w-5 h-5 text-brand-600" />
                                 {customerIdFromQuery ? '다른 분석에도 반영하기' : '질병위험리포트에 반영하기'}
                             </CardTitle>
                             <CardDescription className="text-xs">
@@ -810,10 +810,10 @@ function HealthCheckupContent() {
                 {process.env.NEXT_PUBLIC_ENABLE_NHIS_PREDICTION_UPGRADE === 'true'
                   && ((results.stroke && (results.stroke as unknown as { _source?: string })._source !== 'nhis')
                       || (results.cardio && (results.cardio as unknown as { _source?: string })._source !== 'nhis')) && (
-                    <Card className="border-0 shadow-sm bg-gradient-to-br from-violet-50 to-indigo-50 border-violet-100">
+                    <Card className="border border-gray-200 shadow-sm bg-gray-50">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-base flex items-center gap-2">
-                                <Shield className="w-4 h-4 text-violet-600" />
+                                <Shield className="w-4 h-4 text-gray-500" />
                                 NHIS 공단 공식 예측으로 업그레이드
                             </CardTitle>
                             <CardDescription className="text-xs">

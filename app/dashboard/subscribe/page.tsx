@@ -870,7 +870,7 @@ function SubscribeContent() {
                         )}
                         <Button
                             onClick={() => router.push('/dashboard')}
-                            className="w-full h-11 bg-gradient-primary hover:opacity-90"
+                            className="w-full h-11"
                         >
                             대시보드로 이동
                         </Button>
@@ -1029,7 +1029,7 @@ function SubscribeContent() {
                             <button
                                 type="button"
                                 onClick={() => setEnterpriseDialogOpen(true)}
-                                className="w-full p-4 rounded-xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 text-left transition-all hover:border-amber-400 hover:shadow-sm"
+                                className="w-full p-4 rounded-xl border-2 border-amber-200 bg-amber-50 text-left transition-all hover:border-amber-400 hover:shadow-sm"
                             >
                                 <div className="flex items-center justify-between gap-3">
                                     <div className="flex items-center gap-3 min-w-0">
@@ -1283,42 +1283,43 @@ function SubscribeContent() {
                                     </div>
                                 )}
 
-                                {/* 3일 무료 체험 — 베이직 선택 + 자격 있음 + 월간일 때만 노출 */}
+                                {/* 3일 무료 체험 — 베이직 선택 + 자격 있음 + 월간일 때만 노출.
+                                    BoBi 트라이얼은 brand 시그너처 자리 (whitelist #3 primary CTA 영역과 동급) */}
                                 {trialChecked && trialEligible && selectedPlan === 'basic' && billingCycle === 'monthly' && platform === 'web' && (
-                                    <div className="rounded-xl border-2 border-violet-200 bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/20 dark:to-violet-900/10 p-4 space-y-3">
+                                    <div className="rounded-xl border border-brand-100 bg-brand-50 p-4 space-y-3">
                                         <div className="flex items-start gap-3">
-                                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shrink-0 shadow-md">
+                                            <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center shrink-0">
                                                 <SparklesIcon className="w-5 h-5 text-white" />
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 mb-1">
-                                                    <p className="font-bold text-violet-900 dark:text-violet-200">
+                                                    <p className="font-bold text-gray-900">
                                                         첫 결제 {trialDays}일 무료 체험
                                                     </p>
-                                                    <Badge className="bg-violet-600 text-white text-[10px]">NEW</Badge>
+                                                    <Badge className="bg-brand-600 text-white text-[10px]">NEW</Badge>
                                                 </div>
-                                                <p className="text-xs text-violet-700 dark:text-violet-300 leading-relaxed">
+                                                <p className="text-xs text-gray-700 leading-relaxed">
                                                     오늘 카드를 등록하고 {trialDays}일간 모든 기능을 써보세요.
                                                     {' '}체험 종료일({new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })})에 자동 결제되며,
                                                     그 전에 해지하면 <strong>단 한 푼도 청구되지 않습니다.</strong>
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-2 pt-2 border-t border-violet-200/60">
+                                        <div className="flex items-center gap-2 pt-2 border-t border-brand-100">
                                             <input
                                                 type="checkbox"
                                                 id="use-trial"
                                                 checked={useTrial}
                                                 onChange={(e) => setUseTrial(e.target.checked)}
-                                                className="w-4 h-4 rounded border-violet-300 text-violet-600 focus:ring-violet-500"
+                                                className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-600"
                                             />
-                                            <label htmlFor="use-trial" className="text-sm font-medium text-violet-900 dark:text-violet-200 cursor-pointer flex items-center gap-1.5">
+                                            <label htmlFor="use-trial" className="text-sm font-medium text-gray-900 cursor-pointer flex items-center gap-1.5">
                                                 <Calendar className="w-4 h-4" />
                                                 {trialDays}일 무료 체험 사용 (권장)
                                             </label>
                                         </div>
                                         {useTrial && (
-                                            <div className="text-[11px] text-violet-600 dark:text-violet-400 leading-relaxed pl-6">
+                                            <div className="text-[11px] text-gray-600 leading-relaxed pl-6">
                                                 💳 체험 가능 결제수단: <strong>카카오페이</strong> 또는 <strong>토스 카드</strong>
                                                 {' '}· 상세 결제 흐름은 아래 결제 요약에서 확인하세요.
                                             </div>
@@ -1461,7 +1462,7 @@ function SubscribeContent() {
                                 <Button
                                     onClick={handleSubscribe}
                                     disabled={loading || subLoading || (platform !== 'web' && !iapReady)}
-                                    className="w-full h-12 text-base bg-gradient-primary hover:opacity-90 transition-opacity"
+                                    className="w-full h-12 text-base"
                                 >
                                     {loading ? (
                                         <>

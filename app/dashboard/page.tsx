@@ -173,7 +173,7 @@ export default function DashboardPage() {
             <ActivityChart />
 
             {/* 사용량 요약 (기존 3개 통계를 1줄로 축약) */}
-            <Card className="border-0 shadow-sm bg-gradient-to-r from-slate-50 to-white">
+            <Card className="border border-gray-200 shadow-sm bg-white">
                 <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
                     <div className="flex items-center gap-6 flex-wrap">
                         <div>

@@ -303,7 +303,7 @@ function AnalyzeContent() {
                                     크레딧 구매
                                 </Button>
                                 <Link href="/pricing">
-                                    <Button size="sm" className="bg-gradient-primary hover:opacity-90 shadow-sm">
+                                    <Button size="sm" className="shadow-sm">
                                         <Sparkles className="w-3.5 h-3.5 mr-1.5" />
                                         업그레이드
                                     </Button>
@@ -443,7 +443,6 @@ function AnalyzeContent() {
                             <Button
                                 onClick={handleAnalyze}
                                 disabled={successFileCount === 0 || analyzing || !canAnalyze}
-                                className="bg-gradient-primary hover:opacity-90"
                             >
                                 {analyzing ? (
                                     <>
@@ -495,7 +494,6 @@ function AnalyzeContent() {
                         )}
                         <Link href={`/dashboard/products${analysisId ? `?analysisId=${analysisId}` : ''}`}>
                             <Button
-                                className="bg-gradient-primary hover:opacity-90"
                                 disabled={!isFeatureEnabled('product_match')}
                             >
                                 {isFeatureEnabled('product_match') ? (

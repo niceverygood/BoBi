@@ -136,7 +136,7 @@ export default function SettingsPage() {
                             )}
                         </div>
                     </div>
-                    <Button className="bg-gradient-primary hover:opacity-90">
+                    <Button>
                         저장
                     </Button>
                 </CardContent>
@@ -178,7 +178,7 @@ export default function SettingsPage() {
                                     'h-full rounded-full transition-all duration-500',
                                     usagePercent >= 90 ? 'bg-red-500' :
                                         usagePercent >= 70 ? 'bg-amber-500' :
-                                            'bg-gradient-to-r from-blue-500 to-primary'
+                                            'bg-brand-600'
                                 )}
                                 style={{ width: `${usagePercent}%` }}
                             />
@@ -254,8 +254,8 @@ export default function SettingsPage() {
                     <CardContent className="pt-6">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center">
-                                    <Crown className="w-5 h-5 text-white" />
+                                <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+                                    <Crown className="w-5 h-5 text-gray-500" />
                                 </div>
                                 <div>
                                     <p className="font-semibold">플랜 업그레이드</p>
@@ -264,7 +264,6 @@ export default function SettingsPage() {
                             </div>
                             <Button
                                 onClick={() => window.location.href = '/dashboard/subscribe'}
-                                className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:opacity-90 text-white"
                             >
                                 구독하기
                             </Button>
@@ -369,10 +368,10 @@ function ReferralSection() {
 
     return (
         <Card className="border-0 shadow-sm overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-[#1a56db] to-[#60a5fa]" />
+            <div className="h-1 bg-brand-600" />
             <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
-                    <Gift className="w-5 h-5 text-[#1a56db]" />
+                    <Gift className="w-5 h-5 text-brand-600" />
                     친구 초대
                 </CardTitle>
                 <CardDescription>

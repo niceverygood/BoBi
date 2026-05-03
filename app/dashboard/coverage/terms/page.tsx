@@ -129,7 +129,7 @@ export default function ProductTermsPage() {
                         </div>
                         <Button
                             onClick={() => setShowModal(true)}
-                            className="gap-2 mt-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                            className="gap-2 mt-2"
                         >
                             <Search className="w-4 h-4" />
                             보험상품 조회하기
@@ -160,14 +160,14 @@ export default function ProductTermsPage() {
             {showModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
                     <div className="bg-background rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
-                        <div className="flex items-center justify-between p-5 border-b bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+                        <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gray-50">
                             <div>
-                                <h3 className="text-lg font-bold">보험상품 약관 조회</h3>
-                                <p className="text-xs text-white/80 mt-0.5">
+                                <h3 className="text-lg font-bold text-gray-900">보험상품 약관 조회</h3>
+                                <p className="text-xs text-gray-600 mt-0.5">
                                     주계약 · 특약 · 보장금액 · 보험료 상세 조회
                                 </p>
                             </div>
-                            <button onClick={() => setShowModal(false)} className="p-1 rounded-full hover:bg-white/20">
+                            <button onClick={() => setShowModal(false)} className="p-1 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
