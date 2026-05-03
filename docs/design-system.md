@@ -194,6 +194,44 @@ function getRiskMultiplierBadgeClass(relativeRisk: number): string {
 
 ---
 
+#### §11.3.6 기능 그라디언트는 예외 (정보 0 + 기능 1이면 보존)
+
+**상황**: `bg-gradient-*` 일괄 정리 작업(PR #28~#30) 중 `components/landing/TestimonialMarquee.tsx`의 좌·우 페이드 마스크가 그라디언트로 발견됨. 마퀴 스크롤 텍스트가 카드 가장자리에서 자연스럽게 fade-out 하도록 `bg-gradient-to-r from-background to-transparent`(좌측) / `bg-gradient-to-l from-background to-transparent`(우측)을 사용 중이었다.
+
+**문제**: "그라디언트는 정보 0이라 제거" 규칙(§11.3.3)을 단순 적용하면 페이드 효과까지 사라져 마퀴 텍스트가 카드 끝에서 잘려 보임. 색이 정보를 전달하는 그라디언트(어필·강조·구분)와 시각 기능을 만드는 그라디언트(페이드·블러·opacity transition)는 다르게 취급해야 한다.
+
+**해결**: 그라디언트 발견 시 코드 추적으로 "이 색이 정보를 전달하는가"를 먼저 확인 (§14 Phase 0 적용). 색=정보(브랜드 어필·등급 표시·CTA 강조) → 단색화·제거. 색=시각 기능(페이드 마스크·blur transition·opacity gradient) → **보존**. PR #30에서 페이드 마스크 2건은 모든 후속 PR에서 보존하기로 명시.
+
+**출처**: PR #30 — `components/landing/TestimonialMarquee.tsx` L115·L116 마퀴 페이드 마스크
+
+---
+
+#### §11.3.7 도메인 시각 효과는 단색으로 보존 (그라디언트만 제거)
+
+**상황**: PR #30에서 `components/accident-receipt/ReceiptView.tsx`의 가상 영수증 헤더가 `bg-gradient-to-r from-slate-800 to-slate-900 text-white`로 어두운 톤. "영수증 = 어두운 헤더가 정보를 담는 영역"이라는 도메인 특성을 시각적으로 전달하고 있었다.
+
+**문제**: 일반 카드 패턴(B → `bg-gray-50`)을 그대로 적용하면 영수증답지 않게 너무 밝아져 도메인 정체성이 사라짐. semantic 카드 패턴(B′)도 적용 안 됨(success/warning/danger 의미 아님). 모달 hero 패턴(D2 → `bg-gray-50` + 강한 heading)도 회색 톤이라 부적합. 그라디언트는 정보 0이지만 어두운 톤 자체는 도메인 정보.
+
+**해결**: 그라디언트만 제거하고 **어두운 단색**(`bg-gray-900`)으로 통일. 도메인 시각 의도(어두운 헤더)는 단색으로 충분히 전달됨. 보조 텍스트도 `text-slate-400` → `text-gray-400`로 토큰 통일. 영수증·약관·계약서처럼 도메인 특성상 어두운 톤이 의미를 갖는 영역은 패턴 B/D2 외 별도 카테고리.
+
+**출처**: PR #30 — `components/accident-receipt/ReceiptView.tsx` L26 영수증 헤더
+
+---
+
+#### §11.3.8 두 플로팅 동시 노출 안티패턴 (위치 충돌 + 시선 분산)
+
+**상황**: dashboard 메인에 `ChatBot`(`bottom-6 right-6 z-50`, `bg-brand-600`)과 `ReferralFloating`(`bottom-24 right-6 z-40`, amber 그라디언트)이 둘 다 우하단 영역에 위치하여 항상 동시에 노출. PR #30 코드 추적 결과 `ReferralFloating`은 `mounted && !dismissed`만 체크하고 ChatBot 활성 여부는 비검사 — 무조건 동시 표시.
+
+**문제**: (1) 우하단 같은 세로 라인(`right-6`)에 두 floating 버튼이 위아래로 쌓여 시선 충돌 — 사용자가 어느 쪽을 누를지 매번 판단. (2) 둘 다 색 영역이면 페이지 brand 한도(5~7곳)를 빠르게 도달 — ChatBot brand + ReferralFloating amber이면 마케팅 영역만으로 2곳 차지. (3) 의도가 다른 두 액션(채팅 진입 vs 추천 코드 확산)이 같은 자리를 경쟁.
+
+**해결 (단기, PR #30 적용)**: 두 플로팅을 **다른 톤**으로 시각 분리. ChatBot은 brand-600 유지(whitelist #3 채팅 진입 시그너처). ReferralFloating은 회색(`bg-white border-gray-200`)으로 회색화 — amber=주의 semantic 충돌도 함께 해소. 같은 자리에 위아래로 보이지만 색으로 위계 분리.
+
+**해결 (장기, 별도 PR 후속)**: 노출 조건 재설계. 한쪽이 활성/expanded일 때 다른 쪽은 숨김. 또는 ReferralFloating dismiss UX 개선(첫 진입 1회 표시 후 자동 dismiss, ChatBot 호버 시 숨김 등). 색 정리만으로는 근본 해결 안 됨.
+
+**출처**: PR #30 — `components/common/ReferralFloating.tsx` 회색화 처리 + 노출 조건 재검토 메모
+
+---
+
 ## §12 검증 체크리스트 *(TBD)*
 
 ---
