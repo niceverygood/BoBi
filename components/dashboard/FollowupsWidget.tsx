@@ -116,7 +116,7 @@ export default function FollowupsWidget() {
     // 팔로업 없음 → 긍정 메시지
     if (items.length === 0) {
         return (
-            <Card className="border-0 shadow-sm bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100">
+            <Card className="border border-emerald-100 shadow-sm bg-emerald-50">
                 <CardContent className="p-5 flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
                         <CheckCircle2 className="w-5 h-5 text-emerald-600" />
@@ -133,7 +133,7 @@ export default function FollowupsWidget() {
     const visibleItems = expanded ? items : items.slice(0, 3);
 
     return (
-        <Card className="border-0 shadow-sm border-l-4 border-l-amber-400 bg-gradient-to-r from-amber-50/40 to-transparent">
+        <Card className="border-0 shadow-sm border-l-4 border-l-amber-400 bg-amber-50/40">
             <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center justify-between">
                     <span className="flex items-center gap-2">

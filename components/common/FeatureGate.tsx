@@ -68,12 +68,13 @@ export default function FeatureGate({ feature, title, description, children, red
 
     return (
         <div className="max-w-2xl mx-auto py-12 px-4">
-            <Card className="border-0 shadow-xl bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/20 dark:to-violet-900/10">
+            {/* 잠금 게이트 — 회색 베이스 (잠금=비활성 시그널 1차). 업그레이드 권유는 CTA 버튼이 전달 */}
+            <Card className="border border-gray-200 shadow-xl bg-gray-50">
                 <CardHeader className="text-center pb-4">
-                    <div className="mx-auto w-16 h-16 bg-gradient-to-br from-violet-500 to-violet-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
-                        <Crown className="w-8 h-8 text-white" />
+                    <div className="mx-auto w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
+                        <Crown className="w-8 h-8 text-gray-500" />
                     </div>
-                    <CardTitle className="text-2xl font-bold">
+                    <CardTitle className="text-2xl font-bold text-gray-900">
                         {title}은 프로 플랜 전용 기능입니다
                     </CardTitle>
                     <CardDescription className="mt-3 text-base leading-relaxed">
@@ -88,21 +89,21 @@ export default function FeatureGate({ feature, title, description, children, red
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-2">
-                    {/* 베이직 체험 가능 시 먼저 홍보 */}
+                    {/* 베이직 체험 가능 시 먼저 홍보 — 트라이얼 배너 패턴(brand-50)과 일관 */}
                     {trialEligible && (
-                        <div className="rounded-xl border-2 border-violet-300 bg-white/60 dark:bg-violet-950/30 p-4 text-center">
+                        <div className="rounded-xl border border-brand-100 bg-brand-50 p-4 text-center">
                             <div className="flex items-center justify-center gap-2 mb-2">
-                                <Sparkles className="w-4 h-4 text-violet-600" />
-                                <p className="font-semibold text-sm text-violet-900 dark:text-violet-200">
+                                <Sparkles className="w-4 h-4 text-brand-600" />
+                                <p className="font-semibold text-sm text-gray-900">
                                     먼저 베이직을 {trialDays}일 무료로 써보세요
                                 </p>
                             </div>
-                            <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+                            <p className="text-xs text-gray-600 mb-3 leading-relaxed">
                                 베이직 플랜으로 주요 기능을 체험 후 필요 시 프로로 업그레이드할 수 있습니다.
                                 {' '}체험 기간 해지 시 <strong>0원</strong>.
                             </p>
                             <Link href="/dashboard/subscribe?plan=basic">
-                                <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white">
+                                <Button size="sm">
                                     <Sparkles className="w-4 h-4 mr-1.5" />
                                     {trialDays}일 무료 체험 시작
                                 </Button>
@@ -112,7 +113,7 @@ export default function FeatureGate({ feature, title, description, children, red
 
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
                         <Link href="/pricing" className="flex-1 sm:flex-initial">
-                            <Button size="lg" className="bg-gradient-primary hover:opacity-90 shadow-md w-full sm:w-auto">
+                            <Button size="lg" className="shadow-md w-full sm:w-auto">
                                 <Crown className="w-4 h-4 mr-2" />
                                 프로 플랜으로 업그레이드
                             </Button>

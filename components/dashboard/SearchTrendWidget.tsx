@@ -87,7 +87,6 @@ export default function SearchTrendWidget() {
 
     return (
         <Card className="border-0 shadow-sm overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-red-500 via-orange-400 to-amber-400" />
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <CardTitle className="text-base flex items-center gap-2">

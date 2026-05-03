@@ -294,7 +294,7 @@ export default function PolicyInputForm({ onSubmit, loading }: PolicyInputFormPr
                     size="sm"
                     onClick={() => setShowCodefModal(true)}
                     disabled={loading || !!uploading || codefLoading}
-                    className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md"
+                    className="gap-2 shadow-md"
                 >
                     {codefFetched ? (
                         <><CheckCircle2 className="w-4 h-4" /> 조회 완료</>
@@ -512,15 +512,15 @@ export default function PolicyInputForm({ onSubmit, loading }: PolicyInputFormPr
             {showCodefModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
                     <div className="bg-background rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
-                        {/* Modal header */}
-                        <div className="flex items-center justify-between p-5 border-b bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+                        {/* Modal header — D2: brand 풀배경 ❌, gray 베이스 + 강한 heading */}
+                        <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gray-50">
                             <div>
-                                <h3 className="text-lg font-bold">내보험다보여 자동조회</h3>
-                                <p className="text-xs text-white/80 mt-0.5">
+                                <h3 className="text-lg font-bold text-gray-900">내보험다보여 자동조회</h3>
+                                <p className="text-xs text-gray-600 mt-0.5">
                                     전 보험사 가입 현황 + 특약까지 자동 조회
                                 </p>
                             </div>
-                            <button onClick={() => setShowCodefModal(false)} className="p-1 rounded-full hover:bg-white/20 transition-colors">
+                            <button onClick={() => setShowCodefModal(false)} className="p-1 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>

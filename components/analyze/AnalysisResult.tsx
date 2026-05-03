@@ -63,12 +63,12 @@ export default function AnalysisResultView({ result }: AnalysisResultProps) {
             {/* 시각화 요약 (고객 친화적) */}
             <AnalysisSummaryVisual result={result} />
 
-            {/* Overall Summary */}
-            <Card className="border-0 shadow-sm bg-gradient-to-br from-primary/5 to-primary/10">
+            {/* Overall Summary — 그라디언트·primary 톤 제거, 회색 베이스 */}
+            <Card className="border border-gray-200 shadow-sm bg-gray-50">
                 <CardContent className="p-4 sm:p-6">
                     <div className="flex items-start gap-3 sm:gap-4">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                            <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+                            <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-gray-500" />
                         </div>
                         <div className="flex-1 min-w-0">
                             <h3 className="font-semibold text-base sm:text-lg mb-2">분석 요약</h3>

@@ -71,7 +71,7 @@ export default function RemodelingProposalView({ proposal, onDownloadPdf }: Prop
     return (
         <div className="space-y-6">
             {/* Score Improvement Card */}
-            <Card className="border-0 shadow-sm bg-gradient-to-r from-primary/5 to-primary/10">
+            <Card className="border border-gray-200 shadow-sm bg-gray-50">
                 <CardContent className="pt-6">
                     <div className="flex items-center justify-between flex-wrap gap-4">
                         <div className="flex items-center gap-4">

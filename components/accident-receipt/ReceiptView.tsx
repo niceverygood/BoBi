@@ -22,18 +22,18 @@ export default function ReceiptView({ receipt }: ReceiptViewProps) {
     return (
         <div className="space-y-4">
             <Card className="border-0 shadow-lg overflow-hidden">
-                {/* 헤더 */}
-                <div className="bg-gradient-to-r from-slate-800 to-slate-900 text-white p-6">
+                {/* 헤더 — 영수증 도메인 어두운 톤 보존 (그라디언트만 단색화) */}
+                <div className="bg-gray-900 text-white p-6">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-400 tracking-wider uppercase">가상 사고 영수증</p>
+                            <p className="text-xs text-gray-400 tracking-wider uppercase">가상 사고 영수증</p>
                             <h2 className="text-xl font-bold mt-1">{receipt.diseaseName}</h2>
                             {receipt.diseaseCode && (
-                                <p className="text-xs text-slate-400 mt-0.5">질병코드: {receipt.diseaseCode}</p>
+                                <p className="text-xs text-gray-400 mt-0.5">질병코드: {receipt.diseaseCode}</p>
                             )}
                         </div>
                         <div className="text-right">
-                            <p className="text-xs text-slate-400">투병 기간</p>
+                            <p className="text-xs text-gray-400">투병 기간</p>
                             <p className="text-lg font-bold">{receipt.treatmentMonths}개월</p>
                         </div>
                     </div>

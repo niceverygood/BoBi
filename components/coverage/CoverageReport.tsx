@@ -51,12 +51,12 @@ function getStatusIcon(status: string) {
 
 function getGradeColor(grade: string) {
     switch (grade) {
-        case 'A': return 'from-emerald-500 to-emerald-600';
-        case 'B': return 'from-blue-500 to-blue-600';
-        case 'C': return 'from-amber-500 to-amber-600';
-        case 'D': return 'from-orange-500 to-orange-600';
-        case 'F': return 'from-red-500 to-red-600';
-        default: return 'from-gray-500 to-gray-600';
+        case 'A': return 'bg-emerald-600';
+        case 'B': return 'bg-blue-600';
+        case 'C': return 'bg-amber-600';
+        case 'D': return 'bg-orange-600';
+        case 'F': return 'bg-red-600';
+        default: return 'bg-gray-600';
     }
 }
 
@@ -148,7 +148,7 @@ export default function CoverageReport({ result, onDownloadPdf }: CoverageReport
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-2">
-                                    <div className={`px-3 py-1 rounded-full text-white font-bold text-sm bg-gradient-to-r ${getGradeColor(overall_score.grade)}`}>
+                                    <div className={`px-3 py-1 rounded-full text-white font-bold text-sm ${getGradeColor(overall_score.grade)}`}>
                                         {overall_score.grade}등급
                                     </div>
                                     <Star className="w-4 h-4 text-amber-400" />

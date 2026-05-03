@@ -93,44 +93,40 @@ export default function TrialUpsellModal() {
             aria-label="무료 체험 안내"
         >
             <div
-                className="relative w-full max-w-md rounded-2xl bg-gradient-to-br from-violet-500 via-violet-600 to-indigo-600 text-white shadow-2xl overflow-hidden animate-scale-in"
+                className="relative w-full max-w-md rounded-2xl border border-brand-100 bg-brand-50 shadow-2xl overflow-hidden animate-scale-in"
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* 배경 장식 */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-20 translate-x-20 pointer-events-none" />
-                <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full blur-2xl translate-y-10 -translate-x-10 pointer-events-none" />
-
                 <button
                     type="button"
                     onClick={close}
                     aria-label="닫기"
-                    className="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-white/10 transition-colors z-10"
+                    className="absolute top-3 right-3 p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors z-10"
                 >
                     <X className="w-5 h-5" />
                 </button>
 
                 <div className="relative z-0 p-7 sm:p-8">
-                    <div className="flex items-center justify-center w-16 h-16 mx-auto rounded-2xl bg-white/20 backdrop-blur mb-5 shadow-lg">
+                    <div className="flex items-center justify-center w-16 h-16 mx-auto rounded-2xl bg-brand-600 mb-5 shadow-md">
                         <Sparkles className="w-8 h-8 text-white" />
                     </div>
 
-                    <h2 className="text-2xl sm:text-3xl font-extrabold text-center mb-2 leading-tight">
-                        분석 한도에 도달하셨네요 🎉
+                    <h2 className="text-2xl sm:text-3xl font-extrabold text-center mb-2 leading-tight text-gray-900">
+                        분석 한도에 도달하셨네요
                     </h2>
-                    <p className="text-center text-white/90 mb-6 leading-relaxed">
+                    <p className="text-center text-gray-700 mb-6 leading-relaxed">
                         이미 보비의 가치를 경험하신 당신을 위해<br />
-                        <strong className="text-white">{trialDays}일 무료 체험</strong>을 준비했습니다.
+                        <strong className="text-gray-900">{trialDays}일 무료 체험</strong>을 준비했습니다.
                     </p>
 
-                    <div className="rounded-xl bg-white/15 backdrop-blur p-4 mb-6 space-y-2.5">
+                    <div className="rounded-xl bg-white border border-brand-100 p-4 mb-6 space-y-2.5">
                         {[
                             `${trialDays}일간 모든 분석 기능 무료 무제한`,
                             '결과 PDF 다운로드 · CODEF 자동 조회',
                             '체험 종료 전 해지 시 0원 청구',
                         ].map((txt) => (
                             <div key={txt} className="flex items-start gap-2 text-sm">
-                                <Check className="w-5 h-5 shrink-0 text-green-300 mt-0.5" />
-                                <span className="text-white/95 leading-snug">{txt}</span>
+                                <Check className="w-5 h-5 shrink-0 text-emerald-600 mt-0.5" />
+                                <span className="text-gray-700 leading-snug">{txt}</span>
                             </div>
                         ))}
                     </div>
@@ -138,13 +134,13 @@ export default function TrialUpsellModal() {
                     <Link href="/dashboard/subscribe?plan=basic" onClick={close}>
                         <Button
                             size="lg"
-                            className="w-full bg-white text-violet-700 hover:bg-white/95 font-bold h-12 text-base shadow-lg"
+                            className="w-full font-bold h-12 text-base shadow-lg"
                         >
                             지금 바로 무료로 시작하기 →
                         </Button>
                     </Link>
 
-                    <p className="text-center text-[11px] text-white/70 mt-3 leading-relaxed">
+                    <p className="text-center text-[11px] text-gray-500 mt-3 leading-relaxed">
                         신용카드 필요 · 언제든 1클릭 해지 · 체험 종료 1일 전 알림
                     </p>
                 </div>
