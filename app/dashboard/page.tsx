@@ -102,8 +102,8 @@ export default function DashboardPage() {
     };
 
     const getStatusBadge = (status: string) => {
-        if (status === 'completed') return <Badge className="text-[10px] bg-[#1a56db]/10 text-[#1a56db] border-0">완료</Badge>;
-        if (status === 'processing') return <Badge className="text-[10px] bg-amber-100 text-amber-700 border-0">검토중</Badge>;
+        if (status === 'completed') return <Badge variant="outline" className="text-[10px] bg-gray-50 text-gray-700 border-gray-200">완료</Badge>;
+        if (status === 'processing') return <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">검토중</Badge>;
         return <Badge variant="outline" className="text-[10px]">{status}</Badge>;
     };
 
@@ -143,7 +143,7 @@ export default function DashboardPage() {
                         <Link
                             href="/dashboard/tutorial"
                             aria-label="튜토리얼 이용해보기 — 5가지 기능 간접 체험"
-                            className="group relative overflow-hidden rounded-xl bg-[#1a56db] text-white shadow-sm hover:bg-[#1a56db]/90 transition-colors text-left p-3"
+                            className="group relative overflow-hidden rounded-xl bg-brand-600 text-white shadow-sm hover:bg-brand-700 transition-colors text-left p-3"
                         >
                             <div className="flex items-center gap-3">
                                 <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
@@ -194,7 +194,7 @@ export default function DashboardPage() {
                         </div>
                         <div>
                             <p className="text-[11px] text-muted-foreground">잔여</p>
-                            <p className="text-lg font-bold text-[#1a56db] mt-0.5">
+                            <p className="text-lg font-bold text-brand-600 mt-0.5">
                                 {loading ? '...' : displayRemaining}
                                 <span className="text-xs font-normal text-muted-foreground ml-1">
                                     {remainingAnalyses !== -1 ? '건' : ''}
@@ -219,7 +219,7 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                     {/* 새 분석 시작 */}
                     <Link href="/dashboard/analyze">
-                        <Card className="border-0 shadow-sm bg-[#1a56db] text-white hover:bg-[#1a56db]/90 transition-colors cursor-pointer h-full relative overflow-hidden">
+                        <Card className="border-0 shadow-sm bg-brand-600 text-white hover:bg-brand-700 transition-colors cursor-pointer h-full relative overflow-hidden">
                             <Badge className="absolute top-3 right-3 bg-white/20 text-white text-[10px] border-0">AI 분석</Badge>
                             <CardContent className="p-5 flex flex-col justify-between h-full min-h-[160px]">
                                 <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
@@ -239,8 +239,8 @@ export default function DashboardPage() {
                     <Link href="/dashboard/medical">
                         <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full">
                             <CardContent className="p-5 flex flex-col justify-between min-h-[160px]">
-                                <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">
-                                    <Stethoscope className="w-5 h-5 text-green-600" />
+                                <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+                                    <Stethoscope className="w-5 h-5 text-gray-500" />
                                 </div>
                                 <div className="mt-auto">
                                     <h3 className="font-bold">진료정보 조회</h3>
@@ -255,10 +255,10 @@ export default function DashboardPage() {
                     {/* 질병 위험도 리포트 */}
                     <Link href="/dashboard/risk-report">
                         <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full relative">
-                            <Badge className="absolute top-3 right-3 bg-red-50 text-red-600 text-[10px] border-0">NEW</Badge>
+                            <Badge variant="outline" className="absolute top-3 right-3 text-[10px] text-gray-600 border-gray-200">NEW</Badge>
                             <CardContent className="p-5 flex flex-col justify-between min-h-[160px]">
-                                <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
-                                    <HeartPulse className="w-5 h-5 text-amber-600" />
+                                <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+                                    <HeartPulse className="w-5 h-5 text-gray-500" />
                                 </div>
                                 <div className="mt-auto">
                                     <h3 className="font-bold">질병 위험도 리포트</h3>
@@ -272,10 +272,10 @@ export default function DashboardPage() {
                     {/* 가상 사고 영수증 */}
                     <Link href="/dashboard/accident-receipt">
                         <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full relative">
-                            <Badge className="absolute top-3 right-3 bg-red-50 text-red-600 text-[10px] border-0">NEW</Badge>
+                            <Badge variant="outline" className="absolute top-3 right-3 text-[10px] text-gray-600 border-gray-200">NEW</Badge>
                             <CardContent className="p-5 flex flex-col justify-between min-h-[160px]">
-                                <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center">
-                                    <Receipt className="w-5 h-5 text-rose-600" />
+                                <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+                                    <Receipt className="w-5 h-5 text-gray-500" />
                                 </div>
                                 <div className="mt-auto">
                                     <h3 className="font-bold">가상 사고 영수증</h3>
@@ -308,7 +308,7 @@ export default function DashboardPage() {
                             이번 달 {loading ? '...' : `${usage.analyses_used}/${usage.analyses_limit === -1 ? '∞' : usage.analyses_limit}`}건 사용
                         </p>
                         <div className="h-2 bg-muted rounded-full overflow-hidden">
-                            <div className="h-full bg-[#1a56db] rounded-full transition-all" style={{ width: `${usagePercent}%` }} />
+                            <div className="h-full bg-brand-600 rounded-full transition-all" style={{ width: `${usagePercent}%` }} />
                         </div>
                     </CardContent>
                 </Card>
@@ -318,7 +318,7 @@ export default function DashboardPage() {
                     <CardHeader className="pb-2 flex flex-row items-center justify-between">
                         <CardTitle className="text-base">최근 분석 이력</CardTitle>
                         <Link href="/dashboard/history">
-                            <span className="text-xs text-[#1a56db] hover:underline cursor-pointer">전체보기 →</span>
+                            <span className="text-xs text-brand-600 hover:text-brand-700 hover:underline cursor-pointer">전체보기 →</span>
                         </Link>
                     </CardHeader>
                     <CardContent className="space-y-1">
