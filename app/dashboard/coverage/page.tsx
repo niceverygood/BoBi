@@ -51,7 +51,7 @@ export default function CoveragePage() {
                             </p>
                         </div>
                         <Link href="/dashboard/analyze">
-                            <Button className="bg-gradient-primary hover:opacity-90 mt-2">
+                            <Button className="mt-2">
                                 <Sparkles className="w-4 h-4 mr-2" />
                                 고지사항 분석하기
                             </Button>

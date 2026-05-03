@@ -207,7 +207,7 @@ export default function HistoryPage() {
                         새로고침
                     </Button>
                     <Link href="/dashboard/analyze">
-                        <Button className="bg-gradient-primary hover:opacity-90" size="sm">
+                        <Button size="sm">
                             <FileSearch className="w-4 h-4 mr-2" />
                             새 분석
                         </Button>

@@ -268,15 +268,15 @@ function FutureMeContent() {
                             </span>
                         </div>
                     ) : (
-                        <div className="rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50 to-indigo-50 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-sm">
-                                <Sparkles className="w-5 h-5 text-white" />
+                        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+                                <Sparkles className="w-5 h-5 text-gray-500" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-violet-900 text-sm mb-0.5">
+                                <p className="font-semibold text-gray-900 text-sm mb-0.5">
                                     건강검진 데이터 연동 시 정확도 크게 향상
                                 </p>
-                                <p className="text-xs text-violet-700 leading-relaxed">
+                                <p className="text-xs text-gray-600 leading-relaxed">
                                     BMI·혈압·혈당·콜레스테롤 같은 NHIS 건강검진 수치를 연동하면
                                     고객별 현실적인 발병 확률·치료비 시나리오를 제공합니다.
                                 </p>
@@ -285,7 +285,7 @@ function FutureMeContent() {
                                 href={`/dashboard/health-checkup${customerId ? `?customerId=${customerId}` : ''}`}
                                 className="shrink-0"
                             >
-                                <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white">
+                                <Button size="sm">
                                     연동하기
                                 </Button>
                             </Link>
@@ -408,7 +408,7 @@ function FutureMeContent() {
                             <Button
                                 onClick={handleGenerate}
                                 disabled={generating}
-                                className="w-full bg-gradient-primary hover:opacity-90 h-11 text-sm"
+                                className="w-full h-11 text-sm"
                             >
                                 {generating ? (
                                     <><Loader2 className="w-4 h-4 mr-2 animate-spin" />AI 분석 중...</>

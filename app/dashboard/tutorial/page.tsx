@@ -177,18 +177,19 @@ function PersonaStep() {
     const p = TUTORIAL_PERSONA;
     return (
         <div className="space-y-4">
-            <Card className="border-0 shadow-sm bg-gradient-to-br from-[#1a56db] to-[#1e40af] text-white">
+            {/* 페르소나 카드 — hero지만 brand 풀배경 ❌. 회색 베이스 + 강한 헤딩으로 위계 */}
+            <Card className="border border-gray-200 shadow-sm bg-gray-50">
                 <CardContent className="p-6">
                     <div className="flex items-start gap-4">
-                        <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                            <User className="w-8 h-8" />
+                        <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
+                            <User className="w-8 h-8 text-gray-500" />
                         </div>
                         <div className="flex-1 min-w-0">
-                            <h2 className="text-2xl font-bold">{p.name}</h2>
-                            <p className="text-white/80 mt-1">
+                            <h2 className="text-2xl font-bold text-gray-900">{p.name}</h2>
+                            <p className="text-gray-600 mt-1">
                                 {p.age}세 · {p.gender} · {p.occupation}
                             </p>
-                            <p className="text-sm text-white/70 mt-2 leading-relaxed">
+                            <p className="text-sm text-gray-500 mt-2 leading-relaxed">
                                 연봉 {p.annualIncome} · 부양가족 {p.dependents}명 · 현재 가입: {p.currentInsurance}
                             </p>
                         </div>
@@ -512,7 +513,7 @@ function ReceiptStep() {
                 description={`"만약 ${r.diseaseName}(${r.diseaseCode})이 발병한다면?" 실제 병원비와 보험금 공백을 시뮬레이션합니다.`}
             />
 
-            <Card className="border-0 shadow-sm bg-gradient-to-br from-red-50 to-rose-50">
+            <Card className="border border-red-100 shadow-sm bg-red-50">
                 <CardContent className="p-5">
                     <Badge className="bg-red-100 text-red-700 border-0 mb-2">{r.category}</Badge>
                     <h3 className="font-bold text-lg">{r.diseaseName} ({r.diseaseCode})</h3>
@@ -734,7 +735,7 @@ function FutureStep() {
 function CompleteStep() {
     return (
         <div className="space-y-4">
-            <Card className="border-0 shadow-sm bg-gradient-to-br from-emerald-50 to-teal-50">
+            <Card className="border border-emerald-100 shadow-sm bg-emerald-50">
                 <CardContent className="p-8 text-center">
                     <div className="w-16 h-16 rounded-full bg-emerald-500 flex items-center justify-center mx-auto mb-4">
                         <CheckCircle2 className="w-8 h-8 text-white" />

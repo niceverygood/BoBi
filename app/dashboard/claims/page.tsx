@@ -127,8 +127,8 @@ function ClaimsContent() {
 
             {result && (
                 <>
-                    {/* Summary */}
-                    <Card className="border-0 shadow-sm bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/20 dark:to-violet-900/10">
+                    {/* Summary — 그라디언트만 제거. 내부 violet 아이콘·배지 정리는 후속 PR */}
+                    <Card className="border border-gray-200 shadow-sm bg-gray-50">
                         <CardContent className="p-6">
                             <div className="flex items-start gap-4">
                                 <div className="w-12 h-12 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">
@@ -220,7 +220,6 @@ function ClaimsContent() {
                                         analysisId={analysisId}
                                         variant="default"
                                         size="default"
-                                        className="bg-gradient-primary hover:opacity-90"
                                         label="종합 리포트 PDF 다운로드"
                                     />
                                 )}

@@ -759,7 +759,7 @@ function MedicalInfoContent() {
                 <Button
                     onClick={handleSubmit}
                     disabled={loading || !userName || !identity || !phoneNo || !privacyConsent}
-                    className="w-full bg-gradient-primary hover:opacity-90 h-12 text-base"
+                    className="w-full h-12 text-base"
                 >
                     {loading ? (
                         <>
@@ -847,7 +847,7 @@ function MedicalInfoContent() {
                             <Button
                                 onClick={handleAuthComplete}
                                 disabled={loading || (isSmsAuth && !smsCode)}
-                                className="w-full bg-gradient-primary hover:opacity-90 h-11"
+                                className="w-full h-11"
                             >
                                 {loading ? (
                                     <><Loader2 className="w-4 h-4 mr-2 animate-spin" />확인 중...</>
@@ -978,7 +978,7 @@ function MedicalInfoContent() {
 
             {/* 고지분석 시작 버튼 */}
             {(totalMedical > 0 || totalCar > 0 || myMedicineRecords.length > 0) && (
-                <Card className="border-0 shadow-md bg-gradient-to-r from-primary/5 to-primary/10">
+                <Card className="border border-gray-200 shadow-md bg-gray-50">
                     <CardContent className="p-5">
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                             <div>
@@ -988,7 +988,7 @@ function MedicalInfoContent() {
                             <Button
                                 onClick={handleStartAnalysis}
                                 disabled={analyzing}
-                                className="bg-gradient-primary hover:opacity-90 h-10 px-6 shrink-0"
+                                className="h-10 px-6 shrink-0"
                             >
                                 {analyzing ? (
                                     <><Loader2 className="w-4 h-4 mr-2 animate-spin" />분석 중...</>

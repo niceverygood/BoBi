@@ -46,7 +46,7 @@ export default function InquiriesPage() {
                     <p className="text-muted-foreground mt-1">궁금한 점이나 불편사항을 남겨주세요.</p>
                 </div>
                 <Link href="/dashboard/inquiries/new">
-                    <Button className="bg-gradient-primary hover:opacity-90 gap-2">
+                    <Button className="gap-2">
                         <MessageSquarePlus className="w-4 h-4" />
                         문의하기
                     </Button>

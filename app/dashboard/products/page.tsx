@@ -225,15 +225,15 @@ function ProductsContent() {
                         </CardContent>
                     </Card>
 
-                    {/* Best Option */}
-                    <Card className="border-0 shadow-sm bg-gradient-to-br from-primary/5 to-primary/10">
+                    {/* Best Option — 추천 강조는 Sparkles 아이콘이 전달, 배경은 회색 */}
+                    <Card className="border border-gray-200 shadow-sm bg-gray-50">
                         <CardContent className="p-6">
                             <div className="flex items-start gap-3">
-                                <Sparkles className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                                <Sparkles className="w-5 h-5 text-gray-500 mt-0.5 shrink-0" />
                                 <div>
-                                    <h3 className="font-semibold mb-1">AI 추천</h3>
-                                    <p className="text-sm text-muted-foreground">{result.bestOption}</p>
-                                    <p className="text-sm text-muted-foreground mt-2">💡 {result.tips}</p>
+                                    <h3 className="font-semibold mb-1 text-gray-900">AI 추천</h3>
+                                    <p className="text-sm text-gray-600">{result.bestOption}</p>
+                                    <p className="text-sm text-gray-600 mt-2">💡 {result.tips}</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -242,7 +242,7 @@ function ProductsContent() {
                     {/* Next Step */}
                     <div className="flex justify-end">
                         <Link href={`/dashboard/claims?analysisId=${analysisId}`}>
-                            <Button className="bg-gradient-primary hover:opacity-90">
+                            <Button>
                                 STEP 3로 이동: 청구 안내
                                 <ArrowRight className="w-4 h-4 ml-2" />
                             </Button>
