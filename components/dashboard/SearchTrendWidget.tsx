@@ -59,22 +59,23 @@ export default function SearchTrendWidget() {
                 <p className="text-xs font-semibold text-muted-foreground">{label}</p>
                 {group.topKeywords.map((kw, i) => (
                     <div key={kw.keyword} className="flex items-center gap-3">
+                        {/* 순위 — 1위만 amber 강조, 2~3위는 회색 outline (red=danger semantic 충돌 회피) */}
                         <span className={cn(
-                            'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0',
-                            i === 0 ? 'bg-red-500 text-white' :
-                            i === 1 ? 'bg-orange-400 text-white' :
-                            i === 2 ? 'bg-amber-400 text-white' :
-                            'bg-muted text-muted-foreground'
+                            'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 border',
+                            i === 0
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : 'bg-white text-gray-600 border-gray-200'
                         )}>
                             {i + 1}
                         </span>
                         <span className="text-sm font-medium flex-1 truncate">{kw.keyword}</span>
-                        <Badge className={cn(
+                        {/* 변화율 — semantic soft tint (큰 상승=amber, 상승=emerald, 하락=red) */}
+                        <Badge variant="outline" className={cn(
                             'text-[10px] shrink-0',
-                            kw.changeRate > 50 ? 'bg-red-500 text-white' :
-                            kw.changeRate > 20 ? 'bg-orange-500 text-white' :
-                            kw.changeRate > 0 ? 'bg-green-500 text-white' :
-                            'bg-slate-400 text-white'
+                            kw.changeRate > 50 ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                            kw.changeRate > 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                            kw.changeRate < 0 ? 'bg-red-50 text-red-700 border-red-200' :
+                            'bg-gray-50 text-gray-600 border-gray-200'
                         )}>
                             {kw.changeRate > 0 ? '+' : ''}{kw.changeRate}%
                             {kw.changeRate > 50 && ' 🔥'}
@@ -90,7 +91,7 @@ export default function SearchTrendWidget() {
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <CardTitle className="text-base flex items-center gap-2">
-                        <Flame className="w-5 h-5 text-red-500" />
+                        <Flame className="w-5 h-5 text-amber-600" />
                         실시간 보험 검색 트렌드
                     </CardTitle>
                     {date && (

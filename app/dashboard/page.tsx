@@ -143,17 +143,17 @@ export default function DashboardPage() {
                         <Link
                             href="/dashboard/tutorial"
                             aria-label="튜토리얼 이용해보기 — 5가지 기능 간접 체험"
-                            className="group relative overflow-hidden rounded-xl bg-brand-600 text-white shadow-sm hover:bg-brand-700 transition-colors text-left p-3"
+                            className="group relative rounded-xl bg-white border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all text-left p-3"
                         >
                             <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-                                    <Sparkles className="w-4 h-4" />
+                                <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+                                    <Sparkles className="w-4 h-4 text-gray-500" />
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <p className="font-bold text-sm leading-tight break-keep">
+                                    <p className="font-bold text-sm leading-tight text-gray-900 break-keep">
                                         튜토리얼 이용해보기
                                     </p>
-                                    <p className="text-[11px] text-white/80 mt-0.5 break-keep">
+                                    <p className="text-[11px] text-brand-600 mt-0.5 break-keep group-hover:text-brand-700 group-hover:underline">
                                         5가지 기능 간접 체험 →
                                     </p>
                                 </div>

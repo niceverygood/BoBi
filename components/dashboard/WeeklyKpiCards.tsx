@@ -63,29 +63,29 @@ export default function WeeklyKpiCards() {
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <KpiCard
-                    icon={<FileSearch className="w-4 h-4 text-blue-600" />}
-                    iconBg="bg-blue-50"
+                    icon={<FileSearch className="w-4 h-4 text-gray-500" />}
+                    iconBg="bg-gray-100"
                     label="신규 분석"
                     value={data.analyses}
                     unit="건"
                 />
                 <KpiCard
-                    icon={<UserPlus className="w-4 h-4 text-emerald-600" />}
-                    iconBg="bg-emerald-50"
+                    icon={<UserPlus className="w-4 h-4 text-gray-500" />}
+                    iconBg="bg-gray-100"
                     label="신규 고객"
                     value={data.newCustomers}
                     unit="명"
                 />
                 <KpiCard
-                    icon={<Sparkles className="w-4 h-4 text-violet-600" />}
-                    iconBg="bg-violet-50"
+                    icon={<Sparkles className="w-4 h-4 text-gray-500" />}
+                    iconBg="bg-gray-100"
                     label="미래의 나 리포트"
                     value={data.futureMe}
                     unit="건"
                 />
                 <KpiCard
-                    icon={<Target className="w-4 h-4 text-amber-600" />}
-                    iconBg="bg-amber-50"
+                    icon={<Target className="w-4 h-4 text-gray-500" />}
+                    iconBg="bg-gray-100"
                     label="리포트 전환율"
                     value={{ thisWeek: data.conversionRate, lastWeek: 0, changePercent: null }}
                     unit="%"
@@ -127,7 +127,7 @@ function KpiCard({
                     </div>
                     {!staticValue && changePercent !== null && (
                         <div className={`flex items-center gap-0.5 text-[11px] font-semibold ${
-                            isPositive ? 'text-emerald-600' : isNegative ? 'text-rose-600' : 'text-slate-500'
+                            isPositive ? 'text-emerald-600' : isNegative ? 'text-red-600' : 'text-gray-500'
                         }`}>
                             {isPositive ? <TrendingUp className="w-3 h-3" /> : isNegative ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
                             {Math.abs(changePercent)}%

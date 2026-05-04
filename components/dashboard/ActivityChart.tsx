@@ -64,19 +64,19 @@ export default function ActivityChart() {
             <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center justify-between">
                     <span className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-slate-600" />
+                        <Calendar className="w-4 h-4 text-gray-500" />
                         최근 30일 활동
                     </span>
                     <div className="flex items-center gap-3 text-[11px]">
                         {data.streak > 0 && (
-                            <span className="flex items-center gap-1 text-orange-600 font-semibold">
+                            <span className="flex items-center gap-1 text-amber-600 font-semibold">
                                 <Flame className="w-3.5 h-3.5" />
                                 {data.streak}일 연속
                             </span>
                         )}
                         {data.peakWeekday && (
-                            <span className="text-slate-500">
-                                주로 <strong className="text-slate-700">{data.peakWeekday}요일</strong>에 활동
+                            <span className="text-gray-500">
+                                주로 <strong className="text-gray-700">{data.peakWeekday}요일</strong>에 활동
                             </span>
                         )}
                     </div>
@@ -97,50 +97,51 @@ export default function ActivityChart() {
                                 className="flex-1 flex flex-col items-center justify-end relative group"
                                 title={`${dateLabel} · 분석 ${d.analyses}건, 미래의나 ${d.futureMe}건`}
                             >
-                                {/* 스택 막대: 분석(파랑) + 미래의나(보라) */}
+                                {/* 스택 막대: 분석(짙은 회색, 메인) + 미래의나(옅은 회색, 보조).
+                                    카테고리 구분은 강도(gray-700 vs gray-400)로 표현 — Q5 결정 */}
                                 <div
                                     className="w-full flex flex-col justify-end transition-all hover:opacity-80"
                                     style={{ height: total > 0 ? `${Math.max(heightPct, 4)}%` : '2px' }}
                                 >
                                     {d.futureMe > 0 && (
                                         <div
-                                            className="bg-violet-500 rounded-t-sm"
+                                            className="bg-gray-400 rounded-t-sm"
                                             style={{ height: `${(d.futureMe / Math.max(total, 1)) * 100}%` }}
                                         />
                                     )}
                                     {d.analyses > 0 && (
                                         <div
-                                            className="bg-blue-500"
+                                            className="bg-gray-700"
                                             style={{ height: `${(d.analyses / Math.max(total, 1)) * 100}%` }}
                                         />
                                     )}
                                     {total === 0 && (
-                                        <div className="bg-slate-100 h-full rounded-sm" />
+                                        <div className="bg-gray-100 h-full rounded-sm" />
                                     )}
                                 </div>
-                                {/* 오늘 표시 */}
+                                {/* 오늘 표시 — brand-600 (사용자 자기 위치 강조) */}
                                 {isToday && (
-                                    <div className="absolute -bottom-1.5 w-1 h-1 rounded-full bg-rose-500" />
+                                    <div className="absolute -bottom-1.5 w-1 h-1 rounded-full bg-brand-600" />
                                 )}
                             </div>
                         );
                     })}
                 </div>
 
-                <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t">
+                <div className="flex items-center justify-between text-[10px] text-gray-500 pt-1 border-t">
                     <div className="flex items-center gap-3">
                         <span className="flex items-center gap-1">
-                            <span className="w-2 h-2 bg-blue-500 rounded-sm" />
+                            <span className="w-2 h-2 bg-gray-700 rounded-sm" />
                             분석
                         </span>
                         <span className="flex items-center gap-1">
-                            <span className="w-2 h-2 bg-violet-500 rounded-sm" />
+                            <span className="w-2 h-2 bg-gray-400 rounded-sm" />
                             미래의 나
                         </span>
                     </div>
-                    <div className="text-slate-600">
-                        30일간 총 <strong className="text-slate-900">{totalActivity}</strong>건 ·{' '}
-                        <strong className="text-slate-900">{activeDays}</strong>일 활동
+                    <div className="text-gray-600">
+                        30일간 총 <strong className="text-gray-900">{totalActivity}</strong>건 ·{' '}
+                        <strong className="text-gray-900">{activeDays}</strong>일 활동
                     </div>
                 </div>
             </CardContent>

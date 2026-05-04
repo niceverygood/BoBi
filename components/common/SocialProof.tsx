@@ -28,34 +28,28 @@ export function SocialProofStrip({
     compact?: boolean;
     leadingAction?: React.ReactNode;
 }) {
+    // 4색 아이콘 → 회색 통일. 사회적 증거의 어필은 숫자(1,200+ / +27% / 4.8)가 만들지 색이 만들지 않음.
+    // dashboard·랜딩(/)·가격(/pricing) 3페이지에서 동일 컴포넌트로 노출되므로 일관성 우선.
     const items = [
         {
             icon: Users,
             label: '사용 중인 설계사',
             value: SOCIAL_PROOF_STATS.agents,
-            color: 'text-violet-600',
-            bg: 'bg-violet-50',
         },
         {
             icon: FileSearch,
             label: '누적 분석',
             value: SOCIAL_PROOF_STATS.analyses,
-            color: 'text-blue-600',
-            bg: 'bg-blue-50',
         },
         {
             icon: TrendingUp,
             label: '평균 계약률 증가',
             value: SOCIAL_PROOF_STATS.winRateLift,
-            color: 'text-emerald-600',
-            bg: 'bg-emerald-50',
         },
         {
             icon: Star,
             label: '설계사 만족도',
             value: `${SOCIAL_PROOF_STATS.nps}/5`,
-            color: 'text-amber-600',
-            bg: 'bg-amber-50',
         },
     ];
 
@@ -66,15 +60,15 @@ export function SocialProofStrip({
     return (
         <div className={`grid gap-3 ${cols}`}>
             {leadingAction}
-            {items.map(({ icon: Icon, label, value, color, bg }) => (
+            {items.map(({ icon: Icon, label, value }) => (
                 <Card key={label} className="border-0 shadow-sm">
                     <CardContent className={compact ? 'p-3' : 'p-4'}>
                         <div className="flex items-center gap-3">
-                            <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
-                                <Icon className={`w-4 h-4 ${color}`} />
+                            <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+                                <Icon className="w-4 h-4 text-gray-500" />
                             </div>
                             <div className="min-w-0">
-                                <p className={`font-bold ${compact ? 'text-base' : 'text-xl'} leading-tight`}>{value}</p>
+                                <p className={`font-bold ${compact ? 'text-base' : 'text-xl'} leading-tight text-gray-900`}>{value}</p>
                                 <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{label}</p>
                             </div>
                         </div>
@@ -120,7 +114,7 @@ export function TestimonialCards({ limit }: { limit?: number }) {
             {items.map((t) => (
                 <Card key={t.name} className="border-0 shadow-sm h-full">
                     <CardContent className="p-5 flex flex-col h-full">
-                        <Quote className="w-6 h-6 text-violet-300 mb-3" />
+                        <Quote className="w-6 h-6 text-gray-300 mb-3" />
                         <p className="text-sm text-foreground leading-relaxed flex-1 mb-4">
                             &ldquo;{t.content}&rdquo;
                         </p>

@@ -44,11 +44,13 @@ interface FollowupItem {
     message: string;
 }
 
+// type별 색은 정보 전달 못 함 — actionLabel 텍스트가 type 의미를 전달.
+// 회색 통일 (PR #34 §11.3.2 학습: 행 1개당 컬러 강조점 0~1개)
 const TYPE_CONFIG: Record<FollowupType, { icon: React.ComponentType<{ className?: string }>; color: string; bg: string }> = {
-    need_risk_report: { icon: HeartPulse, color: 'text-rose-600', bg: 'bg-rose-50' },
-    need_future_me: { icon: Sparkles, color: 'text-violet-600', bg: 'bg-violet-50' },
-    need_send: { icon: Send, color: 'text-blue-600', bg: 'bg-blue-50' },
-    stale: { icon: Users, color: 'text-slate-600', bg: 'bg-slate-50' },
+    need_risk_report: { icon: HeartPulse, color: 'text-gray-500', bg: 'bg-gray-100' },
+    need_future_me: { icon: Sparkles, color: 'text-gray-500', bg: 'bg-gray-100' },
+    need_send: { icon: Send, color: 'text-gray-500', bg: 'bg-gray-100' },
+    stale: { icon: Users, color: 'text-gray-500', bg: 'bg-gray-100' },
 };
 
 export default function FollowupsWidget() {
@@ -139,7 +141,7 @@ export default function FollowupsWidget() {
                     <span className="flex items-center gap-2">
                         <div className="relative">
                             <Bell className="w-4 h-4 text-amber-600" />
-                            <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full animate-pulse" />
+                            <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
                         </div>
                         {copy.title}
                     </span>
