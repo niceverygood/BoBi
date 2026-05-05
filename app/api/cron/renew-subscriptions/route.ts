@@ -4,7 +4,7 @@ import { payWithBillingKey } from '@/lib/portone/server';
 import { kakaoPaySubscription } from '@/lib/kakaopay/client';
 import { chargeBillkey as inicisDirectCharge } from '@/lib/inicis/server';
 import { chargeBillingKey as tossDirectCharge, generateOrderId as tossOrderId } from '@/lib/tosspayments/server';
-import { getPlanPrice } from '@/lib/utils/pricing';
+import { getRenewalPrice } from '@/lib/billing/coupon-pricing';
 
 // Vercel Cron에서 호출 — CRON_SECRET으로 인증
 export async function GET(request: Request) {
@@ -73,10 +73,33 @@ export async function GET(request: Request) {
 
                 const billingKey = billingKeyData?.billing_key || sub.payment_key;
 
-                // 결제 금액 계산 — 코드 상수(PLAN_LIMITS)가 SSOT
+                // 사용자가 "기간 만료 후 해지"를 선택했으면 결제 시도 없이 cancel
+                if (sub.cancel_at_period_end) {
+                    await supabase
+                        .from('subscriptions')
+                        .update({
+                            status: 'cancelled',
+                            cancelled_at: now.toISOString(),
+                            cancelled_by: sub.cancelled_by || 'user',
+                            updated_at: now.toISOString(),
+                        })
+                        .eq('id', sub.id);
+                    // 무료 플랜 한도로 리셋
+                    await resetUsageForNewPeriod(supabase, sub.user_id, 5);
+                    continue;
+                }
+
+                // 결제 금액 계산 — 정가는 PLAN_LIMITS가 SSOT, 쿠폰이 붙어 있으면
+                // 동일 쿠폰의 할인을 다시 적용한다.
                 let amount: number;
                 try {
-                    amount = getPlanPrice(plan.slug, sub.billing_cycle);
+                    const priced = await getRenewalPrice(supabase as any, {
+                        planSlug: plan.slug,
+                        billingCycle: sub.billing_cycle,
+                        couponCode: sub.coupon_code,
+                        periodStart: new Date(sub.current_period_end),
+                    });
+                    amount = priced.amount;
                 } catch {
                     results.errors.push(`구독 ${sub.id}: 알 수 없는 플랜 슬러그 ${plan.slug}`);
                     results.failed++;
@@ -84,8 +107,26 @@ export async function GET(request: Request) {
                 }
 
                 if (!amount || amount <= 0) {
-                    results.errors.push(`구독 ${sub.id}: 결제 금액 0원`);
-                    results.failed++;
+                    // 쿠폰이 100% 할인이면 결제 없이 기간만 연장 (무료 쿠폰 사용자가
+                    // 만료된 주기에 도달했을 때 무한정 무료가 유지되도록 함).
+                    const newPeriodStart = new Date(sub.current_period_end);
+                    const newPeriodEnd = new Date(newPeriodStart);
+                    if (sub.billing_cycle === 'yearly') {
+                        newPeriodEnd.setFullYear(newPeriodEnd.getFullYear() + 1);
+                    } else {
+                        newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1);
+                    }
+                    await supabase
+                        .from('subscriptions')
+                        .update({
+                            current_period_start: newPeriodStart.toISOString(),
+                            current_period_end: newPeriodEnd.toISOString(),
+                            status: 'active',
+                            updated_at: now.toISOString(),
+                        })
+                        .eq('id', sub.id);
+                    await resetUsageForNewPeriod(supabase, sub.user_id, plan.max_analyses);
+                    results.renewed++;
                     continue;
                 }
 
@@ -273,6 +314,21 @@ export async function GET(request: Request) {
 
         if (pastDueSubs) {
             for (const sub of pastDueSubs) {
+                // 사용자가 해지를 예약했으면 결제 재시도 없이 즉시 취소
+                if (sub.cancel_at_period_end) {
+                    await supabase
+                        .from('subscriptions')
+                        .update({
+                            status: 'cancelled',
+                            cancelled_at: now.toISOString(),
+                            cancelled_by: sub.cancelled_by || 'user',
+                            updated_at: now.toISOString(),
+                        })
+                        .eq('id', sub.id);
+                    await resetUsageForNewPeriod(supabase, sub.user_id, 5);
+                    continue;
+                }
+
                 const periodEnd = new Date(sub.current_period_end);
                 const daysSinceExpiry = (now.getTime() - periodEnd.getTime()) / (1000 * 60 * 60 * 24);
 
@@ -305,7 +361,13 @@ export async function GET(request: Request) {
 
                     let retryAmount: number;
                     try {
-                        retryAmount = getPlanPrice(plan.slug, sub.billing_cycle);
+                        const priced = await getRenewalPrice(supabase as any, {
+                            planSlug: plan.slug,
+                            billingCycle: sub.billing_cycle,
+                            couponCode: sub.coupon_code,
+                            periodStart: new Date(sub.current_period_end),
+                        });
+                        retryAmount = priced.amount;
                     } catch { continue; }
                     if (!retryAmount || retryAmount <= 0) continue;
 

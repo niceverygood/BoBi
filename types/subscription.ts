@@ -39,6 +39,9 @@ export interface Subscription {
     payment_provider?: string;
     payment_key?: string;
     cancelled_at?: string;
+    cancelled_by?: 'user' | 'admin' | 'auto' | null;
+    cancel_at_period_end?: boolean;
+    coupon_code?: string | null;
     trial_ends_at?: string | null;
     trial_used?: boolean;
     created_at: string;

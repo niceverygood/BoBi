@@ -214,6 +214,7 @@ export async function POST(request: Request) {
             current_period_end: periodEnd.toISOString(),
             payment_provider: paymentMethod === 'card' ? 'portone_inicis' : 'portone_kakaopay',
             payment_key: billingKey || finalPaymentId,
+            coupon_code: couponCode || null,
         })
         .select()
         .single();

@@ -136,6 +136,7 @@ export async function POST(request: Request) {
                 current_period_end: periodEnd.toISOString(),
                 payment_provider: 'coupon_free',
                 payment_key: coupon.code,
+                coupon_code: coupon.code,
             });
 
         if (insertError) {

@@ -162,6 +162,7 @@ export async function GET(request: NextRequest) {
                 payment_key: sid,
                 trial_ends_at: trialEndsAt,
                 trial_used: isTrial,
+                coupon_code: session.coupon_code || null,
             })
             .select()
             .single();

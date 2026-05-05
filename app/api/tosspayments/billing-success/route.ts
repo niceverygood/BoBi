@@ -234,6 +234,7 @@ export async function GET(request: Request) {
                 trial_used: isTrial,
                 payment_provider: 'tosspayments_direct',
                 payment_key: billingKey,
+                coupon_code: pending.coupon_code || null,
             })
             .select()
             .single();

@@ -238,6 +238,7 @@ export async function POST(request: Request) {
                 current_period_end: periodEnd.toISOString(),
                 payment_provider: 'inicis_direct',
                 payment_key: billKey,
+                coupon_code: pending.coupon_code || null,
             })
             .select()
             .single();
