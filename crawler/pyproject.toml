@@ -1,0 +1,17 @@
+# Phase 1 placeholder — 실제 의존성은 Phase 2 진입 시 추가.
+# 결정안은 docs/insurance-db-research.md Step 0c 참조 (Python + Playwright).
+
+[project]
+name = "bobi-crawler"
+version = "0.0.0"
+description = "BoBi Insurance product crawler (Phase 1: scaffold only)"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.uv]
+# Phase 2에서 채워질 의존성 (placeholder):
+# - playwright           : 동적 페이지 렌더링
+# - httpx                : 정적 페이지 / API 호출
+# - pydantic             : 스키마 정규화
+# - supabase             : insurance 스키마 upsert (service_role 키)
+# - tenacity             : 재시도 / 백오프
