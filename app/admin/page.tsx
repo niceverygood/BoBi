@@ -1555,7 +1555,7 @@ function PaymentHistory() {
         try {
             const res = await apiFetch<{ success?: boolean; message?: string; error?: string }>('/api/admin/payments', {
                 method: 'POST',
-                body: JSON.stringify({ targetUserId: userId }),
+                body: { targetUserId: userId },
             });
             if (res.success) {
                 setActionMsg({ type: 'success', text: res.message || '취소 완료' });
@@ -1597,7 +1597,7 @@ function PaymentHistory() {
                 '/api/admin/refund',
                 {
                     method: 'POST',
-                    body: JSON.stringify({ recordId, source, reason: refundReason || undefined }),
+                    body: { recordId, source, reason: refundReason || undefined },
                 },
             );
             if (res.success) {
