@@ -259,11 +259,12 @@ export async function POST(request: Request) {
             };
         }
 
-        // riskItems 필드 보정 (AI가 riskLevel을 안 넣는 경우)
+        // riskItems 필드 보정 (AI가 riskLevel을 안 넣는 경우).
+        // PR #35: risk-matcher.ts toRiskLevel과 임계값(2.0) 동기화.
         for (const item of report.riskItems) {
             if (!item.riskLevel) {
                 const rr = item.relativeRisk || 1;
-                item.riskLevel = rr >= 3 ? 'high' : rr >= 1.8 ? 'moderate' : 'low';
+                item.riskLevel = rr >= 2.0 ? 'high' : rr >= 1.0 ? 'moderate' : 'low';
             }
             if (!item.evidenceLevel) item.evidenceLevel = 'B';
         }

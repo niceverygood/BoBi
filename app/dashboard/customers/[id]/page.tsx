@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { apiFetch } from '@/lib/api/client';
+import { getRiskBadgeClassByMultiplier } from '@/lib/risk/risk-color';
 
 interface CustomerCard {
     customer: { id: string; name: string; birth_date: string | null; gender: string | null; phone: string | null; memo: string | null };
@@ -54,13 +55,9 @@ function getHealthScoreStyle(score: number) {
     return { stroke: '#DC2626', label: '고위험', badgeClass: 'bg-red-50 text-red-700 border-red-200' };
 }
 
-// 위험 배율 색 — Option D: relativeRisk 값으로만 결정 (lib/risk/risk-matcher.ts 임계값과 동기화)
-// AI riskLevel은 무시 — 같은 배율 = 같은 색을 보장하기 위함
-function getRiskMultiplierBadgeClass(relativeRisk: number): string {
-    if (relativeRisk >= 3.0) return 'bg-red-50 text-red-700 border-red-200';
-    if (relativeRisk >= 1.8) return 'bg-amber-50 text-amber-700 border-amber-200';
-    return 'bg-gray-100 text-gray-700 border-gray-200';
-}
+// 위험 배율 색은 lib/risk/risk-color.ts의 공용 헬퍼로 일원화 (PR #35).
+// 같은 배율 = 같은 색을 보장 — AI riskLevel string에 의존하지 않는다.
+const getRiskMultiplierBadgeClass = getRiskBadgeClassByMultiplier;
 
 function CustomerCardContent() {
     const params = useParams<{ id: string }>();

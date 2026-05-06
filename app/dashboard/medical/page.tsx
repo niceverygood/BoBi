@@ -9,6 +9,7 @@ import {
     Loader2, ArrowLeft, Stethoscope, Car, Search, Shield,
     Calendar, Building2, DollarSign, FileText, Pill, CheckCircle2,
     Smartphone, AlertCircle, ChevronDown, ChevronUp, HeartPulse,
+    Info,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api/client';
 import Link from 'next/link';
@@ -1015,9 +1016,18 @@ function MedicalInfoContent() {
                         진료 · 처방 기록
                         <Badge variant="secondary" className="text-xs">{medicalTreatRecords.length}건</Badge>
                     </h2>
-                    <p className="text-xs text-muted-foreground -mt-1">
-                        병원 방문(심평원)과 처방조제 받은 약국(건보공단)이 함께 표시됩니다. 색상으로 구분됩니다.
-                    </p>
+                    {/* 약국 데이터 출처 안내 — 4/28 이종인 이사 컴플레인("안 다녀온 약국이 떠서 의아")
+                        대응. 카드 inline 안내(아래)와 짝을 이뤄 가시성 강화. */}
+                    <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-900 p-3">
+                        <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <div className="text-xs text-amber-900 dark:text-amber-200 leading-relaxed">
+                            <p className="font-medium mb-0.5">병원과 약국이 함께 표시됩니다</p>
+                            <p>
+                                <span className="font-medium">병원</span>은 심평원, <span className="font-medium">약국</span>은 건강보험공단의 처방조제 데이터입니다.
+                                <strong className="ml-1">실제로 약국에 방문하지 않으셨더라도 처방받은 약을 조제한 약국이 표시될 수 있습니다.</strong>
+                            </p>
+                        </div>
+                    </div>
                     {medicalTreatRecords.map((record, idx) => {
                         const isPharmacy = record.resTreatType === '처방조제';
                         return (
@@ -1078,6 +1088,13 @@ function MedicalInfoContent() {
                                         }
                                     </div>
                                 </div>
+                                {/* 약국 카드는 펼치지 않아도 항상 안내 노출 — 4/28 컴플레인 대응 */}
+                                {isPharmacy && (
+                                    <p className="mt-2 text-[11px] text-emerald-700 dark:text-emerald-300 leading-relaxed flex items-start gap-1">
+                                        <Info className="w-3 h-3 shrink-0 mt-0.5" />
+                                        <span>처방전을 약을 조제한 약국이며, <strong>직접 방문하지 않으셨을 수 있습니다.</strong></span>
+                                    </p>
+                                )}
                             </button>
 
                             {expandedRecords.has(idx) && (
