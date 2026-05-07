@@ -49,11 +49,11 @@ const REGISTERED_FALLBACK: Record<TemplateKind, string> = {
     risk_summary: 'UH_6833',
     receipt_link: 'UH_6835',
     receipt_summary: 'UH_6836',
-    // CRM 4종은 검수 등록 전 — 코드 발급 후 docs/alimtalk-templates.md에서 갱신
-    crm_renewal: 'UH_PENDING',
-    crm_exemption_end: 'UH_PENDING',
-    crm_reduction_end: 'UH_PENDING',
-    crm_birthday: 'UH_PENDING',
+    // CRM 4종 — 2026-05-07 검수 등록 (검수중)
+    crm_renewal: 'UH_6999',
+    crm_exemption_end: 'UH_7000',
+    crm_reduction_end: 'UH_7001',
+    crm_birthday: 'UH_7002',
 };
 
 /**
