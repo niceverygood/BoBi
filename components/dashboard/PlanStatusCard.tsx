@@ -142,7 +142,7 @@ export default function PlanStatusCard() {
                     </div>
                 </div>
                 <Link
-                    href="/dashboard/settings"
+                    href="/dashboard/billing"
                     className="text-xs text-gray-500 hover:text-gray-900 underline-offset-2 hover:underline"
                 >
                     구독 관리 →
@@ -175,7 +175,7 @@ export default function PlanStatusCard() {
                     value={data.paymentMethodLabel || '-'}
                 />
                 <Link
-                    href="/dashboard/settings#payment-history"
+                    href="/dashboard/billing#payment-history"
                     className="rounded-lg border border-gray-200 bg-gray-50/40 hover:bg-gray-50 p-3 transition flex flex-col justify-center"
                 >
                     <p className="text-[11px] text-gray-500 flex items-center gap-1">
