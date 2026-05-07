@@ -75,6 +75,11 @@ export default function SubscribePage() {
     );
 }
 
+// 토스페이먼츠 직접 카드결제는 PG 승인 대기 상태. 환경변수 ON일 때만 UI에 노출.
+// 기본값(env 미설정)은 비활성. 승인 완료 시 NEXT_PUBLIC_TOSS_PAYMENTS_ENABLED=true.
+// 콜백 URL/서버 라우트는 그대로 유지 — 이미 결제된 사용자 환불·후처리에 필요.
+const TOSS_ENABLED = process.env.NEXT_PUBLIC_TOSS_PAYMENTS_ENABLED === 'true';
+
 function SubscribeContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -177,10 +182,15 @@ function SubscribeContent() {
     }, [planParam]);
 
     // 체험 모드일 때 결제 수단 제한:
-    //   토스·카카오페이는 체험 지원. 신용카드(이니시스)는 미지원 → 토스로 강제.
+    //   토스·카카오페이는 체험 지원. 신용카드(이니시스)는 미지원.
+    //   토스 비활성 상태에선 카카오페이로 폴백.
     useEffect(() => {
         if (useTrial && trialEligible && paymentMethod === 'card') {
-            setPaymentMethod('tosspayments');
+            setPaymentMethod(TOSS_ENABLED ? 'tosspayments' : 'kakaopay');
+        }
+        // 토스 비활성인데 사용자가 어떤 경로(URL 직접 진입 등)로 토스를 골라뒀다면 카카오페이로 되돌림
+        if (!TOSS_ENABLED && paymentMethod === 'tosspayments') {
+            setPaymentMethod('kakaopay');
         }
     }, [useTrial, trialEligible, paymentMethod]);
 
@@ -1320,18 +1330,22 @@ function SubscribeContent() {
                                         </div>
                                         {useTrial && (
                                             <div className="text-[11px] text-gray-600 leading-relaxed pl-6">
-                                                💳 체험 가능 결제수단: <strong>카카오페이</strong> 또는 <strong>토스 카드</strong>
+                                                💳 체험 가능 결제수단: <strong>카카오페이</strong>
+                                                {TOSS_ENABLED && <> 또는 <strong>토스 카드</strong></>}
                                                 {' '}· 상세 결제 흐름은 아래 결제 요약에서 확인하세요.
                                             </div>
                                         )}
                                     </div>
                                 )}
 
-                                {/* 결제 수단 — 카카오페이 / 토스(카드) / 신용카드 (이니시스) */}
+                                {/* 결제 수단 — 카카오페이 / 토스(카드, ENV ON 시) / 신용카드 (이니시스) */}
                                 {platform === 'web' && (
                                     <div className="space-y-2">
                                         <p className="text-sm font-medium">결제 수단</p>
-                                        <div className="grid grid-cols-3 gap-2">
+                                        <div className={cn(
+                                            'grid gap-2',
+                                            TOSS_ENABLED ? 'grid-cols-3' : 'grid-cols-2',
+                                        )}>
                                             <button
                                                 onClick={() => {
                                                     setPaymentMethod('kakaopay');
@@ -1348,21 +1362,23 @@ function SubscribeContent() {
                                             >
                                                 카카오페이
                                             </button>
-                                            <button
-                                                onClick={() => {
-                                                    setPaymentMethod('tosspayments');
-                                                    track('subscribe_method_selected', { method: 'tosspayments' });
-                                                }}
-                                                className={cn(
-                                                    'p-2.5 rounded-lg border-2 text-center text-xs transition-all relative',
-                                                    paymentMethod === 'tosspayments'
-                                                        ? 'border-primary bg-primary/5 font-semibold'
-                                                        : 'border-muted hover:border-primary/30'
-                                                )}
-                                            >
-                                                <span>토스 카드</span>
-                                                <span className="absolute -top-1.5 -right-1 bg-blue-500 text-white text-[9px] px-1 rounded font-semibold">쉬움</span>
-                                            </button>
+                                            {TOSS_ENABLED && (
+                                                <button
+                                                    onClick={() => {
+                                                        setPaymentMethod('tosspayments');
+                                                        track('subscribe_method_selected', { method: 'tosspayments' });
+                                                    }}
+                                                    className={cn(
+                                                        'p-2.5 rounded-lg border-2 text-center text-xs transition-all relative',
+                                                        paymentMethod === 'tosspayments'
+                                                            ? 'border-primary bg-primary/5 font-semibold'
+                                                            : 'border-muted hover:border-primary/30'
+                                                    )}
+                                                >
+                                                    <span>토스 카드</span>
+                                                    <span className="absolute -top-1.5 -right-1 bg-blue-500 text-white text-[9px] px-1 rounded font-semibold">쉬움</span>
+                                                </button>
+                                            )}
                                             <button
                                                 onClick={() => {
                                                     setPaymentMethod('card');
@@ -1393,7 +1409,9 @@ function SubscribeContent() {
                                             </div>
                                         )}
                                         {billingCycle === 'yearly' && (
-                                            <p className="text-[11px] text-amber-600">연간 결제는 신용카드(토스·이니시스)만 가능합니다.</p>
+                                            <p className="text-[11px] text-amber-600">
+                                                연간 결제는 신용카드({TOSS_ENABLED ? '토스·이니시스' : '이니시스'})만 가능합니다.
+                                            </p>
                                         )}
                                     </div>
                                 )}
