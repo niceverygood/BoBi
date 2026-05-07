@@ -4,12 +4,13 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, Loader2, Lock, Sparkles, Coins, Zap, HeartPulse } from 'lucide-react';
+import { ArrowRight, Loader2, Lock, Sparkles, Coins, Zap, HeartPulse, Send } from 'lucide-react';
 import StepIndicator from '@/components/common/StepIndicator';
 import PdfUploader from '@/components/analyze/PdfUploader';
 import AnalysisResultView from '@/components/analyze/AnalysisResult';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import TrialUpsellModal from '@/components/subscribe/TrialUpsellModal';
+import SendAlimtalkDialog from '@/components/share/SendAlimtalkDialog';
 import { useSubscription } from '@/hooks/useSubscription';
 import { createClient } from '@/lib/supabase/client';
 import { CREDIT_PACKS } from '@/lib/utils/constants';
@@ -47,6 +48,7 @@ function AnalyzeContent() {
     const { canAnalyze, remainingAnalyses, plan, credits, needsCredit, planLimitReached, isFeatureEnabled, loading: subLoading, refresh } = useSubscription();
     const [showCreditShop, setShowCreditShop] = useState(false);
     const [buyingCredit, setBuyingCredit] = useState<string | null>(null);
+    const [kakaoOpen, setKakaoOpen] = useState(false);
 
     // 한도 소진 감지 — 결제 전환 퍼널의 핵심 지점
     useEffect(() => {
@@ -478,6 +480,16 @@ function AnalyzeContent() {
                     <AnalysisResultView result={analysisResult} />
 
                     <div className="flex justify-end gap-3 flex-wrap">
+                        {analysisId && (
+                            <Button
+                                variant="outline"
+                                className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
+                                onClick={() => setKakaoOpen(true)}
+                            >
+                                <Send className="w-4 h-4 mr-2" />
+                                카카오 알림톡 발송
+                            </Button>
+                        )}
                         <Link href={`/dashboard/risk-report${analysisId ? `?analysisId=${analysisId}` : ''}`}>
                             <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50">
                                 <HeartPulse className="w-4 h-4 mr-2" />
@@ -510,6 +522,35 @@ function AnalyzeContent() {
                             </Button>
                         </Link>
                     </div>
+
+                    {/* 카카오 알림톡 발송 다이얼로그 */}
+                    <SendAlimtalkDialog
+                        open={kakaoOpen}
+                        onOpenChange={setKakaoOpen}
+                        kind="medical"
+                        resourceId={analysisId}
+                        previewLink={[
+                            `[보비] ○○○님의 진료정보 분석 리포트가 도착했습니다.`,
+                            `설계사: (자동)`,
+                            ``,
+                            `최근 5년 진료내역 기반 분석이 완료되었습니다.`,
+                            `아래 버튼을 눌러 리포트를 확인해주세요.`,
+                            ``,
+                            `링크 유효: 발송일로부터 7일`,
+                            ``,
+                            `[리포트 보기 ▶]`,
+                        ].join('\n')}
+                        previewSummary={[
+                            `[보비] ○○○님 진료정보 분석 요약`,
+                            `────────────────`,
+                            `조회 기간: 최근 5년`,
+                            `총 진료 건수: ${(analysisResult.items || []).length}건`,
+                            `주요 진단: ${(analysisResult.diseaseSummary || []).slice(0, 3).map(d => d.diseaseName).filter(Boolean).join(', ') || '특이사항 없음'}`,
+                            `복용 약물: (분석 데이터)`,
+                            `────────────────`,
+                            `상세 리포트는 설계사 (자동)에게 문의해주세요.`,
+                        ].join('\n')}
+                    />
                 </>
             )}
         </div>

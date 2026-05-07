@@ -5,10 +5,11 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, Loader2, AlertTriangle, HeartPulse, Download } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertTriangle, HeartPulse, Download, Send } from 'lucide-react';
 import RiskReportView from '@/components/risk-report/RiskReportView';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import FeatureGate from '@/components/common/FeatureGate';
+import SendAlimtalkDialog from '@/components/share/SendAlimtalkDialog';
 import { apiFetch } from '@/lib/api/client';
 import { createClient } from '@/lib/supabase/client';
 import type { RiskReport } from '@/types/risk-report';
@@ -23,6 +24,7 @@ function RiskReportContent() {
     const [loadingExisting, setLoadingExisting] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [pdfLoading, setPdfLoading] = useState(false);
+    const [kakaoOpen, setKakaoOpen] = useState(false);
     const reportRef = useRef<HTMLDivElement>(null);
 
     const handleDownloadPdf = async () => {
@@ -196,10 +198,50 @@ function RiskReportContent() {
                             {pdfLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
                             PDF 저장
                         </Button>
+                        {analysisId && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
+                                onClick={() => setKakaoOpen(true)}
+                            >
+                                <Send className="w-4 h-4 mr-2" />
+                                카카오 알림톡 발송
+                            </Button>
+                        )}
                     </div>
                     <div ref={reportRef}>
                         <RiskReportView report={report} />
                     </div>
+
+                    {/* 카카오 알림톡 발송 다이얼로그 */}
+                    <SendAlimtalkDialog
+                        open={kakaoOpen}
+                        onOpenChange={setKakaoOpen}
+                        kind="risk-report"
+                        resourceId={analysisId}
+                        previewLink={[
+                            `[보비] ○○○님의 질병 위험도 리포트가 도착했습니다.`,
+                            `설계사: (자동)`,
+                            ``,
+                            `진료 내역과 건강검진 데이터를 기반으로 위험도 분석이 완료되었습니다.`,
+                            `아래 버튼을 눌러 리포트를 확인해주세요.`,
+                            ``,
+                            `링크 유효: 발송일로부터 7일`,
+                            ``,
+                            `[리포트 보기 ▶]`,
+                        ].join('\n')}
+                        previewSummary={[
+                            `[보비] ○○○님 위험도 리포트 요약`,
+                            `────────────────`,
+                            `주의 질환: ${(report.riskItems || []).slice(0, 3).map(r => r.riskDisease).filter(Boolean).join(', ') || '특이사항 없음'}`,
+                            `일반 대비 위험: ${Math.max(1, ...(report.riskItems || []).map(r => r.relativeRisk || 1)).toFixed(1)}배`,
+                            `근거 수준: ${report.riskItems?.[0]?.evidenceLevel || 'B'}`,
+                            `권장 점검: 정기 종합검진 권장`,
+                            `────────────────`,
+                            `상세 리포트는 설계사 (자동)에게 문의해주세요.`,
+                        ].join('\n')}
+                    />
                 </>
             )}
         </div>
