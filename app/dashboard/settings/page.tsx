@@ -142,7 +142,7 @@ export default function SettingsPage() {
                 </CardContent>
             </Card>
 
-            {/* Current Plan & Usage — PLAN_LIMITS 기준 가격 표시 */}
+            {/* Current Plan & Usage — 다음 결제일·수단·청구 예정 금액을 즉시 확인 */}
             <Card className="border-0 shadow-sm">
                 <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
@@ -165,6 +165,11 @@ export default function SettingsPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                    {/* 활성 결제 상태 — 다음 결제일/금액/수단/결제내역 (PlanStatusCard와 동일 API) */}
+                    {subscription && (subscription.status === 'active' || subscription.status === 'trialing' || subscription.status === 'past_due') && currentSlug !== 'free' && (
+                        <BillingStatusInline />
+                    )}
+
                     <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">이번 달 사용량</span>
@@ -756,6 +761,57 @@ function DeviceManagement() {
     );
 }
 
+// ── 활성 결제 상태 한 줄 요약 (현재 플랜 카드 안 inline) ──
+// /api/billing/current를 한 번 더 호출. PlanStatusCard와 동일 데이터지만 설정 페이지의
+// 사용량 게이지 위에 다음 결제일·수단·청구 예정 금액만 인라인으로 노출.
+function BillingStatusInline() {
+    interface BillingCurrent {
+        nextChargeAmount: number | null;
+        nextChargeDate: string | null;
+        paymentMethodLabel: string | null;
+        cancelAtPeriodEnd: boolean;
+        isIap: boolean;
+        couponCode: string | null;
+    }
+    const [data, setData] = useState<BillingCurrent | null>(null);
+    useEffect(() => {
+        fetch('/api/billing/current')
+            .then((r) => r.json())
+            .then((j) => setData(j))
+            .catch(() => { /* silent */ });
+    }, []);
+    if (!data) return null;
+    const fmtDate = (iso: string | null) => iso
+        ? new Date(iso).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
+        : '-';
+    return (
+        <div className="rounded-lg border border-gray-200 bg-gray-50/40 p-3 grid grid-cols-3 gap-3 text-xs">
+            <div>
+                <p className="text-[10px] text-gray-500">{data.cancelAtPeriodEnd ? '이용 종료일' : '다음 결제일'}</p>
+                <p className="font-semibold text-gray-900 mt-0.5">{fmtDate(data.nextChargeDate)}</p>
+            </div>
+            <div>
+                <p className="text-[10px] text-gray-500">청구 예정</p>
+                <p className="font-semibold text-gray-900 mt-0.5">
+                    {data.cancelAtPeriodEnd
+                        ? '청구 없음'
+                        : data.nextChargeAmount != null
+                            ? `${data.nextChargeAmount.toLocaleString()}원`
+                            : '-'}
+                </p>
+                {data.couponCode && <p className="text-[10px] text-gray-500 mt-0.5">쿠폰 {data.couponCode}</p>}
+            </div>
+            <div>
+                <p className="text-[10px] text-gray-500">결제 수단</p>
+                <p className="font-semibold text-gray-900 mt-0.5">{data.paymentMethodLabel || '-'}</p>
+                {data.isIap && (
+                    <p className="text-[10px] text-amber-600 mt-0.5">스토어에서 관리</p>
+                )}
+            </div>
+        </div>
+    );
+}
+
 // ── 결제 내역 섹션 ──
 function PaymentHistory() {
     const [payments, setPayments] = useState<Array<Record<string, any>>>([]);
@@ -796,7 +852,7 @@ function PaymentHistory() {
     const hasMore = allItems.length > INITIAL_COUNT;
 
     return (
-        <Card className="border-0 shadow-sm">
+        <Card id="payment-history" className="border-0 shadow-sm scroll-mt-6">
             <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                     <Crown className="w-5 h-5 text-primary" />

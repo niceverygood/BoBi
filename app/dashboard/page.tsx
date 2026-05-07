@@ -17,6 +17,7 @@ import SearchTrendWidget from '@/components/dashboard/SearchTrendWidget';
 import WeeklyKpiCards from '@/components/dashboard/WeeklyKpiCards';
 import FollowupsWidget from '@/components/dashboard/FollowupsWidget';
 import ActivityChart from '@/components/dashboard/ActivityChart';
+import PlanStatusCard from '@/components/dashboard/PlanStatusCard';
 import TrialPromoBanner from '@/components/subscribe/TrialPromoBanner';
 import { SocialProofStrip } from '@/components/common/SocialProof';
 
@@ -131,6 +132,10 @@ export default function DashboardPage() {
                     </Button>
                 </Link>
             </div>
+
+            {/* 활성 구독 상태 카드 — 결제 후 본인 플랜 상태 즉시 확인.
+                무료 사용자는 베이직 시작 CTA, 유료는 다음 결제일/금액/수단 + 결제내역 링크. */}
+            <PlanStatusCard />
 
             {/* 🎁 베이직 3일 무료 체험 프로모션 (무료 유저 + 자격 있을 때만) */}
             <TrialPromoBanner />

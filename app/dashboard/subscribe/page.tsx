@@ -870,6 +870,42 @@ function SubscribeContent() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
+                        {/* 결제 영수증 요약 — 사용자가 본인 결제건 즉시 검증.
+                            이도경 5/6 1:1 문의(결제했는데 처리됐는지 모름) 케이스 대응. */}
+                        <div className="rounded-lg border border-gray-200 bg-gray-50/40 p-3 text-left text-xs">
+                            <p className="text-[11px] font-semibold text-gray-700 mb-2">결제 영수증</p>
+                            <ul className="space-y-1 text-gray-700">
+                                <li className="flex justify-between">
+                                    <span className="text-gray-500">플랜</span>
+                                    <span className="font-medium">{planInfo.name}</span>
+                                </li>
+                                <li className="flex justify-between">
+                                    <span className="text-gray-500">결제일시</span>
+                                    <span className="font-medium">{new Date().toLocaleString('ko-KR')}</span>
+                                </li>
+                                {!isTrialSuccess && (
+                                    <li className="flex justify-between">
+                                        <span className="text-gray-500">결제 금액</span>
+                                        <span className="font-medium">{(amount || 0).toLocaleString()}원</span>
+                                    </li>
+                                )}
+                                <li className="flex justify-between">
+                                    <span className="text-gray-500">결제 수단</span>
+                                    <span className="font-medium">
+                                        {paymentMethod === 'kakaopay' ? '카카오페이'
+                                            : paymentMethod === 'tosspayments' ? '토스페이먼츠'
+                                                : paymentMethod === 'card' ? 'KG이니시스'
+                                                    : platform === 'ios' ? 'App Store'
+                                                        : platform === 'android' ? 'Google Play'
+                                                            : '카드'}
+                                    </span>
+                                </li>
+                            </ul>
+                            <p className="text-[10px] text-gray-500 mt-2 pt-2 border-t border-gray-200">
+                                전체 결제 내역은 <Link href="/dashboard/settings#payment-history" className="text-brand-600 underline">설정 → 결제 내역</Link>에서 언제든 확인하실 수 있습니다.
+                            </p>
+                        </div>
+
                         {isKakaoPayTrial && (
                             <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-left">
                                 <p className="text-xs text-amber-900 dark:text-amber-200 leading-relaxed">
