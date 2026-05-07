@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>BoBi — Store Screenshots</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet" />
+<style>
+  :root {
+    --brand-50:  #EFF6FF;
+    --brand-100: #DBEAFE;
+    --brand-500: #3B82F6;
+    --brand-600: #1a56db;
+    --brand-700: #1E40AF;
+    --brand-800: #1E3A8A;
+    --ink-900:   #0B1220;
+    --ink-700:   #1F2937;
+    --ink-500:   #4B5563;
+    --ink-300:   #9CA3AF;
+    --bg:        #F8FAFC;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+  body { font-family: "Pretendard Variable", Pretendard, -apple-system, sans-serif; background: #111; }
+  .slide {
+    position: relative;
+    overflow: hidden;
+    color: var(--ink-900);
+    background: linear-gradient(180deg, var(--brand-50) 0%, #ffffff 60%, var(--brand-50) 100%);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+  }
+  /* 사이즈는 capture 시점에 viewport로 강제 — 화면 미리보기는 1080×1920 기준. */
+  .slide[data-target] { width: 1080px; height: 1920px; }
+
+  .header {
+    padding: 120px 80px 0;
+    text-align: center;
+  }
+  .eyebrow {
+    display: inline-block;
+    padding: 14px 28px;
+    background: var(--brand-100);
+    color: var(--brand-700);
+    border-radius: 999px;
+    font-size: 32px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 36px;
+  }
+  .headline {
+    font-size: 96px;
+    line-height: 1.1;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    color: var(--ink-900);
+    margin-bottom: 28px;
+  }
+  .headline .accent { color: var(--brand-600); }
+  .subhead {
+    font-size: 40px;
+    line-height: 1.4;
+    color: var(--ink-500);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+
+  .stage {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 80px;
+    position: relative;
+  }
+
+  /* === 카드 (실제 앱 컴포넌트 톤 매치) === */
+  .card {
+    background: #fff;
+    border-radius: 32px;
+    box-shadow: 0 30px 80px rgba(26, 86, 219, 0.18), 0 8px 24px rgba(15, 23, 42, 0.08);
+    padding: 56px;
+    width: 100%;
+    max-width: 880px;
+  }
+  .card-title {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--ink-900);
+    margin-bottom: 12px;
+    letter-spacing: -0.03em;
+  }
+  .card-sub {
+    font-size: 26px;
+    color: var(--ink-500);
+    margin-bottom: 36px;
+    font-weight: 500;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 28px 0;
+    border-bottom: 1px solid #E5E7EB;
+    font-size: 30px;
+  }
+  .row:last-child { border-bottom: none; }
+  .row .label { color: var(--ink-500); font-weight: 500; }
+  .row .value { color: var(--ink-900); font-weight: 700; }
+  .row .value.brand { color: var(--brand-600); }
+  .row .value.danger { color: #DC2626; }
+  .pill {
+    display: inline-block;
+    padding: 10px 20px;
+    border-radius: 999px;
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .pill.brand { background: var(--brand-50); color: var(--brand-700); }
+  .pill.warn  { background: #FEF3C7; color: #B45309; }
+  .pill.ok    { background: #DCFCE7; color: #166534; }
+
+  /* === 위험도 바 (slide 3) === */
+  .bar-row { padding: 26px 0; border-bottom: 1px solid #E5E7EB; }
+  .bar-row:last-child { border-bottom: none; }
+  .bar-row .top { display: flex; justify-content: space-between; margin-bottom: 14px; font-size: 28px; }
+  .bar-row .top .name { font-weight: 600; color: var(--ink-900); }
+  .bar-row .top .ratio { font-weight: 700; }
+  .bar { height: 16px; background: #F1F5F9; border-radius: 999px; overflow: hidden; }
+  .bar > i {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+  }
+  .bar > i.l1 { background: linear-gradient(90deg, #FCA5A5, #DC2626); }
+  .bar > i.l2 { background: linear-gradient(90deg, #FCD34D, #D97706); }
+  .bar > i.l3 { background: linear-gradient(90deg, #93C5FD, #2563EB); }
+
+  /* === 가상영수증 (slide 4) === */
+  .receipt-stack { display: grid; gap: 20px; }
+  .receipt-cell {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 28px 32px; background: #F8FAFC; border-radius: 20px;
+    font-size: 30px;
+  }
+  .receipt-cell .l { color: var(--ink-500); font-weight: 500; }
+  .receipt-cell .r { font-weight: 700; }
+  .gap-card {
+    margin-top: 28px;
+    padding: 36px; background: linear-gradient(135deg, var(--brand-600), var(--brand-800));
+    color: #fff; border-radius: 24px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .gap-card .lbl { font-size: 28px; font-weight: 600; opacity: 0.9; }
+  .gap-card .val { font-size: 64px; font-weight: 800; letter-spacing: -0.03em; }
+
+  /* === 알림톡 메시지 (slide 5) === */
+  .kakao {
+    background: #FFEB00;
+    padding: 32px 40px;
+    border-radius: 28px 28px 28px 8px;
+    font-size: 30px;
+    line-height: 1.55;
+    color: var(--ink-900);
+    max-width: 700px;
+  }
+  .kakao .from {
+    font-size: 22px; color: #6B7280; font-weight: 600; margin-bottom: 14px;
+  }
+  .kakao b { color: var(--brand-700); }
+  .kakao-stack { display: grid; gap: 28px; }
+
+  /* === 가격 (slide 6) === */
+  .price-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .price-card {
+    background: #fff; border-radius: 28px; padding: 48px 36px;
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+    border: 2px solid transparent;
+  }
+  .price-card.featured { border-color: var(--brand-600); position: relative; }
+  .price-card.featured::after {
+    content: "추천";
+    position: absolute; top: -18px; right: 24px;
+    background: var(--brand-600); color: #fff;
+    padding: 8px 20px; border-radius: 999px; font-size: 22px; font-weight: 700;
+  }
+  .price-card .name { font-size: 32px; font-weight: 700; margin-bottom: 12px; }
+  .price-card .amount { font-size: 56px; font-weight: 800; color: var(--brand-700); letter-spacing: -0.03em; }
+  .price-card .amount small { font-size: 24px; font-weight: 600; color: var(--ink-500); }
+  .price-card ul { margin-top: 28px; list-style: none; }
+  .price-card li { padding: 10px 0; font-size: 24px; color: var(--ink-700); }
+  .price-card li::before { content: "✓ "; color: var(--brand-600); font-weight: 800; }
+
+  .footer {
+    padding: 0 80px 120px;
+    text-align: center;
+  }
+  .cta {
+    display: inline-flex; align-items: center; gap: 16px;
+    padding: 32px 56px; background: var(--brand-600); color: #fff;
+    border-radius: 999px; font-size: 36px; font-weight: 700;
+    box-shadow: 0 20px 50px rgba(26, 86, 219, 0.4);
+    letter-spacing: -0.02em;
+  }
+  .footnote { margin-top: 28px; color: var(--ink-300); font-size: 24px; }
+
+  /* === Hero === */
+  .slide.hero {
+    align-items: center; justify-content: center;
+    background: linear-gradient(160deg, var(--brand-50) 0%, #fff 50%, var(--brand-100) 100%);
+    padding: 0;
+  }
+  .hero-inner { text-align: center; padding: 0 80px; }
+  .hero-inner .logo {
+    font-size: 280px; font-weight: 900; letter-spacing: -0.06em;
+    color: var(--brand-700); line-height: 0.9;
+    text-shadow: 0 12px 40px rgba(26, 86, 219, 0.15);
+  }
+  .hero-inner .tagline {
+    margin-top: 56px;
+    font-size: 72px; font-weight: 800; color: var(--ink-900); letter-spacing: -0.04em;
+    line-height: 1.15;
+  }
+  .hero-inner .tagline .accent { color: var(--brand-600); }
+  .hero-inner .sub {
+    margin-top: 28px; font-size: 36px; color: var(--ink-500); font-weight: 500;
+    letter-spacing: -0.02em; line-height: 1.4;
+  }
+  .chip-row {
+    margin-top: 80px;
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 16px 18px;
+    max-width: 880px; margin-left: auto; margin-right: auto;
+  }
+  .chip {
+    padding: 18px 28px;
+    background: #fff; color: var(--brand-700);
+    border: 2px solid var(--brand-100);
+    border-radius: 999px; font-size: 28px; font-weight: 700;
+    box-shadow: 0 8px 24px rgba(26, 86, 219, 0.08);
+    letter-spacing: -0.02em;
+  }
+
+  /* === Feature Graphic 1024×500 (Google Play) === */
+  .slide.featgfx {
+    width: 1024px; height: 500px;
+    flex-direction: row;
+    align-items: center;
+    background: linear-gradient(135deg, var(--brand-600), var(--brand-800));
+    color: #fff;
+    padding: 60px;
+  }
+  .slide.featgfx .left { flex: 1; }
+  .slide.featgfx .logo-sm { font-size: 72px; font-weight: 900; letter-spacing: -0.05em; line-height: 1; }
+  .slide.featgfx .tag-sm  { font-size: 28px; font-weight: 700; margin-top: 14px; opacity: 0.95; }
+  .slide.featgfx .sub-sm  { font-size: 18px; margin-top: 12px; opacity: 0.8; line-height: 1.5; max-width: 480px; }
+  .slide.featgfx .right {
+    width: 320px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.25);
+    backdrop-filter: blur(8px);
+    border-radius: 20px;
+    padding: 28px;
+    font-size: 16px;
+  }
+  .slide.featgfx .right .ft { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.15); }
+  .slide.featgfx .right .ft:last-child { border: none; }
+  .slide.featgfx .right .ft .l { opacity: 0.8; }
+  .slide.featgfx .right .ft .v { font-weight: 700; }
+</style>
+</head>
+<body>
+
+<!-- ========================================= -->
+<!-- 슬라이드 1: Hero (보비 핵심 가치)        -->
+<!-- ========================================= -->
+<section class="slide hero" id="s1" data-target="phone">
+  <div class="hero-inner">
+    <div class="logo">보비</div>
+    <div class="tagline">설계사를 위한<br><span class="accent">AI 보험 컨설팅</span> 도구</div>
+    <div class="sub">진료 데이터 분석부터 자동 알림톡까지 한 번에</div>
+    <div class="chip-row">
+      <span class="chip">진료정보 분석</span>
+      <span class="chip">위험도 리포트</span>
+      <span class="chip">가상 사고영수증</span>
+      <span class="chip">CRM 자동 알림</span>
+      <span class="chip">미래의 나</span>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================= -->
+<!-- 슬라이드 2: 진료정보 분석                -->
+<!-- ========================================= -->
+<section class="slide" id="s2" data-target="phone">
+  <div class="header">
+    <span class="eyebrow">진료정보 분석</span>
+    <h1 class="headline"><span class="accent">5년치</span> 진료내역,<br>한 화면에</h1>
+    <p class="subhead">병의원 방문 기록을 AI가 자동 분석</p>
+  </div>
+  <div class="stage">
+    <div class="card">
+      <div class="card-title">홍길동님 진료내역 요약</div>
+      <div class="card-sub">조회 기간: 2021~2026 (5년) · 84건</div>
+      <div class="row"><span class="label">주요 진단</span><span class="value">고혈압 · 고지혈증</span></div>
+      <div class="row"><span class="label">총 진료 건수</span><span class="value">84건</span></div>
+      <div class="row"><span class="label">복용 약물</span><span class="value brand">아토르바스타틴 외 3종</span></div>
+      <div class="row"><span class="label">최근 진료</span><span class="value">2026.04.18</span></div>
+      <div class="row"><span class="label">고지 사항 점검</span><span class="value"><span class="pill warn">2건 확인 필요</span></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================= -->
+<!-- 슬라이드 3: 위험도 리포트                -->
+<!-- ========================================= -->
+<section class="slide" id="s3" data-target="phone">
+  <div class="header">
+    <span class="eyebrow">위험도 리포트</span>
+    <h1 class="headline">일반인 대비<br><span class="accent">몇 배 위험</span>한지</h1>
+    <p class="subhead">진료 + 건강검진 데이터로 개인화 분석</p>
+  </div>
+  <div class="stage">
+    <div class="card">
+      <div class="card-title">홍길동님 위험도 분석</div>
+      <div class="card-sub">근거 수준: 높음</div>
+      <div class="bar-row">
+        <div class="top"><span class="name">심혈관 질환</span><span class="ratio" style="color:#DC2626">3.2배</span></div>
+        <div class="bar"><i class="l1" style="width:90%"></i></div>
+      </div>
+      <div class="bar-row">
+        <div class="top"><span class="name">당뇨</span><span class="ratio" style="color:#D97706">1.9배</span></div>
+        <div class="bar"><i class="l2" style="width:60%"></i></div>
+      </div>
+      <div class="bar-row">
+        <div class="top"><span class="name">암 (위)</span><span class="ratio" style="color:#2563EB">1.4배</span></div>
+        <div class="bar"><i class="l3" style="width:40%"></i></div>
+      </div>
+      <div class="bar-row">
+        <div class="top"><span class="name">뇌혈관 질환</span><span class="ratio" style="color:#2563EB">1.2배</span></div>
+        <div class="bar"><i class="l3" style="width:30%"></i></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================= -->
+<!-- 슬라이드 4: 가상 사고영수증              -->
+<!-- ========================================= -->
+<section class="slide" id="s4" data-target="phone">
+  <div class="header">
+    <span class="eyebrow">가상 사고영수증</span>
+    <h1 class="headline">보장 갭,<br><span class="accent">숫자로</span> 보여드립니다</h1>
+    <p class="subhead">"만약 그 질환이 생기면" 시뮬레이션</p>
+  </div>
+  <div class="stage">
+    <div class="card">
+      <div class="card-title">심근경색 가상영수증</div>
+      <div class="card-sub">3차 종합병원 · 입원 14일 기준</div>
+      <div class="receipt-stack">
+        <div class="receipt-cell"><span class="l">예상 총 의료비</span><span class="r">3,840만원</span></div>
+        <div class="receipt-cell"><span class="l">현재 보장 추정</span><span class="r" style="color:#2563EB">1,200만원</span></div>
+        <div class="receipt-cell"><span class="l">자기부담 예상</span><span class="r" style="color:#DC2626">2,640만원</span></div>
+      </div>
+      <div class="gap-card">
+        <span class="lbl">보장 부족분</span>
+        <span class="val">2,640만</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================= -->
+<!-- 슬라이드 5: CRM 자동 알림톡              -->
+<!-- ========================================= -->
+<section class="slide" id="s5" data-target="phone">
+  <div class="header">
+    <span class="eyebrow">CRM 자동 알림톡</span>
+    <h1 class="headline">갱신·면책·생일<br><span class="accent">자동으로</span> 보냅니다</h1>
+    <p class="subhead">고객카드에 한 번 입력 → 매일 새벽 자동 발송</p>
+  </div>
+  <div class="stage">
+    <div class="kakao-stack">
+      <div class="kakao">
+        <div class="from">@바틀 · 알림톡</div>
+        <b>[보비]</b> 박철수님, 실손의료보험 갱신일이<br><b>일주일 남았습니다</b>.<br>
+        갱신일: 2026-05-14<br>
+        문의는 설계사 한승수에게 주세요.
+      </div>
+      <div class="kakao">
+        <div class="from">@바틀 · 알림톡</div>
+        <b>[보비]</b> 김영희님, 90일 면책 기간이<br><b>3일 뒤 종료</b>됩니다.<br>
+        면책 종료: 2026-05-10<br>
+        면책 종료 후엔 정상 청구가 가능합니다.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================= -->
+<!-- 슬라이드 6: Pricing                       -->
+<!-- ========================================= -->
+<section class="slide" id="s6" data-target="phone">
+  <div class="header">
+    <span class="eyebrow">3일 무료체험</span>
+    <h1 class="headline"><span class="accent">19,900원</span>부터<br>시작하세요</h1>
+    <p class="subhead">설계사 1인 기준 · 부담 없는 월 구독</p>
+  </div>
+  <div class="stage">
+    <div class="card" style="background: transparent; box-shadow: none; padding: 0;">
+      <div class="price-grid">
+        <div class="price-card">
+          <div class="name">베이직</div>
+          <div class="amount">19,900<small>원/월</small></div>
+          <ul>
+            <li>진료정보 분석</li>
+            <li>가입 상품 매칭</li>
+            <li>갱신일 자동 알림</li>
+            <li>고객 무제한 관리</li>
+          </ul>
+        </div>
+        <div class="price-card featured">
+          <div class="name">프로</div>
+          <div class="amount">39,900<small>원/월</small></div>
+          <ul>
+            <li>베이직의 모든 기능</li>
+            <li>위험도 리포트</li>
+            <li>가상 사고영수증</li>
+            <li>면책·감액·생일 알림</li>
+            <li>미래의 나 시뮬레이션</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer">
+    <div class="cta">3일 무료체험 시작하기 →</div>
+    <div class="footnote">언제든지 취소 가능 · 별도 위약금 없음</div>
+  </div>
+</section>
+
+<!-- ========================================= -->
+<!-- Feature Graphic 1024×500 (Google Play)   -->
+<!-- ========================================= -->
+<section class="slide featgfx" id="fg" data-target="featgfx">
+  <div class="left">
+    <div class="logo-sm">보비</div>
+    <div class="tag-sm">설계사를 위한 AI 보험 컨설팅</div>
+    <div class="sub-sm">진료 데이터 분석 · 보장 갭 시각화 · 자동 알림톡<br>1,200+ 설계사가 신뢰하는 도구</div>
+  </div>
+  <div class="right">
+    <div class="ft"><span class="l">진료정보 분석</span><span class="v">5년</span></div>
+    <div class="ft"><span class="l">위험도 리포트</span><span class="v">개인화</span></div>
+    <div class="ft"><span class="l">가상 사고영수증</span><span class="v">시뮬레이션</span></div>
+    <div class="ft"><span class="l">CRM 자동 알림</span><span class="v">매일</span></div>
+    <div class="ft"><span class="l">시작 가격</span><span class="v">19,900원</span></div>
+  </div>
+</section>
+
+</body>
+</html>
