@@ -89,7 +89,7 @@ export default function FeatureGate({ feature, title, description, children, red
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-2">
-                    {/* 베이직 체험 가능 시 먼저 홍보 — 트라이얼 배너 패턴(brand-50)과 일관 */}
+                    {/* 3일 무료 체험 가능 시 먼저 홍보 — 트라이얼 배너 패턴(brand-50)과 일관 */}
                     {trialEligible && (
                         <div className="rounded-xl border border-brand-100 bg-brand-50 p-4 text-center">
                             <div className="flex items-center justify-center gap-2 mb-2">
@@ -99,7 +99,7 @@ export default function FeatureGate({ feature, title, description, children, red
                                 </p>
                             </div>
                             <p className="text-xs text-gray-600 mb-3 leading-relaxed">
-                                베이직 플랜으로 주요 기능을 체험 후 필요 시 프로로 업그레이드할 수 있습니다.
+                                3일 무료 체험으로 주요 기능을 체험 후 필요 시 프로로 업그레이드할 수 있습니다.
                                 {' '}체험 기간 해지 시 <strong>0원</strong>.
                             </p>
                             <Link href="/dashboard/subscribe?plan=basic">

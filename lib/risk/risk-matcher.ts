@@ -152,10 +152,12 @@ function codeMatches(patientCode: string, mapCode: string): boolean {
     return patientCode.startsWith(mapCode);
 }
 
-/** 상대위험도 → 위험 수준 변환 */
+/** 상대위험도 → 위험 수준 변환.
+ *  PR #35 (이종인 이사 5/2 원안): 2배 단일 컷오프로 sync. 1.0배 미만 케이스는
+ *  사실상 매칭 데이터에 없어 'low'는 fallback으로만 남긴다. */
 function toRiskLevel(rr: number): RiskLevel {
-    if (rr >= 3.0) return 'high';
-    if (rr >= 1.8) return 'moderate';
+    if (rr >= 2.0) return 'high';
+    if (rr >= 1.0) return 'moderate';
     return 'low';
 }
 
