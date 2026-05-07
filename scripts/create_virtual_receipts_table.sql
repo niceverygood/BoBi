@@ -19,9 +19,10 @@ CREATE TABLE IF NOT EXISTS virtual_receipts (
 CREATE INDEX IF NOT EXISTS idx_virtual_receipts_user_created
     ON virtual_receipts(user_id, created_at DESC);
 
+-- partial index의 WHERE 절은 IMMUTABLE 함수만 허용 — NOW()는 STABLE이라 사용 불가.
+-- 전체 인덱스로 대체. 만료 row 정리 cron이 expires_at 컬럼 스캔할 때 충분히 빠름.
 CREATE INDEX IF NOT EXISTS idx_virtual_receipts_expires
-    ON virtual_receipts(expires_at)
-    WHERE expires_at < NOW();
+    ON virtual_receipts(expires_at);
 
 -- RLS: 사용자 본인 영수증만 조회. share 페이지는 service_role로 토큰 검증 후 조회.
 ALTER TABLE virtual_receipts ENABLE ROW LEVEL SECURITY;
