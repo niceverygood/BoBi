@@ -23,13 +23,17 @@ interface Props {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     kind: AlimtalkReportKind;
+    /** medical/risk-report는 analyses.id, accident-receipt는 placeholder */
     resourceId: string | null;
     defaultPhone?: string;
     defaultCustomerName?: string;
-    /** 링크형 미리보기 본문 (변수 치환된 최종 텍스트) */
     previewLink: string;
-    /** 요약형 미리보기 본문 (변수 치환된 최종 텍스트) */
     previewSummary: string;
+    /** accident-receipt 전용: 영수증 payload를 send API에 직접 전달.
+     *  서버가 virtual_receipts에 저장 후 그 id로 share token 발급. */
+    receiptPayload?: unknown;
+    /** accident-receipt 전용: 매핑할 customer_id (선택) */
+    customerId?: string | null;
 }
 
 interface SendResult {
@@ -64,6 +68,8 @@ export default function SendAlimtalkDialog({
     defaultCustomerName = '',
     previewLink,
     previewSummary,
+    receiptPayload,
+    customerId,
 }: Props) {
     const [template, setTemplate] = useState<AlimtalkTemplate>('LINK');
     const [phone, setPhone] = useState(defaultPhone);
@@ -74,26 +80,35 @@ export default function SendAlimtalkDialog({
 
     const phoneDigits = phone.replace(/\D/g, '');
     const phoneValid = PHONE_RE.test(phoneDigits);
-    const resourceReady = !!resourceId;
+    // accident-receipt는 receiptPayload만 있으면 OK (서버가 저장 후 id 발급).
+    // 그 외 kind는 resourceId가 분석 ID이므로 필요.
+    const resourceReady = kind === 'accident-receipt' ? !!receiptPayload : !!resourceId;
     const labels = LABEL_BY_KIND[kind];
 
     const handleSend = async () => {
-        if (!resourceId) {
-            setError('리포트 ID가 없어 발송할 수 없습니다. 페이지를 새로고침해주세요.');
+        if (!resourceReady) {
+            setError('리포트 데이터가 없어 발송할 수 없습니다.');
             return;
         }
         setError(null);
         setLoading(true);
         try {
+            const sendBody: Record<string, unknown> = {
+                template,
+                receiverPhone: phoneDigits,
+                receiverName: customerName || undefined,
+                ttlDays: 7,
+            };
+            if (kind === 'accident-receipt') {
+                sendBody.receipt = receiptPayload;
+                sendBody.customerId = customerId || null;
+                sendBody.customerName = customerName || undefined;
+            } else {
+                sendBody.resourceId = resourceId;
+            }
             const data = await apiFetch<SendResult>(ENDPOINT_BY_KIND[kind], {
                 method: 'POST',
-                body: {
-                    resourceId,
-                    template,
-                    receiverPhone: phoneDigits,
-                    receiverName: customerName || undefined,
-                    ttlDays: 7,
-                },
+                body: sendBody,
                 timeout: 30000,
             });
             setSendResult(data);
@@ -246,7 +261,7 @@ export default function SendAlimtalkDialog({
 
                         {!resourceReady && (
                             <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
-                                ⚠ 리포트 ID가 없습니다. 페이지를 새로고침해주세요.
+                                ⚠ 리포트 데이터가 없습니다. 페이지를 새로고침해주세요.
                             </p>
                         )}
 

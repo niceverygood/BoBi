@@ -6,10 +6,11 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Receipt, Download, Loader2, Calculator } from 'lucide-react';
+import { ArrowLeft, Receipt, Download, Loader2, Calculator, Send } from 'lucide-react';
 import ReceiptView from '@/components/accident-receipt/ReceiptView';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import FeatureGate from '@/components/common/FeatureGate';
+import SendAlimtalkDialog from '@/components/share/SendAlimtalkDialog';
 import { DISEASE_COST_DATA, getDiseaseCostByCategory, type DiseaseCostInfo } from '@/lib/receipt/disease-cost-data';
 import { apiFetch } from '@/lib/api/client';
 import type { AccidentReceipt } from '@/types/accident-receipt';
@@ -75,6 +76,7 @@ function AccidentReceiptContent() {
     const [receipt, setReceipt] = useState<AccidentReceipt | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [kakaoOpen, setKakaoOpen] = useState(false);
 
     const categoryData = getDiseaseCostByCategory();
 
@@ -317,7 +319,7 @@ function AccidentReceiptContent() {
             {/* Step 3: 영수증 결과 */}
             {receipt && (
                 <>
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-2 flex-wrap">
                         <Button
                             variant="outline"
                             size="sm"
@@ -334,13 +336,80 @@ function AccidentReceiptContent() {
                             {pdfLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
                             PDF 저장
                         </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
+                            onClick={() => setKakaoOpen(true)}
+                        >
+                            <Send className="w-4 h-4 mr-2" />
+                            카카오 알림톡 발송
+                        </Button>
                     </div>
                     <div ref={receiptRef}>
                         <ReceiptView receipt={receipt} />
                     </div>
+
+                    {/* 카카오 알림톡 발송 — receipt 데이터를 그대로 API에 전달, 서버가 virtual_receipts에 저장 후 token 발급 */}
+                    <ReceiptKakaoDialog
+                        open={kakaoOpen}
+                        onOpenChange={setKakaoOpen}
+                        receipt={receipt}
+                    />
                 </>
             )}
         </div>
+    );
+}
+
+// receipt를 그대로 다이얼로그에 전달하는 래퍼.
+// SendAlimtalkDialog는 resourceId 기반 send API를 호출하지만, accident-receipt는
+// "발송 시점에 저장 → id 반환"이라 서버 API에 receipt payload를 직접 보내야 한다.
+function ReceiptKakaoDialog({
+    open,
+    onOpenChange,
+    receipt,
+}: {
+    open: boolean;
+    onOpenChange: (b: boolean) => void;
+    receipt: AccidentReceipt;
+}) {
+    const previewLink = [
+        `[보비] ○○○님의 가상 사고영수증이 도착했습니다.`,
+        `설계사: (자동)`,
+        ``,
+        `${receipt.diseaseName} 발병 시 예상 의료비 시뮬레이션 결과입니다.`,
+        `아래 버튼을 눌러 영수증을 확인해주세요.`,
+        ``,
+        `링크 유효: 발송일로부터 7일`,
+        ``,
+        `[영수증 보기 ▶]`,
+    ].join('\n');
+
+    const fmtMan = (manValue: number) => Math.round(manValue).toLocaleString();
+    const previewSummary = [
+        `[보비] ○○○님 가상영수증 요약`,
+        `────────────────`,
+        `시뮬레이션 질환: ${receipt.diseaseName}`,
+        `예상 총 의료비: ${fmtMan(receipt.totalMedicalCost)}만원`,
+        `현재 보장 추정: ${fmtMan(receipt.insurancePayout)}만원`,
+        `자기부담 예상: ${fmtMan(receipt.finalAmount)}만원`,
+        `────────────────`,
+        `상세 영수증은 설계사 (자동)에게 문의해주세요.`,
+    ].join('\n');
+
+    return (
+        <SendAlimtalkDialog
+            open={open}
+            onOpenChange={onOpenChange}
+            kind="accident-receipt"
+            // resourceId는 서버에서 영수증 저장 후 발급되므로 클라에는 없음.
+            // 다이얼로그가 send API에 직접 receipt payload를 보내도록 별도 props로 전달:
+            resourceId={'__receipt-payload__'}
+            receiptPayload={receipt}
+            previewLink={previewLink}
+            previewSummary={previewSummary}
+        />
     );
 }
 
