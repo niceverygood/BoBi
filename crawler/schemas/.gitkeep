@@ -1,0 +1,2 @@
+# Phase 2: insurance 스키마 마이그레이션 SQL.
+# 실제 마이그레이션은 supabase/migrations/insurance/ 에 두고, 이곳엔 드래프트만.
