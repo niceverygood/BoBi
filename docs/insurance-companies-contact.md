@@ -359,8 +359,8 @@
 - 설계사 조회: https://www.tossinsu.com/e-clean
 
 **B. 고객 콜센터**
-- GA이므로 가입한 보험사 콜센터로 안내
-- 토스 통합 고객센터 (앱 내) 활용
+- 대표: **1599-4905** (24시간 연중무휴)
+- 이메일: insuga@toss.im
 
 **C. BD / 영업제휴**
 - 모회사 비바리퍼블리카 본사: 서울 강남구 테헤란로 142 (역삼동)
@@ -405,9 +405,11 @@
 ## 3-2. 인카금융서비스 (코스닥 211050)
 
 **A. 설계사 영업지원**
+- 본사 대표: **02-2192-8900**
 - 영업부문 추진단: **02-6222-7206**
 - 보장분석 시스템 상담: 010-4796-5284 (평일 09:00–18:00, 점심 11:30–12:30 제외)
 - 시스템: https://incar.ohmymanager.com/
+- 민원접수 폼: https://www.incar.co.kr/sub06/00_pop.php
 
 **B. 고객 콜센터**
 - GA로 자체 콜센터 없음.
@@ -473,13 +475,16 @@
 > GA 업계 최초 상장사. 2025년 GA 브랜드평판 3위.
 
 **A. 설계사 영업지원**
+- 본사 대표: **1577-1713**
+- 팩스: 02-587-7055
+- 마케팅 거부 핫라인: 080-560-9500
 - 공식: https://www.aplusga.com/
 
 **B. 고객 콜센터**
 - GA로 자체 콜센터 없음.
 
 **C. BD / 영업제휴**
-- 본사: 서울 서초구 강남대로 369, 19층 (서초동, 에이플러스에셋타워)
+- 본사: (06232) 서울 강남구 테헤란로4길 14, 미림타워 14층
 
 ## 3-8. 유퍼스트금융
 
@@ -508,13 +513,17 @@
 > 보맵은 핀테크 기반 보험관리 앱. 자체 GA 라이선스로 보험 비교·중개 서비스도 제공.
 
 **A. 설계사 영업지원**
-- 보맵 파트너 앱·웹 별도 운영 가능성 — 공식 사이트 확인
+- 보맵파트너 고객센터: **1522-9657** (보험마켓·상품 문의)
+- 보맵파트너스 리크루트: https://bomapp-partners.com/
 
 **B. 고객 콜센터**
-- 보맵 앱 내 1:1 문의
+- 보맵 고객센터: **1544-2947** (보맵 앱 서비스 이용)
+- 이메일: contact@bomapp.co.kr
 
 **C. BD / 영업제휴**
-- 공식: https://bomapp.com/ (또는 boma.kr)
+- 본사: 서울 서초구 강남대로 311, 드림플러스 강남 8층
+- 파트너십 메일: bomapp.partners@gmail.com
+- 공식: https://home.bomapp.co.kr/
 
 ## 3-11. KGA에셋
 
@@ -661,7 +670,79 @@
 
 ---
 
-# 6. 출처
+# 6. 이메일·문의 채널
+
+> ⚠️ **한국 대형 보험사·GA는 대부분 직접 메일 주소를 공개하지 않고 "공식 문의 폼"으로 운영합니다.**
+> 직접 공개된 메일 → 검증된 곳만 / 비공개 회사 → 폼 URL 또는 본사 대표번호 권장.
+
+## 6-1. 직접 공개된 이메일 (검증 완료)
+
+| 회사 | 분류 | 이메일 | 용도 |
+|---|---|---|---|
+| NH농협생명 | 생명 | nhlifeclaims@nonghyup.com | 보험금 청구 |
+| 토스인슈어런스 | 손해(GA) | **insuga@toss.im** | 일반 문의 (24시간 콜센터 1599-4905 병행) |
+| 굿리치(리치플래닛) | GA | **helpdesk@goodrich.co.kr** | 일반 문의 |
+| 보맵 | GA | **contact@bomapp.co.kr** | 일반 문의 |
+| 보맵파트너스 | GA | **bomapp.partners@gmail.com** | 파트너 제휴·BD |
+
+> 📌 **보비 영업제휴 BD 컨택 우선순위 (메일 기준)**:
+> 1. 보맵파트너스 (bomapp.partners@gmail.com) — 같은 핀테크 영역
+> 2. 굿리치 (helpdesk@goodrich.co.kr) — GA 대형사, helpdesk이지만 BD 문의 전달됨
+> 3. 토스인슈 (insuga@toss.im) — 핀테크 GA, 모회사 토스 BD에 직접 도달
+
+## 6-2. 공식 문의 폼·이메일 상담 페이지 (메일 비공개 회사)
+
+| 회사 | 폼/상담 URL | 비고 |
+|---|---|---|
+| 한화생명 | [이메일 상담](https://www.hanwhalife.com/mobile/myPage/myArchives/consultationView/MMY_MACV000_P10000.do) | 마이페이지 로그인 필요 |
+| AIA생명 | [온라인 문의](https://www.aia.co.kr/ko/customer-support/inquire/online-inquiry.html) | 비로그인 가능 |
+| KB라이프생명 | [홈페이지/이메일 상담](https://www.kblife.co.kr/customer-center/customerCounsellingInCustomerCenter.do) | 비로그인 가능 |
+| NH농협생명 | [문의하기](https://www.nhelife.co.kr/ni/cc/NICC0004M01.nhl) | 일반 문의 |
+| 메리츠화재 | [인터넷 상담](https://www.meritzfire.com/consumer-protection/online-civil-complaint/application.do!/) | 민원 접수 |
+| 카카오페이손보 | [고객센터](https://kakaopayinscorp.co.kr/customer-center/customer-center) | + 카톡 채널 [@카카오페이손해보험](https://pf.kakao.com/_AxogeK) |
+| 인카금융서비스 | [민원접수](https://www.incar.co.kr/sub06/00_pop.php) | GA 본사 폼 |
+| 라이나생명 | [일반상담 접수](https://www.lina.co.kr/customer/consult/normal) | 비로그인 가능 |
+| 하나생명 | [일반상담 접수처리](https://www.hanalife.co.kr/csc/customerCenter/customerCenterGeneralAdviceReceipt.do) | 비로그인 가능 |
+| 동양생명 | [고객의 소리](https://www.myangel.co.kr/cscntr/csPraAppl/%EC%9A%B4%EC%98%81%EC%A3%BC%EC%86%8C) | 칭찬·민원 통합 |
+
+## 6-3. 메일 주소 비공개 회사 — 보비 영업제휴 권장 경로
+
+다음 회사들은 BD/제휴 메일 별도 공개 X. 우선순위 순:
+
+1. **본사 대표번호** → "법인영업본부" 또는 "전략사업부" 안내 요청 (공식 경로, 가장 신뢰)
+2. **공식 문의 폼**에 "B2B 제휴 문의" 명기 → 담당 부서 전달
+3. **금감원 통합공시조회** (GA 한정) → 임원 정보 → 공식 LinkedIn 통해 컨택
+4. **DART 전자공시** (상장사) → IR 담당자 정보 (인카금융서비스 등)
+
+## 6-4. 일반 메일 패턴 (참고용 — 검증 안 됨)
+
+> ⚠️ 다음 패턴은 한국 회사 일반론이며, **직접 검증되지 않은 주소로 보내면 반송될 가능성 높음**.
+> 첫 컨택은 공식 폼·대표번호 우선 권장.
+
+| 용도 | 일반 패턴 |
+|---|---|
+| IR 투자자 | ir@회사도메인.co.kr |
+| 채용 | recruit@... · jobs@... · hr@... |
+| 일반 문의 | cs@... · info@... · contact@... |
+| 제휴·BD | partner@... · partnership@... · business@... |
+
+검증된 회사 도메인 (편의용 참조):
+- 삼성생명: samsunglife.com / 한화생명: hanwhalife.com / 교보생명: kyobo.com
+- NH농협생명: nhlife.co.kr / 신한라이프: shinhanlife.co.kr / KB라이프: kblife.co.kr
+- 미래에셋생명: life.miraeasset.com / 동양생명: myangel.co.kr / ABL생명: abllife.co.kr
+- DB생명: idblife.com / 하나생명: hanalife.co.kr / AIA생명: aia.co.kr / 라이나생명: lina.co.kr
+- 삼성화재: samsungfire.com / 현대해상: hi.co.kr / DB손해보험: idbins.com
+- KB손해보험: kbinsure.co.kr / 메리츠화재: meritzfire.com / 한화손보: hwgeneralins.com
+- 롯데손보: lotteins.co.kr / 흥국화재: heungkukfire.co.kr / NH농협손보: nhfire.co.kr
+- MG손해보험: mggeneralins.com / 카카오페이손보: kakaopayinscorp.co.kr
+- 하나손보: hanainsure.co.kr / 토스인슈: tossinsu.com (메일은 toss.im)
+- GA코리아: gakorea.or.kr / 인카: incar.co.kr / 굿리치: goodrich.co.kr
+- 에이플러스: aplusga.com / 글로벌금융판매: globalfm.kr / 프라임에셋: primeasset.kr
+- 보맵: bomapp.co.kr
+
+---
+
+# 7. 출처
 
 본 문서의 정보는 모두 공개 정보 기반:
 - 각 회사 공식 홈페이지
