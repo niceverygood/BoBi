@@ -218,11 +218,54 @@ export async function GET(request: Request) {
             enrichedPayments = enrichedPayments.filter(p => p.status === statusFilter);
         }
 
-        const enrichedSubs = (subscriptions || []).map(s => ({
-            ...s,
-            user_email: userMap.get(s.user_id)?.email || '-',
-            user_name: userMap.get(s.user_id)?.name || '-',
-        }));
+        // 같은 user_id의 구독 목록을 created_at 오름차순으로 묶어 plan 전환 추적.
+        // - previousPlanSlug : 같은 user의 이전 sub의 plan slug (현 sub 직전)
+        // - transition       : 'new' | 'renewed' | 'upgraded' | 'downgraded' | 'rebought' | 'trial_converted'
+        //   * new            : 첫 구독 (이전 sub 없음)
+        //   * renewed        : 이전 sub와 같은 plan (단순 갱신·재구독)
+        //   * upgraded       : free→basic, basic→pro, free→pro
+        //   * downgraded     : pro→basic, basic→free
+        //   * trial_converted: trialing 상태에서 active로 전환 (같은 sub_id 안에서)
+        const PLAN_RANK: Record<string, number> = {
+            free: 0, basic: 1, team_basic: 1, pro: 2, team_pro: 2,
+        };
+        const subsByUser = new Map<string, Array<Record<string, any>>>();
+        for (const s of subscriptions || []) {
+            if (!s.user_id) continue;
+            if (!subsByUser.has(s.user_id)) subsByUser.set(s.user_id, []);
+            subsByUser.get(s.user_id)!.push(s);
+        }
+        // 각 그룹을 created_at 오름차순으로 정렬
+        for (const arr of subsByUser.values()) {
+            arr.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        }
+
+        function planSlugOf(sub: Record<string, any>): string {
+            return ((sub.plan as { slug?: string } | null)?.slug) || 'unknown';
+        }
+        function classifyTransition(prevSlug: string | null, currSlug: string): 'new' | 'renewed' | 'upgraded' | 'downgraded' {
+            if (!prevSlug) return 'new';
+            const a = PLAN_RANK[prevSlug] ?? -1;
+            const b = PLAN_RANK[currSlug] ?? -1;
+            if (a === b) return 'renewed';
+            return b > a ? 'upgraded' : 'downgraded';
+        }
+
+        const enrichedSubs = (subscriptions || []).map(s => {
+            const userArr = subsByUser.get(s.user_id) || [];
+            const idxInUser = userArr.findIndex(x => x.id === s.id);
+            const prev = idxInUser > 0 ? userArr[idxInUser - 1] : null;
+            const prevSlug = prev ? planSlugOf(prev) : null;
+            const currSlug = planSlugOf(s);
+            return {
+                ...s,
+                user_email: userMap.get(s.user_id)?.email || '-',
+                user_name: userMap.get(s.user_id)?.name || '-',
+                previous_plan_slug: prevSlug,
+                previous_plan_status: prev?.status || null,
+                transition: classifyTransition(prevSlug, currSlug),
+            };
+        });
 
         // 4. provider별 집계 (필터 적용 전 전체 기준)
         const allEnrichedForSummary: Record<string, any>[] = allPayments.map(p => ({
@@ -231,10 +274,10 @@ export async function GET(request: Request) {
             provider: normalizeProvider({ payment_method: p.payment_method || subProviderByUser.get(p.user_id) || 'card' }),
         }));
 
-        const summary: Record<string, { count: number; paidCount: number; paidAmount: number; refundedAmount: number }> = {};
+        const summary: Record<string, { count: number; paidCount: number; paidAmount: number; refundedAmount: number; refundedCount: number }> = {};
         for (const p of allEnrichedForSummary) {
             const key = p.provider;
-            if (!summary[key]) summary[key] = { count: 0, paidCount: 0, paidAmount: 0, refundedAmount: 0 };
+            if (!summary[key]) summary[key] = { count: 0, paidCount: 0, paidAmount: 0, refundedAmount: 0, refundedCount: 0 };
             summary[key].count++;
             const amount = Number(p.amount) || 0;
             if (p.status === 'paid' || p.status === 'success') {
@@ -242,13 +285,88 @@ export async function GET(request: Request) {
                 summary[key].paidAmount += amount;
             } else if (p.status === 'refunded' || p.status === 'cancelled') {
                 summary[key].refundedAmount += amount;
+                summary[key].refundedCount++;
             }
         }
+
+        // 5. 분석 탭용 통계 — KPI + 카테고리별 사용자 ID 목록
+        //    리스트는 user_id만 반환. 화면에서 enrichedSubs/profiles 매핑으로 이름·이메일 표시.
+        const renewedUserIds = new Set<string>();
+        for (const p of allPayments) {
+            if (!p.user_id) continue;
+            if (typeof p.payment_id === 'string' && p.payment_id.startsWith('renewal-')) {
+                if (p.status === 'paid' || p.status === 'success') renewedUserIds.add(p.user_id);
+            }
+        }
+
+        const upgradedUserIds = new Set<string>();
+        const downgradedUserIds = new Set<string>();
+        const trialConvertedUserIds = new Set<string>();
+        for (const s of enrichedSubs) {
+            if (s.transition === 'upgraded') upgradedUserIds.add(s.user_id);
+            if (s.transition === 'downgraded') downgradedUserIds.add(s.user_id);
+            // trial_converted: trial_used=true이고 status='active'면 트라이얼이 결제로 전환된 것
+            if (s.trial_used && s.status === 'active') trialConvertedUserIds.add(s.user_id);
+        }
+
+        // 활성 유료 구독자 (free 제외, status='active' 또는 'trialing')
+        const activePaidUserIds = new Set<string>();
+        for (const s of enrichedSubs) {
+            const slug = planSlugOf(s);
+            if ((s.status === 'active' || s.status === 'trialing') && slug !== 'free' && slug !== 'unknown') {
+                activePaidUserIds.add(s.user_id);
+            }
+        }
+
+        // 환불받은 사용자 (적어도 하나의 결제가 refunded/cancelled)
+        const refundedUserIds = new Set<string>();
+        for (const p of allPayments) {
+            if (!p.user_id) continue;
+            if (p.status === 'refunded' || p.status === 'cancelled') refundedUserIds.add(p.user_id);
+        }
+
+        // 전체 합계 (provider 무관)
+        let totalPaidAmount = 0, totalRefundedAmount = 0, totalPaidCount = 0, totalRefundedCount = 0;
+        for (const v of Object.values(summary)) {
+            totalPaidAmount += v.paidAmount;
+            totalRefundedAmount += v.refundedAmount;
+            totalPaidCount += v.paidCount;
+            totalRefundedCount += v.refundedCount;
+        }
+
+        // plan별 활성 유료 구독자 분포
+        const activeByPlan: Record<string, number> = {};
+        for (const s of enrichedSubs) {
+            if (s.status !== 'active' && s.status !== 'trialing') continue;
+            const slug = planSlugOf(s);
+            if (slug === 'free' || slug === 'unknown') continue;
+            activeByPlan[slug] = (activeByPlan[slug] || 0) + 1;
+        }
+
+        const analytics = {
+            totals: {
+                paidAmount: totalPaidAmount,
+                refundedAmount: totalRefundedAmount,
+                netRevenue: totalPaidAmount - totalRefundedAmount,
+                paidCount: totalPaidCount,
+                refundedCount: totalRefundedCount,
+            },
+            users: {
+                renewed: { count: renewedUserIds.size, ids: [...renewedUserIds] },
+                upgraded: { count: upgradedUserIds.size, ids: [...upgradedUserIds] },
+                downgraded: { count: downgradedUserIds.size, ids: [...downgradedUserIds] },
+                trialConverted: { count: trialConvertedUserIds.size, ids: [...trialConvertedUserIds] },
+                activePaid: { count: activePaidUserIds.size, ids: [...activePaidUserIds] },
+                refunded: { count: refundedUserIds.size, ids: [...refundedUserIds] },
+            },
+            activeByPlan,
+        };
 
         return NextResponse.json({
             payments: enrichedPayments,
             subscriptions: enrichedSubs,
             summary,
+            analytics,
             total: allPayments.length,
             filtered: enrichedPayments.length,
         });

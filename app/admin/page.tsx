@@ -1492,14 +1492,35 @@ function ProviderLabel({ provider }: { provider: ProviderKey | string }) {
     );
 }
 
-type ProviderSummary = Record<string, { count: number; paidCount: number; paidAmount: number; refundedAmount: number }>;
+type ProviderSummary = Record<string, { count: number; paidCount: number; paidAmount: number; refundedAmount: number; refundedCount?: number }>;
+
+interface AnalyticsBundle {
+    totals: {
+        paidAmount: number;
+        refundedAmount: number;
+        netRevenue: number;
+        paidCount: number;
+        refundedCount: number;
+    };
+    users: {
+        renewed: { count: number; ids: string[] };
+        upgraded: { count: number; ids: string[] };
+        downgraded: { count: number; ids: string[] };
+        trialConverted: { count: number; ids: string[] };
+        activePaid: { count: number; ids: string[] };
+        refunded: { count: number; ids: string[] };
+    };
+    activeByPlan: Record<string, number>;
+}
 
 function PaymentHistory() {
     const [payments, setPayments] = useState<Record<string, unknown>[]>([]);
     const [subs, setSubs] = useState<Record<string, unknown>[]>([]);
     const [summary, setSummary] = useState<ProviderSummary>({});
+    const [analytics, setAnalytics] = useState<AnalyticsBundle | null>(null);
     const [loading, setLoading] = useState(true);
-    const [tab, setTab] = useState<'payments' | 'active' | 'cancelled'>('payments');
+    const [tab, setTab] = useState<'payments' | 'active' | 'cancelled' | 'analytics'>('payments');
+    const [analyticsFilter, setAnalyticsFilter] = useState<keyof AnalyticsBundle['users'] | null>(null);
     const [providerFilter, setProviderFilter] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [cancelling, setCancelling] = useState<string | null>(null);
@@ -1517,10 +1538,12 @@ function PaymentHistory() {
                 payments: Record<string, unknown>[];
                 subscriptions: Record<string, unknown>[];
                 summary?: ProviderSummary;
+                analytics?: AnalyticsBundle;
             }>(`/api/admin/payments${qs}`);
             setPayments(data.payments || []);
             setSubs(data.subscriptions || []);
             setSummary(data.summary || {});
+            setAnalytics(data.analytics || null);
         } catch { /* */ }
         setLoading(false);
     }, [providerFilter]);
@@ -1654,6 +1677,7 @@ function PaymentHistory() {
                         { key: 'payments' as const, label: '결제내역', count: filteredPayments.length },
                         { key: 'active' as const, label: '활성 구독', count: activeSubs.length },
                         { key: 'cancelled' as const, label: '취소/해지', count: cancelledSubs.length + cancelledPayments.length },
+                        { key: 'analytics' as const, label: '분석', count: analytics?.users.activePaid.count ?? 0 },
                     ]).map(t => (
                         <button
                             key={t.key}
@@ -1691,7 +1715,7 @@ function PaymentHistory() {
                     )}
                 </div>
 
-                {/* 결제수단별 집계 — 카드 그리드 → 1줄 인라인 요약 (정보 위계 단순화) */}
+                {/* 결제수단별 집계 — 1줄 인라인 + 환불 합계 */}
                 {tab === 'payments' && Object.keys(summary).length > 0 && (
                     <div className="mt-3 px-3 py-2 border border-gray-200 rounded-md bg-gray-50/40">
                         <div className="flex items-center gap-x-5 gap-y-2 flex-wrap text-xs">
@@ -1706,6 +1730,14 @@ function PaymentHistory() {
                                     </div>
                                 );
                             })}
+                            {/* 환불 합계 — 빨간색 하나의 강조점만 (PR #25 §11.3.2 1행 1색 한도) */}
+                            {analytics && analytics.totals.refundedAmount > 0 && (
+                                <div className="inline-flex items-center gap-1.5 text-rose-700 ml-auto">
+                                    <span className="text-rose-600">환불</span>
+                                    <span className={`font-semibold ${NUMERIC_CLASS}`}>-{analytics.totals.refundedAmount.toLocaleString()}원</span>
+                                    <span className={`text-rose-400 ${NUMERIC_CLASS}`}>({analytics.totals.refundedCount}건)</span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
@@ -1793,15 +1825,36 @@ function PaymentHistory() {
                     activeSubs.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">활성 구독이 없습니다.</p> : (
                     <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b bg-muted/30">
                         <th className="text-left p-2">이메일</th><th className="text-left p-2">이름</th><th className="text-left p-2">플랜</th>
+                        <th className="text-left p-2">이전 플랜</th>
                         <th className="text-left p-2">주기</th><th className="text-left p-2">결제수단</th><th className="text-left p-2">만료일</th>
                         <th className="text-left p-2">관리</th>
                     </tr></thead><tbody>{activeSubs.map((s, i) => {
                         const plan = s.plan as { display_name?: string; slug?: string } | null;
+                        const prevSlug = s.previous_plan_slug as string | null | undefined;
+                        const transition = s.transition as 'new' | 'renewed' | 'upgraded' | 'downgraded' | undefined;
                         return (
                         <tr key={i} className="border-b hover:bg-muted/30">
                             <td className="p-2">{String(s.user_email || '-')}</td>
                             <td className="p-2">{String(s.user_name || '-')}</td>
                             <td className="p-2"><Badge variant="outline" className="text-[10px]">{plan?.display_name || '-'}</Badge></td>
+                            <td className="p-2">
+                                {prevSlug ? (
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <span className="text-[11px] text-gray-600">{prevSlug}</span>
+                                        {transition === 'upgraded' && (
+                                            <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5">↑ 업그레이드</span>
+                                        )}
+                                        {transition === 'downgraded' && (
+                                            <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">↓ 다운그레이드</span>
+                                        )}
+                                        {transition === 'renewed' && (
+                                            <span className="text-[10px] text-gray-600 bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5">갱신</span>
+                                        )}
+                                    </span>
+                                ) : (
+                                    <span className="text-[11px] text-gray-400">신규</span>
+                                )}
+                            </td>
                             <td className="p-2">{s.billing_cycle === 'yearly' ? '연간' : '월간'}</td>
                             <td className="p-2">{String(s.payment_provider || '-')}</td>
                             <td className="p-2 whitespace-nowrap">{fmtDate(String(s.current_period_end))}</td>
@@ -1819,6 +1872,14 @@ function PaymentHistory() {
                         </tr>);
                     })}</tbody></table></div>)
 
+                ) : tab === 'analytics' ? (
+                    <AnalyticsTabContent
+                        analytics={analytics}
+                        subs={subs}
+                        payments={payments}
+                        analyticsFilter={analyticsFilter}
+                        setAnalyticsFilter={setAnalyticsFilter}
+                    />
                 ) : (
                     // 취소/해지 탭
                     (cancelledSubs.length + cancelledPayments.length) === 0 ? <p className="text-sm text-muted-foreground text-center py-8">취소/해지 내역이 없습니다.</p> : (
@@ -1877,6 +1938,176 @@ function PaymentHistory() {
                 />
             )}
         </Card>
+    );
+}
+
+// ─── 분석 탭 ──────────────────────
+// 결제·구독 데이터를 KPI 카드 + 카테고리별 사용자 리스트로 가공.
+// - 클릭한 KPI 카드의 사용자 목록을 하단 테이블에 표시.
+// - 환불·갱신·업그레이드·다운그레이드·트라이얼 전환·활성 유료 6개 카드.
+function AnalyticsTabContent({
+    analytics,
+    subs,
+    payments,
+    analyticsFilter,
+    setAnalyticsFilter,
+}: {
+    analytics: AnalyticsBundle | null;
+    subs: Record<string, unknown>[];
+    payments: Record<string, unknown>[];
+    analyticsFilter: keyof AnalyticsBundle['users'] | null;
+    setAnalyticsFilter: (k: keyof AnalyticsBundle['users'] | null) => void;
+}) {
+    if (!analytics) {
+        return <p className="text-sm text-muted-foreground text-center py-8">분석 데이터를 불러오는 중...</p>;
+    }
+    const { totals, users, activeByPlan } = analytics;
+
+    const KPI_CARDS: Array<{
+        key: keyof AnalyticsBundle['users'];
+        label: string;
+        value: number;
+        sub?: string;
+        tone: 'good' | 'bad' | 'neutral';
+    }> = [
+        { key: 'activePaid', label: '활성 유료 구독자', value: users.activePaid.count, tone: 'good' },
+        { key: 'renewed', label: '갱신 결제 사용자', value: users.renewed.count, sub: '재구매 발생', tone: 'good' },
+        { key: 'upgraded', label: '업그레이드', value: users.upgraded.count, sub: 'basic→pro 등', tone: 'good' },
+        { key: 'downgraded', label: '다운그레이드', value: users.downgraded.count, sub: 'pro→basic 등', tone: 'bad' },
+        { key: 'trialConverted', label: '트라이얼 전환', value: users.trialConverted.count, sub: '체험 후 결제', tone: 'good' },
+        { key: 'refunded', label: '환불 받은 사용자', value: users.refunded.count, sub: `${totals.refundedAmount.toLocaleString()}원`, tone: 'bad' },
+    ];
+
+    const profilesByUser = new Map<string, { email: string; name: string }>();
+    for (const s of subs) {
+        if (s.user_id) profilesByUser.set(String(s.user_id), {
+            email: String(s.user_email || '-'),
+            name: String(s.user_name || '-'),
+        });
+    }
+    for (const p of payments) {
+        const id = String(p.user_id || '');
+        if (id && !profilesByUser.has(id)) {
+            profilesByUser.set(id, {
+                email: String(p.user_email || '-'),
+                name: String(p.user_name || '-'),
+            });
+        }
+    }
+
+    const filteredIds = analyticsFilter ? users[analyticsFilter].ids : [];
+    const filterLabel = analyticsFilter ? KPI_CARDS.find(c => c.key === analyticsFilter)?.label : '';
+
+    return (
+        <div className="space-y-4">
+            {/* 매출 요약 */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="rounded-md border border-gray-200 p-3 bg-white">
+                    <p className="text-[11px] text-gray-500">총 결제 (paid)</p>
+                    <p className={`text-lg font-bold text-gray-900 ${NUMERIC_CLASS}`}>{totals.paidAmount.toLocaleString()}원</p>
+                    <p className="text-[10px] text-gray-400">{totals.paidCount}건</p>
+                </div>
+                <div className="rounded-md border border-rose-200 p-3 bg-rose-50/40">
+                    <p className="text-[11px] text-rose-600">총 환불</p>
+                    <p className={`text-lg font-bold text-rose-700 ${NUMERIC_CLASS}`}>-{totals.refundedAmount.toLocaleString()}원</p>
+                    <p className="text-[10px] text-rose-500">{totals.refundedCount}건</p>
+                </div>
+                <div className="rounded-md border border-emerald-200 p-3 bg-emerald-50/40">
+                    <p className="text-[11px] text-emerald-700">순매출 (paid - refunded)</p>
+                    <p className={`text-lg font-bold text-emerald-800 ${NUMERIC_CLASS}`}>{totals.netRevenue.toLocaleString()}원</p>
+                    <p className="text-[10px] text-emerald-600">활성 유료 {users.activePaid.count}명</p>
+                </div>
+            </div>
+
+            {/* KPI 카드 그리드 */}
+            <div>
+                <p className="text-xs font-semibold text-gray-700 mb-2">사용자 카테고리 (클릭하여 명단 보기)</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {KPI_CARDS.map(card => {
+                        const active = analyticsFilter === card.key;
+                        const toneClass = card.tone === 'good'
+                            ? 'border-emerald-200 hover:border-emerald-400'
+                            : card.tone === 'bad'
+                                ? 'border-rose-200 hover:border-rose-400'
+                                : 'border-gray-200 hover:border-gray-400';
+                        const activeClass = active ? 'ring-2 ring-brand-600/30 border-brand-600' : '';
+                        return (
+                            <button
+                                key={card.key}
+                                onClick={() => setAnalyticsFilter(active ? null : card.key)}
+                                className={`text-left rounded-md border p-3 bg-white transition ${toneClass} ${activeClass}`}
+                            >
+                                <p className="text-[11px] text-gray-500">{card.label}</p>
+                                <p className={`text-xl font-bold text-gray-900 ${NUMERIC_CLASS}`}>{card.value}</p>
+                                {card.sub && <p className="text-[10px] text-gray-400">{card.sub}</p>}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* 플랜별 활성 분포 */}
+            <div className="rounded-md border border-gray-200 p-3 bg-gray-50/40">
+                <p className="text-[11px] font-medium text-gray-600 mb-2">활성 유료 구독 — 플랜별 분포</p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                    {Object.entries(activeByPlan).length === 0 ? (
+                        <span className="text-gray-400">활성 유료 구독자 없음</span>
+                    ) : (
+                        Object.entries(activeByPlan).map(([slug, count]) => (
+                            <span key={slug} className="inline-flex items-center gap-1.5">
+                                <span className="text-gray-500">{slug}</span>
+                                <span className={`font-semibold text-gray-900 ${NUMERIC_CLASS}`}>{count}명</span>
+                            </span>
+                        ))
+                    )}
+                </div>
+            </div>
+
+            {/* 선택 카테고리의 사용자 명단 */}
+            {analyticsFilter && (
+                <div className="rounded-md border border-gray-200 bg-white">
+                    <div className="flex items-center justify-between p-3 border-b border-gray-100">
+                        <p className="text-xs font-semibold text-gray-700">{filterLabel} ({filteredIds.length}명)</p>
+                        <button
+                            type="button"
+                            onClick={() => setAnalyticsFilter(null)}
+                            className="text-[11px] text-gray-500 hover:text-gray-900"
+                        >
+                            ✕ 닫기
+                        </button>
+                    </div>
+                    {filteredIds.length === 0 ? (
+                        <p className="text-xs text-gray-400 text-center py-6">해당 카테고리 사용자가 없습니다.</p>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                                <thead>
+                                    <tr className="border-b border-gray-100 bg-gray-50">
+                                        <th className="text-left p-2 text-gray-600 font-medium">이메일</th>
+                                        <th className="text-left p-2 text-gray-600 font-medium">이름</th>
+                                        <th className="text-left p-2 text-gray-600 font-medium">사용자 ID</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredIds.map(uid => {
+                                        const profile = profilesByUser.get(uid);
+                                        return (
+                                            <tr key={uid} className="border-b border-gray-100 hover:bg-gray-50">
+                                                <td className="p-2 text-gray-900">{profile?.email || '-'}</td>
+                                                <td className="p-2 text-gray-700">{profile?.name || '-'}</td>
+                                                <td className={`p-2 text-gray-400 ${NUMERIC_CLASS} text-[10px]`}>
+                                                    {uid.slice(0, 8)}…
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
     );
 }
 
