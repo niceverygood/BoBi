@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { User, Users, Building, Crown, CheckCircle2, X, Zap, Loader2, Sparkles, LogOut, Gift, Copy, AlertTriangle } from 'lucide-react';
+import { User, Users, Building, Crown, CheckCircle2, X, Zap, Loader2, Sparkles, LogOut, Gift, Copy } from 'lucide-react';
 import { PLAN_LIMITS, type PlanSlug } from '@/lib/utils/constants';
 import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
@@ -45,7 +45,7 @@ export default function SettingsPage() {
     const [company, setCompany] = useState('');
     const [customCompany, setCustomCompany] = useState('');
     const [isCustom, setIsCustom] = useState(false);
-    const { subscription, plan, usage, loading, remainingAnalyses, refresh } = useSubscription();
+    const { subscription, plan, usage, loading, remainingAnalyses } = useSubscription();
     const currentSlug = (plan.slug || 'free') as PlanSlug;
     const planLimits = PLAN_LIMITS[currentSlug];
 
@@ -277,16 +277,22 @@ export default function SettingsPage() {
                 </Card>
             )}
 
-            {/* 구독 해지 */}
-            {subscription && (subscription.status === 'active' || subscription.status === 'trialing') && currentSlug !== 'free' && (
-                <SubscriptionCancelSection
-                    subscription={subscription}
-                    onChanged={refresh}
-                />
-            )}
-
-            {/* 결제 내역 */}
-            <PaymentHistory />
+            {/* 결제·구독 안내 — 별도 페이지로 분리됨 (/dashboard/billing) */}
+            <Card className="border-0 shadow-sm">
+                <CardContent className="pt-6">
+                    <div className="flex items-center justify-between gap-3">
+                        <div>
+                            <p className="font-semibold text-sm">결제·구독 관리</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                결제 내역, 다음 결제일, 구독 해지는 별도 페이지에서 관리합니다.
+                            </p>
+                        </div>
+                        <Link href="/dashboard/billing">
+                            <Button variant="outline" size="sm">결제·구독 페이지로 →</Button>
+                        </Link>
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* 기기 관리 */}
             <DeviceManagement />
@@ -313,169 +319,6 @@ export default function SettingsPage() {
                 </CardContent>
             </Card>
         </div>
-    );
-}
-
-// ── 구독 해지 섹션 ──
-// 사용자 본인이 자동결제를 끊을 수 있는 유일한 진입점.
-// 기본은 "기간 만료 후 해지" — 결제한 만큼은 그대로 쓰게 두고, 다음 결제만 막는다.
-// 해지 예약 후에도 마음 바꾸면 "해지 취소" 가능.
-function SubscriptionCancelSection({
-    subscription,
-    onChanged,
-}: {
-    subscription: import('@/types/subscription').Subscription;
-    onChanged: () => Promise<void> | void;
-}) {
-    const [confirming, setConfirming] = useState(false);
-    const [submitting, setSubmitting] = useState(false);
-    const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-    const isScheduled = !!subscription.cancel_at_period_end;
-    const periodEnd = subscription.current_period_end
-        ? new Date(subscription.current_period_end).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
-        : null;
-    // 인앱결제 구독은 우리 cron이 갱신하지 않으므로 우리 API에서 해지해도
-    // 실제 자동결제는 멈추지 않는다. 사용자에게 스토어에서 직접 해지하도록 안내한다.
-    const isIap = subscription.payment_provider === 'apple_iap' || subscription.payment_provider === 'google_play';
-
-    const handleCancel = async () => {
-        setSubmitting(true);
-        setMsg(null);
-        try {
-            const res = await fetch('/api/billing/cancel', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ immediate: false }),
-            });
-            const data = await res.json();
-            if (res.ok) {
-                setMsg({ type: 'success', text: data.message });
-                setConfirming(false);
-                await onChanged();
-            } else {
-                setMsg({ type: 'error', text: data.error || '해지에 실패했습니다.' });
-            }
-        } catch (err) {
-            setMsg({ type: 'error', text: (err as Error).message || '해지에 실패했습니다.' });
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    const handleUndo = async () => {
-        setSubmitting(true);
-        setMsg(null);
-        try {
-            const res = await fetch('/api/billing/cancel', { method: 'DELETE' });
-            const data = await res.json();
-            if (res.ok) {
-                setMsg({ type: 'success', text: data.message });
-                await onChanged();
-            } else {
-                setMsg({ type: 'error', text: data.error || '해지 취소에 실패했습니다.' });
-            }
-        } catch (err) {
-            setMsg({ type: 'error', text: (err as Error).message || '해지 취소에 실패했습니다.' });
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    return (
-        <Card className="border-0 shadow-sm">
-            <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                    <X className="w-5 h-5 text-muted-foreground" />
-                    구독 해지
-                </CardTitle>
-                <CardDescription>
-                    {isScheduled
-                        ? '다음 결제일에 구독이 자동 해지될 예정입니다.'
-                        : '자동 결제를 중단합니다. 환불은 결제 내역의 결제 건에 따라 별도 요청이 필요합니다.'}
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-                {isIap ? (
-                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 leading-relaxed">
-                        <p className="font-medium flex items-center gap-1">
-                            <AlertTriangle className="w-4 h-4" />
-                            앱스토어 / 플레이스토어 구독
-                        </p>
-                        <p className="text-xs mt-1">
-                            {subscription.payment_provider === 'apple_iap'
-                                ? '아이폰의 [설정] → [본인 이름] → [구독]에서 직접 해지해주세요. 보비 측에서는 인앱 구독을 끊을 수 없습니다.'
-                                : '플레이 스토어 앱의 [구독]에서 직접 해지해주세요. 보비 측에서는 인앱 구독을 끊을 수 없습니다.'}
-                        </p>
-                    </div>
-                ) : isScheduled ? (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                        <p className="font-medium flex items-center gap-1">
-                            <AlertTriangle className="w-4 h-4" />
-                            해지 예약됨
-                        </p>
-                        <p className="text-xs mt-1 leading-relaxed">
-                            {periodEnd ? `${periodEnd}까지 정상 이용 가능하며, 그 이후 자동 결제는 진행되지 않습니다.` : '다음 결제일에 자동 해지됩니다.'}
-                        </p>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="mt-3"
-                            onClick={handleUndo}
-                            disabled={submitting}
-                        >
-                            {submitting ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
-                            해지 예약 취소
-                        </Button>
-                    </div>
-                ) : !confirming ? (
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 border-red-200 hover:bg-red-50"
-                        onClick={() => setConfirming(true)}
-                    >
-                        구독 해지하기
-                    </Button>
-                ) : (
-                    <div className="rounded-lg border border-red-200 bg-red-50 p-3 space-y-3">
-                        <div className="text-sm text-red-800 space-y-1">
-                            <p className="font-medium">정말 구독을 해지하시겠어요?</p>
-                            <ul className="text-xs space-y-0.5 list-disc pl-4">
-                                <li>{periodEnd ? `${periodEnd}까지는 그대로 이용 가능합니다.` : '이번 결제 기간 만료까지는 그대로 이용 가능합니다.'}</li>
-                                <li>그 이후 자동 결제가 진행되지 않고, 무료 플랜으로 전환됩니다.</li>
-                                <li>이번 결제분 환불을 원하시면 카카오 채널 또는 이메일로 별도 문의 주세요.</li>
-                            </ul>
-                        </div>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setConfirming(false)}
-                                disabled={submitting}
-                            >
-                                돌아가기
-                            </Button>
-                            <Button
-                                size="sm"
-                                className="bg-red-600 hover:bg-red-700 text-white"
-                                onClick={handleCancel}
-                                disabled={submitting}
-                            >
-                                {submitting ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
-                                해지 확정
-                            </Button>
-                        </div>
-                    </div>
-                )}
-
-                {msg && (
-                    <p className={`text-xs px-3 py-2 rounded-lg ${msg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                        {msg.text}
-                    </p>
-                )}
-            </CardContent>
-        </Card>
     );
 }
 
@@ -812,123 +655,6 @@ function BillingStatusInline() {
     );
 }
 
-// ── 결제 내역 섹션 ──
-function PaymentHistory() {
-    const [payments, setPayments] = useState<Array<Record<string, any>>>([]);
-    const [subs, setSubs] = useState<Array<Record<string, any>>>([]);
-    const [loading, setLoading] = useState(true);
-    const [showAll, setShowAll] = useState(false);
-    const INITIAL_COUNT = 5;
-
-    useEffect(() => {
-        (async () => {
-            try {
-                const res = await fetch('/api/billing/history');
-                if (res.ok) {
-                    const data = await res.json();
-                    setPayments(data.payments || []);
-                    setSubs(data.subscriptions || []);
-                }
-            } catch { /* ignore */ }
-            finally { setLoading(false); }
-        })();
-    }, []);
-
-    // 결제 + 구독을 시간순으로 합침
-    const allItems = [
-        ...payments.map(p => ({
-            kind: 'payment' as const,
-            data: p,
-            timestamp: new Date(p.created_at).getTime(),
-        })),
-        ...subs.map(s => ({
-            kind: 'subscription' as const,
-            data: s,
-            timestamp: new Date(s.created_at).getTime(),
-        })),
-    ].sort((a, b) => b.timestamp - a.timestamp);
-
-    const visibleItems = showAll ? allItems : allItems.slice(0, INITIAL_COUNT);
-    const hasMore = allItems.length > INITIAL_COUNT;
-
-    return (
-        <Card id="payment-history" className="border-0 shadow-sm scroll-mt-6">
-            <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                    <Crown className="w-5 h-5 text-primary" />
-                    결제 내역
-                </CardTitle>
-                <CardDescription>결제 및 취소 내역을 확인하세요. (총 {allItems.length}건)</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-                {loading ? (
-                    <div className="h-16 w-full bg-muted animate-pulse rounded-lg" />
-                ) : allItems.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">결제 내역이 없습니다.</p>
-                ) : (
-                    <>
-                        {visibleItems.map((item, i) => {
-                            if (item.kind === 'payment') {
-                                const p = item.data;
-                                const isCancelled = p.status === 'cancelled' || p.status === 'refunded';
-                                const cancelledBy = p.cancelled_by === 'admin' ? '보비 관리자' : '본인';
-                                return (
-                                    <div key={`p-${i}`} className={`flex items-center justify-between p-3 rounded-lg border ${isCancelled ? 'bg-red-50/50 border-red-100' : 'bg-muted/30'}`}>
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-xl">{isCancelled ? '💸' : '💳'}</span>
-                                            <div>
-                                                <p className="text-sm font-medium">
-                                                    {isCancelled ? '결제 취소' : '결제 완료'}
-                                                    {isCancelled && <span className="text-[10px] text-red-500 ml-1">({cancelledBy} 취소)</span>}
-                                                </p>
-                                                <p className="text-[10px] text-muted-foreground">
-                                                    {p.plan_slug || '-'} · {p.payment_method || '-'} · {new Date(p.created_at).toLocaleDateString('ko-KR')}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <span className={`text-sm font-bold ${isCancelled ? 'text-red-500 line-through' : ''}`}>
-                                            {(p.amount || 0).toLocaleString()}원
-                                        </span>
-                                    </div>
-                                );
-                            } else {
-                                const s = item.data;
-                                const planName = (s.plan as any)?.display_name || '-';
-                                const isCancelled = s.status === 'cancelled';
-                                return (
-                                    <div key={`s-${i}`} className={`flex items-center justify-between p-3 rounded-lg border ${isCancelled ? 'bg-slate-50' : 'bg-blue-50/30 border-blue-100'}`}>
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-xl">{isCancelled ? '🚫' : '⭐'}</span>
-                                            <div>
-                                                <p className="text-sm font-medium">{isCancelled ? '구독 해지' : '구독 활성'}</p>
-                                                <p className="text-[10px] text-muted-foreground">
-                                                    {planName} · {s.billing_cycle || '-'} · {new Date(s.created_at).toLocaleDateString('ko-KR')}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <Badge variant={isCancelled ? 'outline' : 'default'} className="text-[10px]">
-                                            {isCancelled ? '해지됨' : '활성'}
-                                        </Badge>
-                                    </div>
-                                );
-                            }
-                        })}
-                        {hasMore && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="w-full text-xs text-muted-foreground hover:text-foreground"
-                                onClick={() => setShowAll(!showAll)}
-                            >
-                                {showAll ? '접기' : `더보기 (${allItems.length - INITIAL_COUNT}건 더)`}
-                            </Button>
-                        )}
-                    </>
-                )}
-            </CardContent>
-        </Card>
-    );
-}
 
 // ── 통계 활용 opt-out 섹션 ──
 function StatisticsOptOutSection() {

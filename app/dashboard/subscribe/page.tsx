@@ -902,7 +902,7 @@ function SubscribeContent() {
                                 </li>
                             </ul>
                             <p className="text-[10px] text-gray-500 mt-2 pt-2 border-t border-gray-200">
-                                전체 결제 내역은 <Link href="/dashboard/settings#payment-history" className="text-brand-600 underline">설정 → 결제 내역</Link>에서 언제든 확인하실 수 있습니다.
+                                전체 결제 내역은 <Link href="/dashboard/billing" className="text-brand-600 underline">결제·구독 페이지</Link>에서 언제든 확인하실 수 있습니다.
                             </p>
                         </div>
 
