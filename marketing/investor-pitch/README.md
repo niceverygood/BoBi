@@ -29,8 +29,16 @@ out/
 ## 실행
 
 ```bash
+# 1. PNG 15장 생성 (1920×1080)
 node marketing/investor-pitch/capture.js
+
+# 2. PNG → PPTX 패키징 (PowerPoint / Keynote / Google Slides 호환)
+node marketing/investor-pitch/build-pptx.js
 ```
+
+산출:
+- `out/s1.png ~ s15.png` (각 1920×1080)
+- `out/bobi-pitch-deck.pptx` (15장 16:9, ~2.8MB)
 
 ## 디자인 수정
 
@@ -49,12 +57,13 @@ node marketing/investor-pitch/capture.js
 
 ## VC 발표용 활용
 
-### 1. PowerPoint / Keynote 임포트
-- 새 발표 만들기 → 슬라이드 크기 16:9 (1920×1080)
-- 각 PNG 를 슬라이드 배경으로 삽입
-- 발표자 노트는 `docs/investor-pitch-deck.md` 각 슬라이드 본문 활용
+### 1. PowerPoint / Keynote / Google Slides — PPTX 직접 열기 (권장)
+- `out/bobi-pitch-deck.pptx` 더블클릭 → PowerPoint 또는 Keynote에서 즉시 열림
+- Google Slides: Drive 업로드 → 우클릭 → "Google Slides로 열기"
+- 발표자 노트는 `docs/investor-pitch-deck.md` 각 슬라이드 본문 복붙
+- 슬라이드 수정 시 → templates/slides.html 변경 → capture.js + build-pptx.js 재실행
 
-### 2. PDF 합치기
+### 2. PDF 합치기 (옵션)
 ```bash
 # macOS — 모든 PNG를 PDF로 합치기
 cd marketing/investor-pitch/out
