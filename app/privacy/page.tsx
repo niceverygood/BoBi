@@ -100,6 +100,11 @@ export default function PrivacyPage() {
                                         <td className="p-2">오류 트래킹 및 성능 모니터링</td>
                                         <td className="p-2">오류 스택트레이스, 기기·브라우저 정보, IP, 오류 발생 시각</td>
                                     </tr>
+                                    <tr className="border-b">
+                                        <td className="p-2">Meta Pixel (Facebook Pixel)</td>
+                                        <td className="p-2">인스타그램·페이스북 광고 전환 측정 (회원가입·체험 시작·결제 완료)</td>
+                                        <td className="p-2">페이지 이동, 회원가입·결제 이벤트, 결제 금액(개인 식별 정보 미포함), 기기·브라우저 정보, IP. 이메일·이름 등 개인정보는 전송하지 않습니다.</td>
+                                    </tr>
                                     <tr>
                                         <td className="p-2">쿠키 및 로컬 저장소</td>
                                         <td className="p-2">로그인 세션 유지, 설정값 저장</td>
@@ -194,6 +199,10 @@ export default function PrivacyPage() {
                                         <td className="p-2">오류 트래킹 및 성능 모니터링</td>
                                     </tr>
                                     <tr className="border-b">
+                                        <td className="p-2">Meta Platforms, Inc. (미국/아일랜드)</td>
+                                        <td className="p-2">Meta Pixel을 통한 인스타그램·페이스북 광고 전환 측정 및 효율 분석. 페이지 방문·회원가입·결제 이벤트와 결제 금액 정보가 전송됩니다. 이메일·이름 등 개인 식별 정보는 전송되지 않습니다.</td>
+                                    </tr>
+                                    <tr className="border-b">
                                         <td className="p-2">Kakao Corp. (한국)</td>
                                         <td className="p-2">카카오 계정을 통한 소셜 로그인, 카카오톡 알림 발송</td>
                                     </tr>
@@ -253,12 +262,19 @@ export default function PrivacyPage() {
                                         <td className="p-2">오류 발생 시점, HTTPS</td>
                                         <td className="p-2">오류 트래킹 / 최대 90일</td>
                                     </tr>
-                                    <tr>
+                                    <tr className="border-b">
                                         <td className="p-2">미국/EU</td>
                                         <td className="p-2">PostHog Inc.</td>
                                         <td className="p-2">세션 식별자, 이벤트 로그, 페이지 경로</td>
                                         <td className="p-2">서비스 이용 시점, HTTPS</td>
                                         <td className="p-2">이용 통계 분석 / 최대 1년</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2">미국/아일랜드</td>
+                                        <td className="p-2">Meta Platforms, Inc.<br/>(privacy@meta.com)</td>
+                                        <td className="p-2">페이지 방문·회원가입·결제 이벤트, 결제 금액, 브라우저·기기 정보, IP</td>
+                                        <td className="p-2">서비스 이용 시점, HTTPS</td>
+                                        <td className="p-2">광고 전환 측정 / Meta 정책에 따름</td>
                                     </tr>
                                 </tbody>
                             </table>

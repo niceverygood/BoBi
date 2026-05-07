@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { openExternal } from '@/lib/open-external';
 import EnterpriseInquiryDialog from '@/components/subscribe/EnterpriseInquiryDialog';
 import { SocialProofInline } from '@/components/common/SocialProof';
 import { track } from '@/lib/analytics/events';
+import { trackMetaPixel } from '@/lib/analytics/meta-pixel';
 
 // 개인 플랜 아이콘 (팀 플랜은 엔터프라이즈 문의로 대체됨)
 const PLAN_ICONS: Record<string, typeof Zap> = {
@@ -143,6 +144,12 @@ function SubscribeContent() {
             track('trial_started', {
                 provider,
                 plan_slug: planParam || 'basic',
+            });
+            // Meta Pixel — StartTrial (가치 0원, 실 결제는 체험 종료 시 별도 Purchase)
+            trackMetaPixel('StartTrial', {
+                content_name: 'trial_start',
+                value: 0,
+                currency: 'KRW',
             });
         }
 
@@ -384,6 +391,40 @@ function SubscribeContent() {
     const originalAmount = billingCycle === 'yearly' ? planInfo.priceYearly : planInfo.priceMonthly;
     const couponDiscount = appliedCoupon?.discountAmount || 0;
     const amount = appliedCoupon ? appliedCoupon.finalPrice : originalAmount;
+
+    // 결제 완료 추적 — Meta Pixel Purchase + KakaoPay PostHog 누락 보강.
+    //
+    // success 진입 시점에 발송. 트라이얼(value=0)은 이미 trial_started로
+    // 추적되므로 제외. amount·selectedPlan이 안정화된 시점이라 의존성에 포함.
+    // useRef 가드로 중복 발송 차단 (amount 변경 시 useEffect 재실행 방지).
+    const purchaseTrackedRef = useRef(false);
+    useEffect(() => {
+        if (!success || purchaseTrackedRef.current) return;
+        // 트라이얼은 별도 추적 (value 0이라 Purchase 의미 없음)
+        if (searchParams.get('trial') === '1') return;
+
+        const provider = searchParams.get('toss_status') === 'success' ? 'tosspayments'
+                       : searchParams.get('inicis_status') === 'success' ? 'inicis'
+                       : searchParams.get('status') === 'success' ? 'kakaopay'
+                       : 'card';
+
+        // KakaoPay는 PostHog checkout_completed가 누락되어 있어 여기서 보강.
+        // Toss·Inicis는 위쪽 콜백 useEffect에서 이미 발송했으므로 중복 방지.
+        if (provider === 'kakaopay') {
+            track('checkout_completed', { provider, amount, plan_slug: selectedPlan });
+        }
+
+        // Meta Pixel Purchase — 모든 결제 provider 통합 (인스타·페북 광고 전환)
+        trackMetaPixel('Purchase', {
+            content_name: 'subscription',
+            value: amount || 0,
+            currency: 'KRW',
+            content_type: 'product',
+            content_category: selectedPlan,
+        });
+
+        purchaseTrackedRef.current = true;
+    }, [success, amount, selectedPlan, searchParams]);
     const discount = billingCycle === 'yearly'
         ? Math.round((1 - planInfo.priceYearly / (planInfo.priceMonthly * 12)) * 100)
         : 0;

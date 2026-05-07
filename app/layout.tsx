@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import ChatBot from "@/components/chat/ChatBot";
 import PostHogProvider from "@/components/analytics/PostHogProvider";
+import MetaPixelProvider from "@/components/analytics/MetaPixelProvider";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -39,6 +40,10 @@ export default function RootLayout({
         {/* PostHog 분석 초기화 + pageview 자동 캡처 (useSearchParams 때문에 Suspense 필요) */}
         <Suspense fallback={null}>
           <PostHogProvider />
+        </Suspense>
+        {/* Meta Pixel — 인스타·페북 광고 전환 측정 (Suspense 동일 이유) */}
+        <Suspense fallback={null}>
+          <MetaPixelProvider />
         </Suspense>
         {children}
         <Toaster position="top-right" richColors />

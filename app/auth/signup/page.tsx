@@ -11,6 +11,7 @@ import { Shield, ArrowLeft, Loader2 } from 'lucide-react';
 import { KakaoIcon } from '@/components/icons/KakaoIcon';
 import Link from 'next/link';
 import { track } from '@/lib/analytics/events';
+import { trackMetaPixel } from '@/lib/analytics/meta-pixel';
 
 export default function SignupPage() {
     const [email, setEmail] = useState('');
@@ -46,6 +47,8 @@ export default function SignupPage() {
             setLoading(false);
         } else {
             track('user_signup', { method: 'email', has_company: !!company });
+            // Meta Pixel — 인스타·페북 광고 전환 측정
+            trackMetaPixel('CompleteRegistration', { content_name: 'signup' });
             setSuccess(true);
             setLoading(false);
         }
@@ -56,6 +59,9 @@ export default function SignupPage() {
         setError(null);
 
         track('user_signup', { method: 'kakao_oauth', has_company: false });
+        // Meta Pixel — 카카오 OAuth 가입은 redirect로 콜백에서 완료되지만,
+        // 클릭 시점에 가입 의사를 캡처 (실제 가입 실패 시 노이즈 가능하나 광고 최적화엔 의도 신호도 유용).
+        trackMetaPixel('CompleteRegistration', { content_name: 'signup_kakao' });
 
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'kakao',
