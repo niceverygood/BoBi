@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  보비 BoBi — 앱 아이콘 마스터
+  viewBox 1024×1024 — 모든 크기로 깔끔하게 렌더링.
+
+  디자인:
+    - 배경: 보비 브랜드 그라디언트 (brand-600 → brand-800)
+    - 중앙: "B" 글자 (Pretendard 800)
+    - 우상단: 액센트 점 (brand-50 ring 효과)
+    - 모서리: iOS·Android adaptive icon에 맞도록 squircle (rounded square)
+
+  사용 시 주의:
+    - iOS App Store 1024 — alpha 채널 X (iOS는 마스킹 자체 함)
+      → build-icons.js에서 1024는 별도 처리 (배경 불투명 + 모서리 직각)
+    - Google Play 512 — alpha OK, 둥근 모서리 OK
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- 보비 브랜드 그라디언트 -->
+    <linearGradient id="bg-gradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a56db"/>
+      <stop offset="100%" stop-color="#1E3A8A"/>
+    </linearGradient>
+    <!-- 액센트 점의 ring 효과 -->
+    <radialGradient id="dot-gradient" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#EFF6FF"/>
+      <stop offset="80%" stop-color="#DBEAFE"/>
+      <stop offset="100%" stop-color="#93C5FD"/>
+    </radialGradient>
+    <!-- B 글자 약간의 그림자 -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="8"/>
+      <feOffset dx="0" dy="4" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.25"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!--
+    배경 — 라운드 사각형(squircle).
+    iOS는 자동 마스킹하지만, Android·웹 환경에선 모서리 자체로 보임.
+    iOS Apple은 1024 PNG에서 "직각 + 알파 없음"을 요구하니, build 단계에서 1024는 별도 변형.
+  -->
+  <rect x="0" y="0" width="1024" height="1024" rx="220" ry="220" fill="url(#bg-gradient)"/>
+
+  <!-- 중앙 "B" 글자 -->
+  <text
+    x="512" y="730"
+    font-family="'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif"
+    font-weight="900"
+    font-size="700"
+    fill="#FFFFFF"
+    text-anchor="middle"
+    letter-spacing="-30"
+    filter="url(#shadow)"
+  >B</text>
+
+  <!-- 우상단 액센트 점 (ring 효과로 입체감) -->
+  <circle cx="800" cy="240" r="78" fill="url(#dot-gradient)"/>
+  <circle cx="800" cy="240" r="60" fill="#FFFFFF" opacity="0.95"/>
+</svg>

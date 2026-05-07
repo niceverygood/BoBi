@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  보비 BoBi — App Store 1024 전용 (직각 + 불투명 배경, 알파 X).
+  iOS 가이드라인: App Store 아이콘은 마스킹·둥근 모서리·투명도 자체 적용 X.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg-gradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a56db"/>
+      <stop offset="100%" stop-color="#1E3A8A"/>
+    </linearGradient>
+    <radialGradient id="dot-gradient" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#EFF6FF"/>
+      <stop offset="80%" stop-color="#DBEAFE"/>
+      <stop offset="100%" stop-color="#93C5FD"/>
+    </radialGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="8"/>
+      <feOffset dx="0" dy="4" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.25"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- 직각 배경 (App Store 요구사항) -->
+  <rect x="0" y="0" width="1024" height="1024" fill="url(#bg-gradient)"/>
+
+  <!-- 중앙 "B" 글자 -->
+  <text
+    x="512" y="730"
+    font-family="'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif"
+    font-weight="900"
+    font-size="700"
+    fill="#FFFFFF"
+    text-anchor="middle"
+    letter-spacing="-30"
+    filter="url(#shadow)"
+  >B</text>
+
+  <!-- 우상단 액센트 점 -->
+  <circle cx="800" cy="240" r="78" fill="url(#dot-gradient)"/>
+  <circle cx="800" cy="240" r="60" fill="#FFFFFF" opacity="0.95"/>
+</svg>
