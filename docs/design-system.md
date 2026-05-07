@@ -232,6 +232,34 @@ function getRiskMultiplierBadgeClass(relativeRisk: number): string {
 
 ---
 
+#### §11.3.9 색과 등급 시스템은 분리된 채널 (시각 요청을 데이터 모델 변경으로 받지 말 것)
+
+**상황**: PR #35 영역 C에서 영업 사용자(이종인 이사 5/2 카톡)가 "위험배율을 노랑/빨강 2단계로 통일해달라"고 시각 요청. 첫 직관은 "그럼 `RiskLevel` 타입을 `'high' | 'low'` 2-tier로 narrow하고 분기를 다 정리한다"였음. Phase 0 분석에서 `'moderate'` 의존 코드를 추적한 결과, 타입 narrow + `future-me:310` 라벨 변환 분기 + AI prompt 응답 형식 + 기저장 데이터(`'moderate'` 값을 가진 row)의 호환성까지 회귀 영역이 폭넓게 드러남.
+
+**문제**: 시각 요청을 데이터 모델 변경으로 받으면 회귀 위험이 폭증한다. 영업이 본 것은 "두 색"이지 "두 등급"이 아니다. 색 채널과 등급 채널이 한 string에 묶여 있으면 한쪽만 바꿀 수 없는 강결합이 발생 — §11.3.1에서 학습한 "색이 string에 의존" 안티패턴의 자매 케이스다. §11.3.1이 "색을 string에서 떼어내라"였다면, §11.3.9는 그 다음 결정점: **색을 떼어낸 자리에서 string 등급은 그대로 두고 두 채널을 독립으로 운영하라**.
+
+**해결**: 색 결정과 등급 분류를 다른 함수·다른 입력 형태로 분리. 색은 `relativeRisk: number`만 받는 헬퍼에서 결정 (`lib/risk/risk-color.ts`). 등급 string은 데이터 분류·라벨링 용도로 별도 채널에서 결정 (`lib/risk/risk-matcher.ts` `toRiskLevel`). 두 함수는 서로 호출하지 않고, 서로의 입력으로 쓰이지도 않는다.
+
+```typescript
+// 색 채널 — relativeRisk 숫자만 받음, string 등급을 받지 않는다
+export function getRiskColorByMultiplier(rr: number): string {
+    return rr >= 2.0 ? 'text-red-700' : 'text-amber-700';
+}
+
+// 등급 채널 — 데이터 분류·AI 응답 형식·DB 저장값 호환을 위해 3-tier 유지
+function toRiskLevel(rr: number): RiskLevel {
+    if (rr >= 2.0) return 'high';
+    if (rr >= 1.0) return 'moderate';
+    return 'low';
+}
+```
+
+영업의 "2단계" 요청은 색 채널의 임계값(`>=2.0`)만 sync하는 것으로 충족된다. 등급 채널의 3-tier(`high`/`moderate`/`low`)는 그대로 유지 → 분기 처리·기저장 데이터·AI 응답 형식 회귀 0. **§11.3.1이 "색이 데이터에 의존하지 않는다"라면, §11.3.9는 "그렇다고 데이터를 색에 맞춰 깎아내지도 않는다"이다.**
+
+**출처**: PR #35 영역 C — `lib/risk/risk-color.ts` 신규 + `lib/risk/risk-matcher.ts` 임계값 sync (1.8/3.0 → 2.0 단일 컷오프) + `RiskGauge.tsx`·`customers/[id]/page.tsx` 헬퍼 일원화.
+
+---
+
 ## §12 검증 체크리스트 *(TBD)*
 
 ---
