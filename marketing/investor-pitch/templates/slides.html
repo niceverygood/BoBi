@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>BoBi — Investor Pitch Deck v3</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet" />
+<style>
+  :root {
+    --brand-50:  #EFF6FF;
+    --brand-100: #DBEAFE;
+    --brand-500: #3B82F6;
+    --brand-600: #1a56db;
+    --brand-700: #1E40AF;
+    --brand-800: #1E3A8A;
+    --ink-900:   #0B1220;
+    --ink-700:   #1F2937;
+    --ink-500:   #4B5563;
+    --ink-400:   #6B7280;
+    --ink-300:   #9CA3AF;
+    --ink-200:   #E5E7EB;
+    --bg:        #F8FAFC;
+    --danger:    #DC2626;
+    --warn:      #D97706;
+    --ok:        #166534;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+  body { font-family: "Pretendard Variable", Pretendard, -apple-system, sans-serif; background: #111; color: var(--ink-900); }
+
+  /* PPT 표준 16:9 — 1920×1080 */
+  .slide {
+    width: 1920px; height: 1080px;
+    position: relative; overflow: hidden;
+    background: #fff;
+    padding: 80px 100px;
+    display: flex; flex-direction: column;
+  }
+
+  /* === 공통 헤더 === */
+  .slide-header { margin-bottom: 50px; }
+  .slide-num {
+    display: inline-block;
+    font-size: 18px; font-weight: 700;
+    color: var(--brand-600); letter-spacing: 0.1em;
+  }
+  .slide-title {
+    font-size: 64px; font-weight: 800; letter-spacing: -0.04em;
+    color: var(--ink-900); line-height: 1.1; margin-top: 8px;
+  }
+  .slide-title .accent { color: var(--brand-600); }
+  .slide-sub {
+    font-size: 28px; font-weight: 500; color: var(--ink-500);
+    margin-top: 16px; letter-spacing: -0.02em;
+  }
+
+  /* === 본문 === */
+  .body { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+
+  /* === 카드 === */
+  .card {
+    background: #fff; border-radius: 24px;
+    border: 1px solid var(--ink-200);
+    padding: 40px;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+  }
+  .card-brand {
+    background: linear-gradient(135deg, var(--brand-50), #fff);
+    border-color: var(--brand-100);
+  }
+
+  /* === 그리드 === */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+  .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; }
+
+  /* === 칩 === */
+  .chip {
+    display: inline-block; padding: 12px 24px;
+    background: var(--brand-100); color: var(--brand-700);
+    border-radius: 999px; font-size: 22px; font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .chip-dark {
+    background: var(--brand-700); color: #fff;
+  }
+
+  /* === 표 === */
+  table.bobi {
+    width: 100%; border-collapse: collapse; font-size: 22px;
+  }
+  table.bobi th, table.bobi td {
+    text-align: left; padding: 16px 20px; border-bottom: 1px solid var(--ink-200);
+  }
+  table.bobi th {
+    color: var(--ink-500); font-weight: 600; font-size: 18px;
+    background: var(--bg);
+  }
+  table.bobi td.value { font-weight: 700; color: var(--ink-900); }
+  table.bobi td.brand { color: var(--brand-600); font-weight: 700; }
+
+  /* === 페이지 번호 === */
+  .footer {
+    position: absolute; bottom: 32px; left: 100px; right: 100px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 16px; color: var(--ink-400);
+  }
+  .footer .logo { font-weight: 800; color: var(--brand-700); font-size: 20px; }
+
+  /* === Cover / Closing 전용 === */
+  .slide.cover, .slide.closing {
+    background: linear-gradient(160deg, var(--brand-50) 0%, #fff 50%, var(--brand-100) 100%);
+    align-items: center; justify-content: center; padding: 120px;
+  }
+  .cover .logo {
+    font-size: 280px; font-weight: 900; letter-spacing: -0.06em;
+    color: var(--brand-700); line-height: 0.9;
+    text-align: center;
+    text-shadow: 0 12px 40px rgba(26, 86, 219, 0.15);
+  }
+  .cover .tagline {
+    margin-top: 48px; text-align: center;
+    font-size: 56px; font-weight: 800; color: var(--ink-900); letter-spacing: -0.03em;
+    line-height: 1.2;
+  }
+  .cover .sub {
+    margin-top: 24px; text-align: center;
+    font-size: 32px; color: var(--ink-500); font-weight: 500;
+  }
+  .cover .round-info {
+    margin-top: 80px;
+    background: #fff; border-radius: 24px; padding: 32px 48px;
+    box-shadow: 0 12px 40px rgba(26, 86, 219, 0.15);
+    display: flex; gap: 56px; align-items: center;
+  }
+  .cover .round-info .item { text-align: center; }
+  .cover .round-info .item .label { font-size: 18px; color: var(--ink-500); font-weight: 600; }
+  .cover .round-info .item .val { font-size: 36px; color: var(--brand-700); font-weight: 800; margin-top: 4px; }
+  .cover .meta {
+    position: absolute; bottom: 60px;
+    width: 100%; text-align: center;
+    font-size: 18px; color: var(--ink-500);
+  }
+
+  /* === 페인포인트 카드 (Slide 2) === */
+  .pain-card {
+    background: #fff; border: 2px solid var(--ink-200);
+    border-radius: 24px; padding: 36px;
+    transition: border-color 0.2s;
+  }
+  .pain-card .icon-num {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: var(--brand-100); color: var(--brand-700);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; font-weight: 800;
+    margin-bottom: 20px;
+  }
+  .pain-card .title {
+    font-size: 26px; font-weight: 800; color: var(--ink-900);
+    margin-bottom: 12px; letter-spacing: -0.02em;
+  }
+  .pain-card .desc {
+    font-size: 20px; color: var(--ink-500); line-height: 1.5;
+  }
+
+  /* === Solution 5대 기능 (Slide 3) === */
+  .feat-card {
+    background: linear-gradient(135deg, var(--brand-50), #fff);
+    border: 2px solid var(--brand-100);
+    border-radius: 20px; padding: 28px;
+  }
+  .feat-card .name {
+    font-size: 22px; font-weight: 800; color: var(--brand-700);
+    margin-bottom: 12px; letter-spacing: -0.02em;
+  }
+  .feat-card .desc {
+    font-size: 18px; color: var(--ink-700); line-height: 1.45;
+    margin-bottom: 12px;
+  }
+  .feat-card .tech {
+    font-size: 14px; color: var(--ink-500); font-weight: 500;
+    padding-top: 12px; border-top: 1px solid var(--brand-100);
+  }
+
+  /* === Why Now 3 곡선 (Slide 4) === */
+  .why-now-card {
+    text-align: center; padding: 40px 24px;
+  }
+  .why-now-card .year {
+    font-size: 28px; font-weight: 800; color: var(--brand-600);
+    margin-bottom: 16px;
+  }
+  .why-now-card .name {
+    font-size: 32px; font-weight: 800; color: var(--ink-900);
+    margin-bottom: 16px; letter-spacing: -0.03em;
+  }
+  .why-now-card .desc {
+    font-size: 20px; color: var(--ink-500); line-height: 1.5;
+  }
+
+  /* === TAM 동심원 (Slide 5) === */
+  .market-circles {
+    position: relative;
+    width: 560px; height: 560px;
+    flex-shrink: 0;
+  }
+  .market-circles .ring {
+    position: absolute;
+    border-radius: 50%;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    text-align: center;
+    padding-top: 20px;
+  }
+  .market-circles .tam {
+    width: 560px; height: 560px;
+    background: var(--brand-50);
+    border: 3px solid var(--brand-100);
+  }
+  .market-circles .sam {
+    top: 80px; left: 80px;
+    width: 400px; height: 400px;
+    background: var(--brand-100);
+    border: 3px solid var(--brand-500);
+  }
+  .market-circles .som {
+    top: 200px; left: 200px;
+    width: 160px; height: 160px;
+    background: var(--brand-600); color: #fff;
+    border: 3px solid var(--brand-800);
+    justify-content: center;
+    padding-top: 0;
+  }
+  .market-circles .label-name { font-size: 22px; font-weight: 800; }
+  .market-circles .label-num { font-size: 28px; font-weight: 900; margin-top: 4px; }
+  .market-circles .tam .label-name, .market-circles .tam .label-num { color: var(--brand-700); }
+  .market-circles .sam .label-name, .market-circles .sam .label-num { color: var(--brand-800); }
+  .market-circles .som .label-name, .market-circles .som .label-num { color: #fff; }
+
+  /* === 시나리오 (Slide 6) === */
+  .scenario {
+    background: var(--bg); border-radius: 16px; padding: 32px;
+    font-family: 'Pretendard Variable', sans-serif;
+    font-size: 22px; line-height: 1.7;
+    color: var(--ink-900); white-space: pre-wrap;
+  }
+  .scenario b { color: var(--brand-700); font-weight: 700; }
+
+  /* === 타임라인 (Slide 7, 9) === */
+  .timeline {
+    display: flex; gap: 0; align-items: stretch;
+    margin-top: 30px;
+  }
+  .timeline .step {
+    flex: 1; padding: 28px;
+    background: #fff; border: 2px solid var(--ink-200);
+    border-radius: 16px;
+    margin-right: -2px;
+    position: relative;
+  }
+  .timeline .step.active {
+    background: linear-gradient(135deg, var(--brand-600), var(--brand-800));
+    color: #fff; border-color: var(--brand-700);
+    z-index: 2;
+  }
+  .timeline .step .q {
+    font-size: 18px; font-weight: 700; opacity: 0.7;
+    margin-bottom: 8px;
+  }
+  .timeline .step .num {
+    font-size: 36px; font-weight: 900; letter-spacing: -0.03em;
+  }
+  .timeline .step .desc {
+    font-size: 16px; margin-top: 8px; opacity: 0.85; line-height: 1.4;
+  }
+
+  /* === 모트 (Slide 13) === */
+  .moat-card {
+    background: #fff; border: 2px solid var(--brand-100);
+    border-radius: 20px; padding: 32px;
+    text-align: center;
+  }
+  .moat-card .num {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: var(--brand-600); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; font-weight: 800;
+    margin: 0 auto 20px;
+  }
+  .moat-card .name {
+    font-size: 22px; font-weight: 800; color: var(--ink-900);
+    margin-bottom: 8px;
+  }
+  .moat-card .desc {
+    font-size: 16px; color: var(--ink-500); line-height: 1.4;
+  }
+
+  /* === 자금 사용 차트 (Slide 12) === */
+  .funds-bar {
+    display: flex; height: 60px; border-radius: 16px; overflow: hidden;
+    margin-top: 30px;
+  }
+  .funds-bar .seg {
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; font-size: 20px;
+  }
+  .funds-bar .dev { background: var(--brand-700); }
+  .funds-bar .sales { background: var(--brand-600); }
+  .funds-bar .api { background: var(--brand-500); }
+  .funds-bar .ops { background: var(--brand-400, #60A5FA); }
+
+  /* === Closing CTA === */
+  .cta-big {
+    display: inline-flex; align-items: center; gap: 16px;
+    padding: 32px 56px; background: var(--brand-600); color: #fff;
+    border-radius: 999px; font-size: 36px; font-weight: 800;
+    box-shadow: 0 20px 50px rgba(26, 86, 219, 0.4);
+    letter-spacing: -0.02em;
+    margin-top: 40px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================================== -->
+<!-- SLIDE 1 — Cover                       -->
+<!-- ==================================== -->
+<section class="slide cover" id="s1">
+  <div class="logo">보비</div>
+  <div class="tagline">보험 설계사 1인을 위한<br><span style="color:var(--brand-600)">AI 컨설팅 도구</span></div>
+  <div class="sub">진료 데이터로 5분 만에 고객 분석 · 매일 새벽 자동 영업 기회</div>
+  <div class="round-info">
+    <div class="item"><div class="label">ROUND</div><div class="val">Seed Round 2</div></div>
+    <div class="item"><div class="label">RAISE</div><div class="val">10억원</div></div>
+    <div class="item"><div class="label">PRE-MONEY</div><div class="val">100억원</div></div>
+  </div>
+  <div class="meta">주식회사 바틀 · 한승수 대표 · 2026.05 · support@bobi.co.kr</div>
+</section>
+
+<!-- ==================================== -->
+<!-- SLIDE 2 — Problem                     -->
+<!-- ==================================== -->
+<section class="slide" id="s2">
+  <div class="slide-header">
+    <span class="slide-num">02 · PROBLEM</span>
+    <h1 class="slide-title">한국 보험 설계사 60만 명,<br><span class="accent">매일 똑같은 고통</span></h1>
+  </div>
+  <div class="body">
+    <div class="grid-2">
+      <div class="pain-card">
+        <div class="icon-num">1</div>
+        <div class="title">고객 분석에 시간이 너무 오래 걸린다</div>
+        <div class="desc">1명당 보장 분석 평균 <b>3시간</b> (수기 정리). 고지 누락 점검도 직접 → 보험금 거절 리스크.</div>
+      </div>
+      <div class="pain-card">
+        <div class="icon-num">2</div>
+        <div class="title">클로징 무기가 부족하다</div>
+        <div class="desc">"왜 이 보험이 필요한가" 설계사 말로만 설득. 보장 갭을 숫자로 보여주기 어려움.</div>
+      </div>
+      <div class="pain-card">
+        <div class="icon-num">3</div>
+        <div class="title">영업 기회를 놓친다</div>
+        <div class="desc">갱신·면책·생일 등 컨택 타이밍을 수기 관리. 1명 놓치면 평생 LTV 수백만원 손실.</div>
+      </div>
+      <div class="pain-card">
+        <div class="icon-num">4</div>
+        <div class="title">데이터·시스템 파편화</div>
+        <div class="desc">HIRA 진료내역, 건강검진, 보험 가입 정보가 각각 따로. 통합 분석 도구 부재.</div>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span class="logo">보비</span><span>2 / 15</span></div>
+</section>
+
+<!-- ==================================== -->
+<!-- SLIDE 3 — Solution                    -->
+<!-- ==================================== -->
+<section class="slide" id="s3">
+  <div class="slide-header">
+    <span class="slide-num">03 · SOLUTION</span>
+    <h1 class="slide-title">진료 데이터 + AI = <span class="accent">5분 컨설팅</span></h1>
+    <p class="slide-sub">설계사 1인 도구 — 마이데이터 진료내역·AI 위험도·카카오 알림톡 통합</p>
+  </div>
+  <div class="body">
+    <div class="grid-5">
+      <div class="feat-card">
+        <div class="name">진료정보 분석</div>
+        <div class="desc">5년치 진료내역 자동 정리 · 고지 누락 사전 점검</div>
+        <div class="tech">HIRA 마이데이터 + LLM</div>
+      </div>
+      <div class="feat-card">
+        <div class="name">위험도 리포트</div>
+        <div class="desc">일반인 대비 개인 질환 위험 배율 산출</div>
+        <div class="tech">진료+건검 통계 모델</div>
+      </div>
+      <div class="feat-card">
+        <div class="name">가상 사고영수증</div>
+        <div class="desc">"만약 그 질환 생기면" 보장 갭 시각화</div>
+        <div class="tech">의료비 시뮬레이션</div>
+      </div>
+      <div class="feat-card">
+        <div class="name">CRM 자동 알림톡</div>
+        <div class="desc">갱신·면책·생일 매일 새벽 자동 카톡 발송</div>
+        <div class="tech">ALIGO + 자체 cron</div>
+      </div>
+      <div class="feat-card">
+        <div class="name">미래의 나</div>
+        <div class="desc">연령대별 의료비 변화 시뮬레이션</div>
+        <div class="tech">통계청 + 시나리오</div>
+      </div>
+    </div>
+    <div style="margin-top: 50px; padding: 32px; background: var(--bg); border-radius: 16px; font-size: 22px; line-height: 1.6;">
+      <b style="color: var(--brand-700)">핵심 차별점:</b>
+      마이데이터 인증 사업자 공식 API (경쟁사 대부분 미보유) ·
+      카카오 알림톡 발신자 = <b>설계사 본인 이름</b> (브랜딩) ·
+      특허 6건 출원 진행 (`docs/patent/`)
+    </div>
+  </div>
+  <div class="footer"><span class="logo">보비</span><span>3 / 15</span></div>
+</section>
+
+<!-- ==================================== -->
+<!-- SLIDE 4 — Why Now                     -->
+<!-- ==================================== -->
+<section class="slide" id="s4">
+  <div class="slide-header">
+    <span class="slide-num">04 · WHY NOW</span>
+    <h1 class="slide-title">3가지 변곡점이 <span class="accent">동시에</span> 왔다</h1>
+  </div>
+  <div class="body">
+    <div class="grid-3">
+      <div class="card card-brand why-now-card">
+        <div class="year">2022~</div>
+        <div class="name">마이데이터</div>
+        <div class="desc">진료내역·건강검진 합법적 조회 가능 (이전엔 불가능)</div>
+      </div>
+      <div class="card card-brand why-now-card">
+        <div class="year">2023~</div>
+        <div class="name">LLM</div>
+        <div class="desc">의료 텍스트 분석 실용 수준 도달 (Claude · GPT-4)</div>
+      </div>
+      <div class="card card-brand why-now-card">
+        <div class="year">2024~</div>
+        <div class="name">카카오 알림톡</div>
+        <div class="desc">설계사·고객 컨택 채널 표준화 · 1인당 월 만건+</div>
+      </div>
+    </div>
+    <div style="margin-top: 60px; padding: 32px; background: linear-gradient(135deg, var(--brand-700), var(--brand-800)); border-radius: 20px; color: #fff;">
+      <div style="font-size: 28px; font-weight: 800; margin-bottom: 12px;">지금 진입 안 하면, 5년 안에 빅테크가 시장 잠식.</div>
+      <div style="font-size: 20px; opacity: 0.9; line-height: 1.5;">
+        설계사 1인 도구는 빅테크가 외면하는 영역 → 스타트업 기회.
+        보비 선점 효과: 마이데이터 인증 6-12개월 + 이종인 13년 채널 + 특허 6건.
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span class="logo">보비</span><span>4 / 15</span></div>
+</section>
+
+<!-- ==================================== -->
+<!-- SLIDE 5 — Market                      -->
+<!-- ==================================== -->
+<section class="slide" id="s5">
+  <div class="slide-header">
+    <span class="slide-num">05 · MARKET</span>
+    <h1 class="slide-title">한국 설계사 60만 → <span class="accent">연 90억 SOM</span></h1>
+  </div>
+  <div class="body" style="display: flex; gap: 60px; align-items: center; flex-direction: row;">
+    <div class="market-circles">
+      <div class="ring tam">
+        <div class="label-name">TAM</div>
+        <div class="label-num">60만 명</div>
+      </div>
+      <div class="ring sam">
+        <div class="label-name">SAM</div>
+        <div class="label-num">20만 명</div>
+      </div>
+      <div class="ring som">
+        <div class="label-name">SOM</div>
+        <div class="label-num">3만 명</div>
+      </div>
+    </div>
+    <div style="flex: 1; min-width: 0;">
+      <table class="bobi">
+        <tr><th>지표</th><th>규모</th><th>근거</th></tr>
+        <tr><td>TAM</td><td class="brand">60만</td><td>금감원 보험중개사 통계</td></tr>
+        <tr><td>SAM</td><td class="brand">20만</td><td>30-50대 + 디지털 친화</td></tr>
+        <tr><td>SOM</td><td class="brand">3만</td><td>이종인 채널 + GA 무상배포</td></tr>
+      </table>
+      <div style="margin-top: 36px; padding: 28px; background: var(--brand-50); border-radius: 16px;">
+        <div style="font-size: 20px; font-weight: 600; color: var(--ink-500);">SOM 연 매출 가능성</div>
+        <div style="font-size: 48px; font-weight: 900; color: var(--brand-700); margin-top: 8px; letter-spacing: -0.03em;">연 90억원</div>
+        <div style="font-size: 16px; color: var(--ink-500); margin-top: 4px;">3만 × ARPU 25,000원 × 12개월</div>
+        <div style="font-size: 16px; color: var(--ink-500); margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--brand-100);">
+          <b>글로벌 확장</b> (일본 2027 / 동남아 2028) → 추가 5~10x = 연 450~900억
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span class="logo">보비</span><span>5 / 15</span></div>
+</section>
+
+<!-- ==================================== -->
+<!-- SLIDE 6 — Product                     -->
+<!-- ==================================== -->
+<section class="slide" id="s6">
+  <div class="slide-header">
+    <span class="slide-num">06 · PRODUCT</span>
+    <h1 class="slide-title">매일 30분, <span class="accent">매출이 따라온다</span></h1>
+    <p class="slide-sub">보비 설계사 사용 시나리오 — 분석 3시간 → 5분</p>
+  </div>
+  <div class="body">
+    <div class="grid-3">
+      <div class="card">
+        <div style="font-size: 36px; margin-bottom: 16px;">🌅</div>
+        <div style="font-size: 24px; font-weight: 800; color: var(--brand-700); margin-bottom: 12px;">오전 — 알림 확인</div>
+        <ul style="font-size: 18px; color: var(--ink-700); line-height: 1.7; padding-left: 20px;">
+          <li>오늘 발송된 자동 알림톡 8건 확인</li>
+          <li>갱신 D-7 고객 2명 직접 추가 컨택</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div style="font-size: 36px; margin-bottom: 16px;">📊</div>
+        <div style="font-size: 24px; font-weight: 800; color: var(--brand-700); margin-bottom: 12px;">오후 — 신규 분석</div>
+        <ul style="font-size: 18px; color: var(--ink-700); line-height: 1.7; padding-left: 20px;">
+          <li>진료내역 5년치 자동 분석 (5분)</li>
+          <li>위험도 + 가상영수증 PDF</li>
+          <li>알림톡으로 고객 발송 (본인 이름)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div style="font-size: 36px; margin-bottom: 16px;">🌙</div>
+        <div style="font-size: 24px; font-weight: 800; color: var(--brand-700); margin-bottom: 12px;">저녁 — 영업 다이어리</div>
+        <ul style="font-size: 18px; color: var(--ink-700); line-height: 1.7; padding-left: 20px;">
+          <li>오늘 컨택 5건 자동 기록</li>
+          <li>내일 알림 8건 미리보기</li>
+        </ul>
+      </div>
+    </div>
+    <div style="margin-top: 50px; display: flex; gap: 24px; justify-content: center;">
+      <div class="chip">Excel 수기 → 한 화면 자동화</div>
+      <div class="chip">메신저 파편화 → 카톡 알림 집중</div>
+      <div class="chip">분석 3시간 → <b>5분</b></div>
+    </div>
+  </div>
+  <div class="footer"><span class="logo">보비</span><span>6 / 15</span></div>
+</section>
+
+<!-- ==================================== -->
+<!-- SLIDE 7 — Traction                    -->
+<!-- ==================================== -->
+<section class="slide" id="s7">
+  <div class="slide-header">
+    <span class="slide-num">07 · TRACTION</span>
+    <h1 class="slide-title">Seed 1 검증 완료 → <span class="accent">매출·채널·제품 동시 성장</span></h1>
+  </div>
+  <div class="body">
+    <div class="grid-2">
+      <div class="card card-brand">
+        <div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-bottom: 16px;">투자 검증 ✓</div>
+        <div style="font-size: 20px; color: var(--ink-700); line-height: 1.6;">
+          <b>Seed 1 라운드</b>: 4억원 / Pre 40억<br>
+          <b>본 라운드 (Seed 2)</b>: 10억 / Pre 100억<br>
+          <b style="color: var(--brand-600);">2.5x Up Round</b> (기존 투자자 후속 + 신규 리드)
+        </div>
+      </div>
+      <div class="card card-brand">
+        <div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-bottom: 16px;">영업 검증 ✓</div>
+        <div style="font-size: 20px; color: var(--ink-700); line-height: 1.6;">
+          이종인 영업이사 <b>13년차</b> · <b>1,200+ 설계사</b> 직접 채널<br>
+          4월 4건 누적 요청 24시간 내 반영<br>
+          BOBI-CJ 영구 19,900원 Pro 4명 검증
+        </div>
+      </div>
+      <div class="card card-brand">
+        <div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-bottom: 16px;">제품 검증 ✓</div>
+        <div style="font-size: 20px; color: var(--ink-700); line-height: 1.6;">
+          알림톡 10종 카카오 검수 통과<br>
+          마이데이터 인증 (CODEF API 연동)<br>
+          §11.3 디자인시스템 (정직 톤)
+        </div>
+      </div>
+      <div class="card card-brand">
+        <div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-bottom: 16px;">파이프라인 ✓</div>
+        <div style="font-size: 20px; color: var(--ink-700); line-height: 1.6;">
+          <b>42개 보험사·GA</b> 컨택 정보 정리<br>
+          BD 코워크 자동화 시스템<br>
+          <b>2026 Q3 GA 무상배포</b> (4,000명 목표)
+        </div>
+      </div>
+    </div>
+    <div class="timeline" style="margin-top: 40px;">
+      <div class="step"><div class="q">Q1</div><div class="num">200</div><div class="desc">초기 세팅</div></div>
+      <div class="step"><div class="q">Q2</div><div class="num">2,000</div><div class="desc">구두전략</div></div>
+      <div class="step active"><div class="q">Q3</div><div class="num">6,000</div><div class="desc">GA 무상배포</div></div>
+      <div class="step"><div class="q">Q4</div><div class="num">10,000</div><div class="desc">전환 집중</div></div>
+    </div>
+  </div>
+  <div class="footer"><span class="logo">보비</span><span>7 / 15</span></div>
+</section>
+
+<!-- ==================================== -->
+<!-- SLIDE 8 — Business Model              -->
+<!-- ==================================== -->
+<section class="slide" id="s8">
+  <div class="slide-header">
+    <span class="slide-num">08 · BUSINESS MODEL</span>
+    <h1 class="slide-title">3-Layer 매출 — <span class="accent">SaaS · 팀 · API</span></h1>
+  </div>
+  <div class="body">
+    <div class="grid-3">
+      <div class="card">
+        <div class="chip" style="margin-bottom: 16px;">Layer 1 — B2C</div>
+        <div style="font-size: 24px; font-weight: 800; margin-bottom: 12px;">개인 SaaS (검증)</div>
+        <table class="bobi" style="font-size: 18px;">
+          <tr><td>베이직</td><td class="brand">19,900원/월</td></tr>
+          <tr><td>프로 (인기)</td><td class="brand">39,900원/월</td></tr>
+        </table>
+      </div>
+      <div class="card" style="border: 2px solid var(--brand-600);">
+        <div class="chip chip-dark" style="margin-bottom: 16px;">Layer 2 — B2B Mid</div>
+        <div style="font-size: 24px; font-weight: 800; margin-bottom: 12px;">팀 / GA (진행 중)</div>
+        <table class="bobi" style="font-size: 18px;">
+          <tr><td>팀 (5명)</td><td class="brand">99,000원</td></tr>
+          <tr><td>비즈니스 (30명)</td><td class="brand">390,000원</td></tr>
+          <tr><td>엔터프라이즈 (100+)</td><td class="brand">890,000원</td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <div class="chip" style="margin-bottom: 16px;">Layer 3 — B2B Enterprise</div>
+        <div style="font-size: 24px; font-weight: 800; margin-bottom: 12px;">API 라이선싱 (2027)</div>
+        <ul style="font-size: 18px; color: var(--ink-700); line-height: 1.6; padding-left: 20px;">
+          <li>핀테크 GA (보맵·토스인슈)</li>
+          <li>보험사 자회사 GA</li>
+          <li>MAU 기반 라이선스</li>
+        </ul>
+      </div>
+    </div>
+    <div style="margin-top: 40px; display: flex; gap: 32px; justify-content: center;">
+      <div style="text-align: center;">
+        <div style="font-size: 18px; color: var(--ink-500);">ARPU</div>
+        <div style="font-size: 36px; font-weight: 900; color: var(--brand-700);">25,000원</div>
+      </div>
+      <div style="text-align: center;">
+        <div style="font-size: 18px; color: var(--ink-500);">운영 마진</div>
+        <div style="font-size: 36px; font-weight: 900; color: var(--brand-700);">90%+</div>
+      </div>
+      <div style="text-align: center;">
+        <div style="font-size: 18px; color: var(--ink-500);">LTV/CAC 목표</div>
+        <div style="font-size: 36px; font-weight: 900; color: var(--brand-700);">5:1+</div>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span class="logo">보비</span><span>8 / 15</span></div>
+</section>
+
+<!-- ==================================== -->
+<!-- SLIDE 9 — GTM                         -->
+<!-- ==================================== -->
+<section class="slide" id="s9">
+  <div class="slide-header">
+    <span class="slide-num">09 · GO-TO-MARKET</span>
+    <h1 class="slide-title">설계사 → GA → 보험사 — <span class="accent">3 Phase</span></h1>
+  </div>
+  <div class="body">
+    <div class="timeline">
+      <div class="step active">
+        <div class="q">Phase 1</div>
+        <div class="num">2026 Q1-Q2</div>
+        <div class="desc">설계사 1:1 (이종인 채널)<br>1,200+ 직접 컨택 → 무료체험 → 베이직 전환</div>
+      </div>
+      <div class="step">
+        <div class="q">Phase 2</div>
+        <div class="num">2026 Q3</div>
+        <div class="desc">대형 GA 5-10곳 무상 배포<br>본사 차원 도구 채택 → 100~500명 일괄 가입</div>
+      </div>
+      <div class="step">
+        <div class="q">Phase 3</div>
+        <div class="num">2026 Q4 ~ 2027</div>
+        <div class="desc">보험사 자회사 GA + API 라이선싱<br>삼성생명금융서비스·한화생명금융서비스 협상</div>
+      </div>
+    </div>
+    <div style="margin-top: 60px;">
+      <div style="font-size: 28px; font-weight: 800; margin-bottom: 24px;">Acquisition 채널</div>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+        <div class="card" style="text-align: center;"><div style="font-size: 18px; color: var(--ink-500);">1차</div><div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-top: 4px;">이종인 채널</div></div>
+        <div class="card" style="text-align: center;"><div style="font-size: 18px; color: var(--ink-500);">2차</div><div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-top: 4px;">BD 코워크 자동화</div></div>
+        <div class="card" style="text-align: center;"><div style="font-size: 18px; color: var(--ink-500);">3차</div><div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-top: 4px;">알림톡 → 추천</div></div>
+        <div class="card" style="text-align: center;"><div style="font-size: 18px; color: var(--ink-500);">4차</div><div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-top: 4px;">친구초대 인센티브</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span class="logo">보비</span><span>9 / 15</span></div>
+</section>
+
+<!-- ==================================== -->
+<!-- SLIDE 10 — Competition                -->
+<!-- ==================================== -->
+<section class="slide" id="s10">
+  <div class="slide-header">
+    <span class="slide-num">10 · COMPETITION</span>
+    <h1 class="slide-title">4개 카테고리 — 보비만 <span class="accent">통합 도구</span></h1>
+  </div>
+  <div class="body">
+    <table class="bobi" style="font-size: 22px;">
+      <tr><th style="font-size: 20px;">경쟁사</th><th style="font-size: 20px;">강점</th><th style="font-size: 20px;">약점</th></tr>
+      <tr><td class="value">굿리치 (리치플래닛)</td><td>보험 통합관리 앱·라운지</td><td style="color: var(--danger);">고객용, 설계사 도구 X</td></tr>
+      <tr><td class="value">보맵</td><td>보험 비교 핀테크</td><td style="color: var(--danger);">진료분석 X, 설계사용 X</td></tr>
+      <tr><td class="value">토스인슈어런스</td><td>토스 트래픽·자체 GA</td><td style="color: var(--danger);">설계사 도구 미제공</td></tr>
+      <tr><td class="value">카카오페이손보</td><td>카카오톡 통합</td><td style="color: var(--danger);">보험 가입만, 컨설팅 X</td></tr>
+      <tr><td class="value">CODEF / Owl Pay</td><td>데이터 API 제공</td><td style="color: var(--danger);">B2B 인프라, 직접 도구 X</td></tr>
+      <tr style="background: var(--brand-50);">
+        <td class="brand" style="font-weight: 900; font-size: 26px;">★ 보비</td>
+        <td class="brand" style="font-weight: 700;">마이데이터 + AI + 알림톡 통합</td>
+        <td class="brand" style="font-weight: 700;">설계사 1인 도구 (TAM 60만)</td>
+      </tr>
+    </table>
+    <div style="margin-top: 50px; padding: 28px; background: linear-gradient(135deg, var(--brand-700), var(--brand-800)); color: #fff; border-radius: 20px;">
+      <div style="font-size: 24px; font-weight: 800; margin-bottom: 8px;">보비의 위치</div>
+      <div style="font-size: 18px; line-height: 1.6; opacity: 0.95;">
+        한국에서 유일하게 <b>합법 진료 데이터 + AI 위험도 모델 + 설계사 브랜딩 알림톡</b>을 한 도구에서 제공.
+        빅테크는 외면하는 영역, 도메인 전문성·이종인 채널·특허로 모트 구축.
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span class="logo">보비</span><span>10 / 15</span></div>
+</section>
+
+<!-- ==================================== -->
+<!-- SLIDE 11 — Team                       -->
+<!-- ==================================== -->
+<section class="slide" id="s11">
+  <div class="slide-header">
+    <span class="slide-num">11 · TEAM</span>
+    <h1 class="slide-title">풀스택 대표 + 13년차 영업이사 + <span class="accent">코어팀 6명</span></h1>
+  </div>
+  <div class="body">
+    <div class="grid-2">
+      <div class="card card-brand">
+        <div style="font-size: 56px; font-weight: 900; color: var(--brand-700); letter-spacing: -0.04em;">한승수</div>
+        <div style="font-size: 22px; font-weight: 700; color: var(--ink-700); margin-top: 4px;">Founder & CEO</div>
+        <ul style="margin-top: 24px; font-size: 20px; color: var(--ink-700); line-height: 1.7; padding-left: 20px;">
+          <li>서울대 경영대학원 <b>(MBA)</b></li>
+          <li>풀스택 개발 (Next.js · Supabase · AI)</li>
+          <li>보비 제품 100% 직접 개발</li>
+          <li>4월 PR 30+ 머지 (실행력 검증)</li>
+        </ul>
+      </div>
+      <div class="card card-brand">
+        <div style="font-size: 56px; font-weight: 900; color: var(--brand-700); letter-spacing: -0.04em;">이종인</div>
+        <div style="font-size: 22px; font-weight: 700; color: var(--ink-700); margin-top: 4px;">영업이사 / Co-Founder급</div>
+        <ul style="margin-top: 24px; font-size: 20px; color: var(--ink-700); line-height: 1.7; padding-left: 20px;">
+          <li>보험 영업 <b>13년차</b></li>
+          <li><b>1,200+ 설계사 직접 채널</b></li>
+          <li>커미션 기반 (인건비 0원)</li>
+          <li>4건 요청 24시간 내 반영</li>
+        </ul>
+      </div>
+    </div>
+    <div style="margin-top: 40px; padding: 32px; background: var(--bg); border-radius: 20px;">
+      <div style="font-size: 22px; font-weight: 800; margin-bottom: 16px;">코어팀 (총 6명) — 강점</div>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+        <div><div style="font-size: 18px; color: var(--ink-500); font-weight: 600;">개발 속도</div><div style="font-size: 22px; font-weight: 800; margin-top: 4px;">PR 30+ / 월</div></div>
+        <div><div style="font-size: 18px; color: var(--ink-500); font-weight: 600;">영업 신뢰</div><div style="font-size: 22px; font-weight: 800; margin-top: 4px;">13년 채널</div></div>
+        <div><div style="font-size: 18px; color: var(--ink-500); font-weight: 600;">마진 효율</div><div style="font-size: 22px; font-weight: 800; margin-top: 4px;">인건비 0원</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span class="logo">보비</span><span>11 / 15</span></div>
+</section>
+
+<!-- ==================================== -->
+<!-- SLIDE 12 — Financials & Ask           -->
+<!-- ==================================== -->
+<section class="slide" id="s12">
+  <div class="slide-header">
+    <span class="slide-num">12 · FINANCIALS & THE ASK</span>
+    <h1 class="slide-title"><span class="accent">10억 Seed 2</span> → 24개월 런웨이 → 2027 ARR 13.5억</h1>
+  </div>
+  <div class="body">
+    <div class="grid-2" style="margin-bottom: 30px;">
+      <div class="card">
+        <div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-bottom: 16px;">2026 매출 추정</div>
+        <table class="bobi" style="font-size: 18px;">
+          <tr><th>시나리오</th><th>전환율</th><th>연 매출</th></tr>
+          <tr><td>보수적</td><td>8%</td><td class="value">1.48억</td></tr>
+          <tr style="background: var(--brand-50);"><td class="brand">기본</td><td class="brand">12%</td><td class="brand" style="font-weight: 900;">2.22억</td></tr>
+          <tr><td>낙관적</td><td>18%</td><td class="value">3.33억</td></tr>
+        </table>
+        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--ink-200); font-size: 18px;">
+          2027 ARR 목표: <b style="color: var(--brand-700);">13.5억 (6x 성장)</b>
+        </div>
+      </div>
+      <div class="card" style="background: linear-gradient(135deg, var(--brand-600), var(--brand-800)); color: #fff;">
+        <div style="font-size: 18px; font-weight: 700; opacity: 0.85; margin-bottom: 8px;">THE ASK</div>
+        <div style="font-size: 64px; font-weight: 900; letter-spacing: -0.04em; line-height: 1;">10억원</div>
+        <div style="font-size: 22px; font-weight: 600; margin-top: 8px; opacity: 0.95;">Seed Round 2 / Pre-Money 100억</div>
+        <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.3); font-size: 18px; line-height: 1.7;">
+          이전 Seed 4억 / Pre 40억 → <b>2.5x Up Round</b><br>
+          누적 Raise 14억 · 런웨이 24개월
+        </div>
+      </div>
+    </div>
+    <div style="font-size: 22px; font-weight: 800; margin-bottom: 12px;">자금 사용 (10억)</div>
+    <div class="funds-bar">
+      <div class="seg dev" style="flex: 50;">개발 5억 (50%)</div>
+      <div class="seg sales" style="flex: 30;">영업 3억 (30%)</div>
+      <div class="seg api" style="flex: 15;">API 1.5억 (15%)</div>
+      <div class="seg ops" style="flex: 5; background: #93C5FD;">운영 0.5억 (5%)</div>
+    </div>
+    <div style="margin-top: 24px; padding: 24px; background: var(--bg); border-radius: 16px; font-size: 18px; line-height: 1.6;">
+      <b>Pre 100억 정당화:</b>
+      ARR 2.2억 × 45x 보험 도메인 프리미엄 ·
+      모트 (마이데이터·특허·이종인) ·
+      마진 90%+ ·
+      Exit 한화·삼성생명 자회사 GA M&A (5~7년)
+    </div>
+  </div>
+  <div class="footer"><span class="logo">보비</span><span>12 / 15</span></div>
+</section>
+
+<!-- ==================================== -->
+<!-- SLIDE 13 — Why BoBi Wins              -->
+<!-- ==================================== -->
+<section class="slide" id="s13">
+  <div class="slide-header">
+    <span class="slide-num">13 · WHY BOBI WINS</span>
+    <h1 class="slide-title"><span class="accent">5개 모트</span>로 시장을 지킨다</h1>
+  </div>
+  <div class="body">
+    <div class="grid-5">
+      <div class="moat-card">
+        <div class="num">1</div>
+        <div class="name">데이터 모트</div>
+        <div class="desc">마이데이터 인증 · CODEF 연동 · 6-12개월 인허가</div>
+      </div>
+      <div class="moat-card">
+        <div class="num">2</div>
+        <div class="name">영업 모트</div>
+        <div class="desc">이종인 13년 · 1,200+ 설계사 (사람 자산)</div>
+      </div>
+      <div class="moat-card">
+        <div class="num">3</div>
+        <div class="name">제품 모트</div>
+        <div class="desc">AI 분석 · 알림톡 브랜딩 · 특허 6건 출원</div>
+      </div>
+      <div class="moat-card">
+        <div class="num">4</div>
+        <div class="name">레귤레이션</div>
+        <div class="desc">금융위 규제 사전 검토 · 약관 준수</div>
+      </div>
+      <div class="moat-card">
+        <div class="num">5</div>
+        <div class="name">자본 효율</div>
+        <div class="desc">마진 90%+ · 인건비 0원 · Seed 1로 12개월 검증</div>
+      </div>
+    </div>
+    <div style="margin-top: 60px; padding: 36px; background: linear-gradient(135deg, var(--brand-700), var(--brand-800)); color: #fff; border-radius: 24px;">
+      <div style="font-size: 24px; font-weight: 800; margin-bottom: 12px;">비대칭 BD 채널</div>
+      <div style="font-size: 20px; line-height: 1.7; opacity: 0.95;">
+        이종인 13년 → 보험사 임원 직접 컨택 가능<br>
+        1,200 설계사 → 즉시 베타 테스트·피드백·매출<br>
+        <b>빅테크는 못 하는 "사람 기반 신뢰" 자산</b>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span class="logo">보비</span><span>13 / 15</span></div>
+</section>
+
+<!-- ==================================== -->
+<!-- SLIDE 14 — Closing                    -->
+<!-- ==================================== -->
+<section class="slide closing" id="s14">
+  <div style="text-align: center;">
+    <div style="font-size: 96px; font-weight: 900; color: var(--ink-900); letter-spacing: -0.04em; line-height: 1.1;">
+      보험 설계사의<br>
+      <span style="color: var(--brand-600);">일하는 방식을 바꿉니다</span>
+    </div>
+    <div style="margin-top: 40px; font-size: 36px; color: var(--ink-500); font-weight: 600;">
+      매일 30분, 매출이 2배.
+    </div>
+    <div class="cta-big">support@bobi.co.kr · bobi.co.kr</div>
+    <div style="margin-top: 60px; padding: 28px 40px; background: #fff; border-radius: 20px; box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08); display: inline-flex; gap: 56px;">
+      <div style="text-align: center;"><div style="font-size: 16px; color: var(--ink-500);">RAISE</div><div style="font-size: 32px; font-weight: 900; color: var(--brand-700);">10억</div></div>
+      <div style="text-align: center;"><div style="font-size: 16px; color: var(--ink-500);">PRE-MONEY</div><div style="font-size: 32px; font-weight: 900; color: var(--brand-700);">100억</div></div>
+      <div style="text-align: center;"><div style="font-size: 16px; color: var(--ink-500);">RUNWAY</div><div style="font-size: 32px; font-weight: 900; color: var(--brand-700);">24개월</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================== -->
+<!-- SLIDE 15 — Q&A / Appendix             -->
+<!-- ==================================== -->
+<section class="slide" id="s15">
+  <div class="slide-header">
+    <span class="slide-num">15 · Q&A</span>
+    <h1 class="slide-title">예상 질문 — <span class="accent">미리 답변</span></h1>
+  </div>
+  <div class="body">
+    <table class="bobi" style="font-size: 18px;">
+      <tr><th>질문</th><th>답변</th></tr>
+      <tr><td class="value">Pre 100억 근거?</td><td>이전 Seed Pre 40억 + 6개월 검증 · 1,200 채널 · 특허 6건 · Series A Pre 디스카운트</td></tr>
+      <tr><td class="value">마이데이터 안정성?</td><td>CODEF 공식 파트너 + 자체 라이선스 진행. 정책 강화 추세 → 신규 진입자에 불리, 우리에게 유리</td></tr>
+      <tr><td class="value">보험사가 직접?</td><td>설계사 1인 도구는 빅테크·보험사 외면 영역 (B2B2C 인센티브 부족). 6-12개월 인허가 모트</td></tr>
+      <tr><td class="value">한승수 의존성?</td><td>코어팀 6명 + Seed 2 자금으로 풀스택 2-3명 추가 → CTO 별도 영입 가능</td></tr>
+      <tr><td class="value">이종인이 떠나면?</td><td>13년 채널은 사람 기반이지만, 보비 시스템 = 설계사가 떠나기 어려운 데이터 자산 (CRM·고객 이력)</td></tr>
+      <tr><td class="value">글로벌?</td><td>일본 2027 (보험설계사 100만, 디지털 도구 부재) → 동남아 2028 (베트남·태국 우선)</td></tr>
+      <tr><td class="value">Exit?</td><td>1순위 한화·삼성생명 자회사 GA M&A (5~7년) · 2순위 토스·카카오 인수 · 3순위 2030~2031 코스닥 IPO</td></tr>
+      <tr><td class="value">Churn / CAC?</td><td>출시 초기, 분기별 비공개 KPI 보고서 NDA 후 제공</td></tr>
+    </table>
+    <div style="margin-top: 40px; padding: 28px; background: var(--brand-50); border-radius: 16px; font-size: 18px; line-height: 1.6;">
+      <b>Appendix (NDA 후 제공)</b>:
+      분기별 KPI 보고서 · 특허 6건 · 재무 모델 풀버전 · 약관·법무 검토 · BD 파이프라인 42개사 · 이종인 채널 디테일
+    </div>
+  </div>
+  <div class="footer"><span class="logo">보비</span><span>15 / 15</span></div>
+</section>
+
+</body>
+</html>
