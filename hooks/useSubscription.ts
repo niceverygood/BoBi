@@ -33,8 +33,14 @@ const PRO_ONLY_FEATURES = new Set<keyof import('@/types/subscription').PlanFeatu
     'risk_report',
     'future_me',
     'virtual_receipt',
+    'crm_full',
+]);
+// Basic 이상 (Free 잠금)
+const BASIC_PLUS_FEATURES = new Set<keyof import('@/types/subscription').PlanFeatures>([
+    'crm_renewal_notify',
 ]);
 const PRO_PLAN_SLUGS = new Set(['pro', 'team_pro']);
+const BASIC_PLUS_PLAN_SLUGS = new Set(['basic', 'pro', 'team_basic', 'team_pro']);
 
 const DEFAULT_USAGE: UsageTracking = {
     id: '',
@@ -139,9 +145,12 @@ export function useSubscription() {
     const isFeatureEnabled = (feature: keyof typeof plan.features): boolean => {
         const val = plan.features[feature];
         if (val !== undefined) return val === true;
-        // DB에 키가 없는 경우: Pro 전용 기능은 slug로 판정, 그 외는 false
+        // DB에 키가 없는 경우: slug 기반 폴백
         if (PRO_ONLY_FEATURES.has(feature)) {
             return PRO_PLAN_SLUGS.has(plan.slug);
+        }
+        if (BASIC_PLUS_FEATURES.has(feature)) {
+            return BASIC_PLUS_PLAN_SLUGS.has(plan.slug);
         }
         return false;
     };

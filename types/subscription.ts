@@ -26,6 +26,11 @@ export interface PlanFeatures {
     risk_report?: boolean;
     future_me?: boolean;
     virtual_receipt?: boolean;
+    // CRM 분리:
+    //   crm_renewal_notify — Basic 이상. 고객 보험 갱신일 자동 알림 (영업 기회 보호)
+    //   crm_full           — Pro 이상. + 면책/감액 종료, 생일, 가입제안서 PDF 자동 파싱
+    crm_renewal_notify?: boolean;
+    crm_full?: boolean;
 }
 
 export interface Subscription {

@@ -313,3 +313,58 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
         return NextResponse.json({ error: (error as Error).message }, { status: 500 });
     }
 }
+
+/**
+ * PATCH — 고객 보험 가입 정보 업데이트.
+ *
+ * Phase A — 1 customer = 1 주력 보장 가정.
+ * insurer / product_name / enrollment_date / exemption_end_date / reduction_end_date /
+ * renewal_date / policy_memo / phone / birth_date 만 PATCH 허용.
+ *
+ * Free 플랜도 입력은 가능 (UI 표시만 노출 제한). 실제 알림 발송은 cron이 plan
+ * features를 다시 확인하므로 결제 안 하면 발송 안 됨.
+ */
+export async function PATCH(
+    request: Request,
+    { params }: { params: Promise<{ id: string }> },
+) {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+        return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
+    }
+
+    try {
+        const { id } = await params;
+        const body = await request.json().catch(() => ({}));
+
+        const ALLOWED = [
+            'name', 'phone', 'birth_date', 'gender', 'memo',
+            'insurer', 'product_name',
+            'enrollment_date', 'exemption_end_date', 'reduction_end_date', 'renewal_date',
+            'policy_memo',
+        ] as const;
+
+        const update: Record<string, unknown> = {};
+        for (const k of ALLOWED) {
+            if (k in body) update[k] = body[k] === '' ? null : body[k];
+        }
+        if (Object.keys(update).length === 0) {
+            return NextResponse.json({ error: '변경할 필드가 없습니다.' }, { status: 400 });
+        }
+
+        const { data, error } = await supabase
+            .from('customers')
+            .update(update)
+            .eq('id', id)
+            .eq('user_id', user.id)
+            .select()
+            .maybeSingle();
+
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (!data) return NextResponse.json({ error: '고객을 찾을 수 없습니다.' }, { status: 404 });
+        return NextResponse.json({ success: true, customer: data });
+    } catch (err) {
+        return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    }
+}
