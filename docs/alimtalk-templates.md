@@ -20,6 +20,10 @@ ALIGO를 통해 발송하는 카카오 비즈니스 알림톡 템플릿 매핑·
 | `UH_6833` | BOBI_RISK_SUMMARY | 위험도 리포트 — 요약 | 🟡 검수중 (2026-05-07) | `ALIGO_TPL_RISK_SUMMARY` |
 | `UH_6835` | BOBI_RECEIPT_LINK | 가상영수증 — 링크 | 🟡 검수중 (2026-05-07) | `ALIGO_TPL_RECEIPT_LINK` |
 | `UH_6836` | BOBI_RECEIPT_SUMMARY | 가상영수증 — 요약 | 🟡 검수중 (2026-05-07) | `ALIGO_TPL_RECEIPT_SUMMARY` |
+| `UH_PENDING` | BOBI_CRM_RENEWAL | CRM — 갱신 D-30/D-7/D-Day | ⏳ 등록 대기 | `ALIGO_TPL_CRM_RENEWAL` |
+| `UH_PENDING` | BOBI_CRM_EXEMPTION_END | CRM — 90일 면책 종료 D-3/D-Day | ⏳ 등록 대기 | `ALIGO_TPL_CRM_EXEMPTION_END` |
+| `UH_PENDING` | BOBI_CRM_REDUCTION_END | CRM — 1년 감액 종료 D-7/D-Day | ⏳ 등록 대기 | `ALIGO_TPL_CRM_REDUCTION_END` |
+| `UH_PENDING` | BOBI_CRM_BIRTHDAY | CRM — 고객 생일축하 | ⏳ 등록 대기 | `ALIGO_TPL_CRM_BIRTHDAY` |
 
 ## 검수 통과 후 환경변수 설정
 
@@ -43,6 +47,12 @@ ALIGO_TPL_RISK_SUMMARY=UH_6833
 # 가상영수증
 ALIGO_TPL_RECEIPT_LINK=UH_6835
 ALIGO_TPL_RECEIPT_SUMMARY=UH_6836
+
+# CRM 자동 발송 (검수 통과 후 ALIGO가 발급한 코드로 채울 것)
+ALIGO_TPL_CRM_RENEWAL=UH_xxxx
+ALIGO_TPL_CRM_EXEMPTION_END=UH_xxxx
+ALIGO_TPL_CRM_REDUCTION_END=UH_xxxx
+ALIGO_TPL_CRM_BIRTHDAY=UH_xxxx
 ```
 
 > ⚠️ **검수 통과 전엔 발송 시도 시 ALIGO가 거절합니다.** 사용자에게 명확한 "검수 진행 중" 안내가 노출되도록 코드가 처리.
@@ -134,6 +144,80 @@ ALIGO_TPL_RECEIPT_SUMMARY=UH_6836
 상세 영수증은 설계사 #{설계사명}에게 문의해주세요.
 ```
 - 변수: `고객명`, `질환명`, `총의료비`, `보장추정`, `자기부담`, `설계사명`
+
+## 본문 — CRM 자동 발송 4종 (Phase A)
+
+설계사가 입력한 고객 보험 정보(가입일·갱신일·면책/감액 종료일·생일)를 기준으로
+매일 KST 09:00에 자동 발송. 같은 트리거가 같은 고객에게 중복 발송되지 않도록
+`crm_notifications(customer_id, kind, trigger_label)` UNIQUE 인덱스로 제어.
+
+플랜 게이트:
+- `crm_renewal_notify` (Basic+): 갱신 알림만
+- `crm_full` (Pro+): 갱신 + 면책 종료 + 감액 종료 + 생일
+
+### BOBI_CRM_RENEWAL
+
+```
+[보비] #{고객명}님, #{상품명} 갱신일 안내
+────────────────
+갱신일: #{갱신일}
+잔여: #{잔여일} (#{디데이라벨})
+
+보장 점검·다른 상품 비교가 필요하시면
+설계사 #{설계사명}에게 편하게 연락주세요.
+```
+- 변수: `고객명`, `상품명`, `갱신일`, `잔여일`, `디데이라벨`, `설계사명`
+- 트리거: D-30 / D-7 / D-Day (`디데이라벨` = "D-30" | "D-7" | "D-DAY")
+- 버튼: 없음 (단순 안내)
+
+### BOBI_CRM_EXEMPTION_END
+
+```
+[보비] #{고객명}님, #{상품명} 면책 종료 안내
+────────────────
+면책 종료일: #{면책종료일}
+잔여: #{잔여일} (#{디데이라벨})
+
+면책 종료 후엔 정상 청구가 가능합니다.
+청구 절차 안내가 필요하시면
+설계사 #{설계사명}에게 연락주세요.
+```
+- 변수: `고객명`, `상품명`, `면책종료일`, `잔여일`, `디데이라벨`, `설계사명`
+- 트리거: D-3 / D-Day
+- 버튼: 없음
+
+### BOBI_CRM_REDUCTION_END
+
+```
+[보비] #{고객명}님, #{상품명} 감액 종료 안내
+────────────────
+감액 종료일: #{감액종료일}
+잔여: #{잔여일} (#{디데이라벨})
+
+감액 종료 후엔 보험금이 100% 지급됩니다.
+청구 절차 안내가 필요하시면
+설계사 #{설계사명}에게 연락주세요.
+```
+- 변수: `고객명`, `상품명`, `감액종료일`, `잔여일`, `디데이라벨`, `설계사명`
+- 트리거: D-7 / D-Day
+- 버튼: 없음
+
+### BOBI_CRM_BIRTHDAY
+
+```
+[보비] #{고객명}님, 생일을 진심으로 축하드립니다.
+
+건강하고 행복한 한 해 되시길 바랍니다.
+설계사 #{설계사명} 드림
+```
+- 변수: `고객명`, `설계사명`
+- 트리거: D-Day (생일 당일)
+- 버튼: 없음
+
+> ⚠️ **현재 cron 코드(`buildMessage`) 본문은 위 등록 본문과 자릿수까지 100% 일치해야 발송됩니다.**
+> ALIGO 검수 통과 후 본문이 미세하게 달라지면 코드도 함께 갱신해야 합니다.
+> 검수 등록 → 코드 발급 → `lib/aligo/templates.ts` REGISTERED_FALLBACK 갱신 →
+> Vercel ENV `ALIGO_TPL_CRM_*` 설정 → 재배포 1회 → 자동 활성화.
 
 ## 검수 통과 팁 (이번 등록 시 반영된 사항)
 

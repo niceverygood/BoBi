@@ -11,11 +11,26 @@ import {
     Calendar, TrendingUp, Stethoscope, Link2, Trash2, Sparkles,
 } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import PolicyCard from '@/components/customers/PolicyCard';
 import { apiFetch } from '@/lib/api/client';
 import { getRiskBadgeClassByMultiplier } from '@/lib/risk/risk-color';
 
 interface CustomerCard {
-    customer: { id: string; name: string; birth_date: string | null; gender: string | null; phone: string | null; memo: string | null };
+    customer: {
+        id: string;
+        name: string;
+        birth_date: string | null;
+        gender: string | null;
+        phone: string | null;
+        memo: string | null;
+        insurer?: string | null;
+        product_name?: string | null;
+        enrollment_date?: string | null;
+        exemption_end_date?: string | null;
+        reduction_end_date?: string | null;
+        renewal_date?: string | null;
+        policy_memo?: string | null;
+    };
     analyses: Array<{ id: string; created_at: string; status: string }>;
     summary: {
         healthScore: number;
@@ -185,6 +200,9 @@ function CustomerCardContent() {
                     </div>
                 ))}
             </div>
+
+            {/* 보험 가입 정보 + CRM 알림 (Basic+ 갱신만, Pro+ 전체) */}
+            <PolicyCard customerId={c.id} customer={c} />
 
             {/* 현재 질환 — 회색 베이스 행 + amber dot + amber soft tint 상태 배지 */}
             {s.medicalHistory?.activeDiseases && s.medicalHistory.activeDiseases.length > 0 && (

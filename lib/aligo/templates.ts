@@ -15,7 +15,12 @@ export type TemplateKind =
     | 'risk_link'
     | 'risk_summary'
     | 'receipt_link'
-    | 'receipt_summary';
+    | 'receipt_summary'
+    // CRM 알림 (Phase A — 신규 검수 4종)
+    | 'crm_renewal'
+    | 'crm_exemption_end'
+    | 'crm_reduction_end'
+    | 'crm_birthday';
 
 const ENV_KEYS: Record<TemplateKind, string> = {
     future_me_link: 'ALIGO_TPL_FUTURE_ME_LINK',
@@ -26,6 +31,10 @@ const ENV_KEYS: Record<TemplateKind, string> = {
     risk_summary: 'ALIGO_TPL_RISK_SUMMARY',
     receipt_link: 'ALIGO_TPL_RECEIPT_LINK',
     receipt_summary: 'ALIGO_TPL_RECEIPT_SUMMARY',
+    crm_renewal: 'ALIGO_TPL_CRM_RENEWAL',
+    crm_exemption_end: 'ALIGO_TPL_CRM_EXEMPTION_END',
+    crm_reduction_end: 'ALIGO_TPL_CRM_REDUCTION_END',
+    crm_birthday: 'ALIGO_TPL_CRM_BIRTHDAY',
 };
 
 // 등록 시점에 받은 ALIGO 템플릿 코드. 환경변수 미설정 시 fallback으로 사용.
@@ -40,6 +49,11 @@ const REGISTERED_FALLBACK: Record<TemplateKind, string> = {
     risk_summary: 'UH_6833',
     receipt_link: 'UH_6835',
     receipt_summary: 'UH_6836',
+    // CRM 4종은 검수 등록 전 — 코드 발급 후 docs/alimtalk-templates.md에서 갱신
+    crm_renewal: 'UH_PENDING',
+    crm_exemption_end: 'UH_PENDING',
+    crm_reduction_end: 'UH_PENDING',
+    crm_birthday: 'UH_PENDING',
 };
 
 /**
