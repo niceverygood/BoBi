@@ -586,6 +586,7 @@ export default async function LandingPage() {
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   <li><Link href="/terms" className="hover:text-foreground transition-colors">이용약관</Link></li>
                   <li><Link href="/privacy" className="hover:text-foreground transition-colors">개인정보처리방침</Link></li>
+                  <li><Link href="/refund-policy" className="hover:text-foreground transition-colors">환불 정책</Link></li>
                 </ul>
               </div>
             </div>

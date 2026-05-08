@@ -1551,8 +1551,8 @@ function SubscribeContent() {
 
                                 <div className="text-[11px] text-muted-foreground space-y-1 pt-2 border-t">
                                     <p>• 구독은 자동 갱신되며, {platform === 'ios' ? '설정 앱' : platform === 'android' ? 'Google Play' : '설정 페이지'}에서 언제든 해지 가능합니다.</p>
-                                    <p>• 7일 이내 미사용 시 전액 환불 가능합니다.</p>
-                                    <p>• 결제 진행 시 <Link href="/terms" className="text-primary underline">이용약관</Link> 및 <Link href="/privacy" className="text-primary underline">개인정보처리방침</Link>에 동의합니다.</p>
+                                    <p>• 7일 이내 미사용 시 전액 환불 가능합니다. 자세한 내용은 <Link href="/refund-policy" className="text-primary underline">환불 정책</Link> 참조.</p>
+                                    <p>• 결제 진행 시 <Link href="/terms" className="text-primary underline">이용약관</Link>, <Link href="/privacy" className="text-primary underline">개인정보처리방침</Link>, <Link href="/refund-policy" className="text-primary underline">환불 정책</Link>에 동의합니다.</p>
                                 </div>
                             </CardContent>
                         </Card>

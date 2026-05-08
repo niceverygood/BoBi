@@ -144,6 +144,7 @@ export default function TermsPage() {
                             </li>
                             <li><strong>환불 절차:</strong> 환불 요청은 서비스 내 설정 페이지 또는 고객센터(010-2309-7443)를 통해 신청할 수 있습니다.</li>
                             <li><strong>환불 처리:</strong> 환불은 신청일로부터 영업일 기준 3~5일 이내에 원래 결제 수단으로 처리됩니다.</li>
+                            <li><strong>상세 정책:</strong> 결제 수단별 처리 기준(카카오페이·토스·이니시스·App Store·Google Play), 부분 환불 계산 공식, 무료체험 환불 등 세부 사항은 <Link href="/refund-policy" className="text-primary underline font-medium">환불 정책</Link> 페이지를 참조하세요.</li>
                         </ul>
                     </section>
 
