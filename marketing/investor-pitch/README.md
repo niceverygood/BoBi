@@ -36,16 +36,39 @@ out/
 ## 실행
 
 ```bash
-# 1. PNG 15장 생성 (1920×1080)
+# 1. PNG 20장 생성 (1920×1080)
 node marketing/investor-pitch/capture.js
 
-# 2. PNG → PPTX 패키징 (PowerPoint / Keynote / Google Slides 호환)
+# 2-A. PNG → PPTX 패키징 (이미지 배경, 깔끔한 발표·인쇄용)
 node marketing/investor-pitch/build-pptx.js
+
+# 2-B. 네이티브 도형 PPTX (모든 텍스트 수정 가능 ⭐)
+node marketing/investor-pitch/build-pptx-editable.js
 ```
 
 산출:
-- `out/s1.png ~ s15.png` (각 1920×1080)
-- `out/bobi-pitch-deck.pptx` (15장 16:9, ~2.8MB)
+- `out/s1.png ~ s15.png` (PNG 20장, 각 1920×1080)
+- `out/bobi-pitch-deck.pptx` (이미지 배경, ~3.4MB) — 발표·인쇄·PDF 변환용
+- `out/bobi-pitch-deck-editable.pptx` (네이티브 도형, ~0.5MB) — **카피·디자인 직접 수정**
+
+### 두 PPTX 차이
+
+| 항목 | bobi-pitch-deck.pptx | bobi-pitch-deck-editable.pptx |
+|---|---|---|
+| 구성 | PNG 이미지 배경 | 네이티브 도형 + 텍스트 박스 |
+| 시각 품질 | 매우 깔끔 (HTML 렌더링 그대로) | 약간 단순 (PowerPoint 도형으로 재현) |
+| 용량 | 3.4MB | 0.5MB |
+| 텍스트 수정 | ❌ (이미지에 박힘) | ✅ 클릭하면 즉시 편집 |
+| 도형·색상 수정 | ❌ | ✅ |
+| 한국어 폰트 | Pretendard (HTML 렌더링) | 맑은 고딕 (시스템 fallback) |
+| **추천 용도** | VC 미팅 발표·PDF 출력 | 카피 다듬기·VC별 맞춤 변형 |
+
+### 워크플로우 권장
+
+1. **카피 수정** → editable.pptx 열어서 텍스트 박스 클릭 후 수정
+2. **수정 내용을 templates/slides.html에도 반영** (단일 출처 유지)
+3. **capture.js + build-pptx.js 재실행** → 깔끔한 PNG 배경 PPTX 갱신
+4. **VC 발송** → bobi-pitch-deck.pptx (이미지 배경, 폰트·디자인 100% 정확)
 
 ## 디자인 수정
 
