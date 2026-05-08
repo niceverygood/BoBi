@@ -14,16 +14,18 @@ ALIGO를 통해 발송하는 카카오 비즈니스 알림톡 템플릿 매핑·
 |---|---|---|---|---|
 | `UH_0933` | future_me_link | 미래의 나 — 링크 | ✅ 통과 (사용 중) | `ALIGO_TPL_FUTURE_ME_LINK` |
 | `UH_0934` | future_me_summary | 미래의 나 — 요약 | ✅ 통과 (사용 중) | `ALIGO_TPL_FUTURE_ME_SUMMARY` |
-| `UH_6830` | BOBI_MEDICAL_LINK | 진료정보 — 링크 | 🟡 검수중 (2026-05-07) | `ALIGO_TPL_MEDICAL_LINK` |
-| `UH_6831` | BOBI_MEDICAL_SUMMARY | 진료정보 — 요약 | 🟡 검수중 (2026-05-07) | `ALIGO_TPL_MEDICAL_SUMMARY` |
-| `UH_6832` | BOBI_RISK_LINK | 위험도 리포트 — 링크 | 🟡 검수중 (2026-05-07) | `ALIGO_TPL_RISK_LINK` |
-| `UH_6833` | BOBI_RISK_SUMMARY | 위험도 리포트 — 요약 | 🟡 검수중 (2026-05-07) | `ALIGO_TPL_RISK_SUMMARY` |
-| `UH_6835` | BOBI_RECEIPT_LINK | 가상영수증 — 링크 | 🟡 검수중 (2026-05-07) | `ALIGO_TPL_RECEIPT_LINK` |
-| `UH_6836` | BOBI_RECEIPT_SUMMARY | 가상영수증 — 요약 | 🟡 검수중 (2026-05-07) | `ALIGO_TPL_RECEIPT_SUMMARY` |
-| `UH_6999` | BOBI_CRM_RENEWAL | CRM — 갱신 D-30/D-7/D-Day | 🟡 검수중 (2026-05-07) | `ALIGO_TPL_CRM_RENEWAL` |
-| `UH_7000` | BOBI_CRM_EXEMPTION_END | CRM — 90일 면책 종료 D-3/D-Day | 🟡 검수중 (2026-05-07) | `ALIGO_TPL_CRM_EXEMPTION_END` |
-| `UH_7001` | BOBI_CRM_REDUCTION_END | CRM — 1년 감액 종료 D-7/D-Day | 🟡 검수중 (2026-05-07) | `ALIGO_TPL_CRM_REDUCTION_END` |
-| `UH_7002` | BOBI_CRM_BIRTHDAY | CRM — 고객 생일축하 | 🟡 검수중 (2026-05-07) | `ALIGO_TPL_CRM_BIRTHDAY` |
+| `UH_6830` | BOBI_MEDICAL_LINK | 진료정보 — 링크 | ✅ 통과 (2026-05-08) | `ALIGO_TPL_MEDICAL_LINK` |
+| `UH_6831` | BOBI_MEDICAL_SUMMARY | 진료정보 — 요약 | ✅ 통과 (2026-05-08) | `ALIGO_TPL_MEDICAL_SUMMARY` |
+| `UH_6832` | BOBI_RISK_LINK | 위험도 리포트 — 링크 | ✅ 통과 (2026-05-08) | `ALIGO_TPL_RISK_LINK` |
+| `UH_6833` | BOBI_RISK_SUMMARY | 위험도 리포트 — 요약 | ✅ 통과 (2026-05-08) | `ALIGO_TPL_RISK_SUMMARY` |
+| `UH_6835` | BOBI_RECEIPT_LINK | 가상영수증 — 링크 | ✅ 통과 (2026-05-08) | `ALIGO_TPL_RECEIPT_LINK` |
+| `UH_6836` | BOBI_RECEIPT_SUMMARY | 가상영수증 — 요약 | ✅ 통과 (2026-05-08) | `ALIGO_TPL_RECEIPT_SUMMARY` |
+| `UH_6999` | BOBI_CRM_RENEWAL | CRM — 갱신 D-30/D-7/D-Day | ✅ 통과 (2026-05-08) | `ALIGO_TPL_CRM_RENEWAL` |
+| `UH_7000` | BOBI_CRM_EXEMPTION_END | CRM — 90일 면책 종료 D-3/D-Day | ✅ 통과 (2026-05-08) | `ALIGO_TPL_CRM_EXEMPTION_END` |
+| `UH_7001` | BOBI_CRM_REDUCTION_END | CRM — 1년 감액 종료 D-7/D-Day | ✅ 통과 (2026-05-08) | `ALIGO_TPL_CRM_REDUCTION_END` |
+| `UH_7002` | BOBI_CRM_BIRTHDAY | CRM — 고객 생일축하 | ✅ 통과 (2026-05-08) | `ALIGO_TPL_CRM_BIRTHDAY` |
+
+> ✅ **2026-05-08 전체 12종 검수 통과**. Vercel ENV에 `ALIGO_TPL_*` 12개 모두 설정 + 1회 재배포 시 즉시 활성화.
 
 ## 검수 통과 후 환경변수 설정
 
