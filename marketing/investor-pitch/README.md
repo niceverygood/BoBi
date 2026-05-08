@@ -3,26 +3,33 @@
 VC 미팅용 슬라이드 15장. `docs/investor-pitch-deck.md` v3 의 텍스트를
 보비 디자인시스템(brand-50~800, Pretendard) 기반 HTML 으로 시각화.
 
-## 결과물
+## 결과물 (20장)
 
 ```
 out/
-├── s1.png   Cover (보비 로고 + 라운드 정보 박스)
-├── s2.png   Problem (4 페인포인트 그리드)
-├── s3.png   Solution (5대 핵심 기능)
-├── s4.png   Why Now (3 변곡점)
-├── s5.png   Market (TAM/SAM/SOM 동심원)
-├── s6.png   Product (오전·오후·저녁 시나리오)
-├── s7.png   Traction (Seed 1 검증 + 분기별 가입 곡선)
-├── s8.png   Business Model (3-Layer 매출)
-├── s9.png   Go-to-Market (3 Phase 타임라인)
-├── s10.png  Competition (5 경쟁사 비교 표)
-├── s11.png  Team (한승수·이종인 + 코어팀)
-├── s12.png  Financials & The Ask (10억 / Pre 100억)
-├── s13.png  Why BoBi Wins (5 모트)
-├── s14.png  Closing (CTA + 라운드 박스)
-└── s15.png  Q&A (예상 질문 8개)
+├── s1.png    Cover (보비 로고 + 라운드 정보 박스)
+├── s2.png    Problem (4 페인포인트 그리드)
+├── s3.png    Solution (5대 핵심 기능)
+├── s4.png    Why Now (3 변곡점)
+├── s4a.png  ★ Product Demo: 진료정보 분석 (폰 모킹)
+├── s4b.png  ★ Product Demo: 위험도 리포트 (폰 모킹)
+├── s4c.png  ★ Product Demo: 가상 사고영수증 (폰 모킹)
+├── s4d.png  ★ Product Demo: CRM 자동 알림톡 (폰 모킹)
+├── s4e.png  ★ Product Demo: 미래의 나 (폰 모킹)
+├── s5.png    Market (TAM/SAM/SOM 동심원)
+├── s6.png    Product (오전·오후·저녁 시나리오)
+├── s7.png    Traction (Seed 1 검증 + 분기별 가입 곡선)
+├── s8.png    Business Model (3-Layer 매출)
+├── s9.png    Go-to-Market (3 Phase 타임라인)
+├── s10.png   Competition (5 경쟁사 비교 표)
+├── s11.png   Team (한승수·이종인 + 코어팀)
+├── s12.png   Financials & The Ask (10억 / Pre 100억)
+├── s13.png   Why BoBi Wins (5 모트)
+├── s14.png   Closing (CTA + 라운드 박스)
+└── s15.png   Q&A (예상 질문 8개)
 ```
+
+★ = 폰 모킹 + 실제 보비 UI 톤 + 정량 가치 + 인용구. VC 미팅에서 가장 강력한 무기.
 
 각 PNG: **1920×1080 (PPT 표준 16:9)**. PowerPoint·Keynote·Google Slides 에 즉시 임포트 가능.
 

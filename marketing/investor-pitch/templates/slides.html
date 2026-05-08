@@ -106,6 +106,141 @@
   }
   .footer .logo { font-weight: 800; color: var(--brand-700); font-size: 20px; }
 
+  /* === 폰 모킹 (s4a~s4e Product Demo 슬라이드) === */
+  .phone {
+    width: 420px; height: 860px;
+    background: #0B1220;
+    border-radius: 56px;
+    padding: 14px;
+    box-shadow: 0 30px 60px rgba(15, 23, 42, 0.25), 0 8px 24px rgba(15, 23, 42, 0.12);
+    flex-shrink: 0;
+  }
+  .phone-screen {
+    width: 100%; height: 100%;
+    background: linear-gradient(180deg, #EFF6FF 0%, #fff 60%, #EFF6FF 100%);
+    border-radius: 44px;
+    overflow: hidden;
+    position: relative;
+    display: flex; flex-direction: column;
+    padding: 60px 28px 28px;
+  }
+  .phone-screen::before {
+    /* 노치 */
+    content: '';
+    position: absolute; top: 14px; left: 50%;
+    transform: translateX(-50%);
+    width: 140px; height: 32px;
+    background: #0B1220;
+    border-radius: 16px;
+  }
+  .phone-screen .eyebrow-sm {
+    align-self: center;
+    padding: 6px 16px; background: var(--brand-100); color: var(--brand-700);
+    border-radius: 999px; font-size: 14px; font-weight: 700;
+    margin-bottom: 16px; letter-spacing: -0.02em;
+  }
+  .phone-screen .h-sm {
+    font-size: 32px; font-weight: 800; color: var(--ink-900);
+    text-align: center; line-height: 1.15; letter-spacing: -0.03em;
+    margin-bottom: 20px;
+  }
+  .phone-screen .h-sm .accent { color: var(--brand-600); }
+  .phone-card {
+    background: #fff; border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 12px 32px rgba(26, 86, 219, 0.08);
+    flex: 1;
+    display: flex; flex-direction: column;
+  }
+  .phone-card .pc-title { font-size: 18px; font-weight: 800; color: var(--ink-900); margin-bottom: 4px; }
+  .phone-card .pc-sub { font-size: 13px; color: var(--ink-500); margin-bottom: 16px; }
+  .phone-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 0; border-bottom: 1px solid var(--ink-200);
+    font-size: 14px;
+  }
+  .phone-row:last-child { border-bottom: none; }
+  .phone-row .pl { color: var(--ink-500); font-weight: 500; }
+  .phone-row .pv { color: var(--ink-900); font-weight: 700; }
+  .phone-row .pv.brand { color: var(--brand-600); }
+  .phone-row .pv.danger { color: var(--danger); }
+  .pill-sm {
+    display: inline-block; padding: 4px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 600;
+  }
+  .pill-sm.warn { background: #FEF3C7; color: #B45309; }
+
+  /* 폰 안 위험도 바 */
+  .phone-bar { padding: 10px 0; border-bottom: 1px solid var(--ink-200); }
+  .phone-bar:last-child { border-bottom: none; }
+  .phone-bar .pb-top { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 14px; }
+  .phone-bar .pb-name { font-weight: 600; color: var(--ink-900); }
+  .phone-bar .pb-ratio { font-weight: 700; }
+  .phone-bar .pb-track { height: 8px; background: #F1F5F9; border-radius: 999px; overflow: hidden; }
+  .phone-bar .pb-fill { height: 100%; border-radius: 999px; }
+  .pb-fill-r { background: linear-gradient(90deg, #FCA5A5, #DC2626); }
+  .pb-fill-o { background: linear-gradient(90deg, #FCD34D, #D97706); }
+  .pb-fill-b { background: linear-gradient(90deg, #93C5FD, #2563EB); }
+
+  /* 가상영수증 */
+  .receipt-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 14px; background: #F8FAFC; border-radius: 10px;
+    font-size: 14px; margin-bottom: 8px;
+  }
+  .receipt-row .rl { color: var(--ink-500); font-weight: 500; }
+  .receipt-row .rr { font-weight: 700; }
+  .gap-pill {
+    margin-top: 12px; padding: 16px;
+    background: linear-gradient(135deg, var(--brand-600), var(--brand-800));
+    color: #fff; border-radius: 14px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .gap-pill .gl { font-size: 13px; opacity: 0.9; font-weight: 600; }
+  .gap-pill .gv { font-size: 24px; font-weight: 900; letter-spacing: -0.02em; }
+
+  /* 카카오 알림 */
+  .kakao-msg {
+    background: #FFEB00; padding: 14px 18px;
+    border-radius: 16px 16px 16px 4px;
+    font-size: 13px; line-height: 1.5; color: var(--ink-900);
+    margin-bottom: 10px;
+  }
+  .kakao-msg .km-from { font-size: 11px; color: #6B7280; font-weight: 600; margin-bottom: 4px; }
+  .kakao-msg b { color: var(--brand-700); }
+
+  /* 미래의 나 차트 */
+  .age-chart { display: flex; gap: 8px; align-items: flex-end; height: 240px; padding: 12px 0; }
+  .age-bar { flex: 1; display: flex; flex-direction: column; align-items: center; }
+  .age-bar .ab-bar { width: 100%; background: linear-gradient(180deg, var(--brand-600), var(--brand-800)); border-radius: 8px 8px 0 0; }
+  .age-bar .ab-label { font-size: 12px; color: var(--ink-500); margin-top: 6px; font-weight: 600; }
+  .age-bar .ab-val { font-size: 13px; color: var(--brand-700); font-weight: 800; margin-top: 2px; }
+
+  /* === 우측 텍스트 영역 (Product Demo) === */
+  .demo-body { display: flex; gap: 80px; align-items: center; height: 100%; }
+  .demo-text { flex: 1; }
+  .demo-text .h1 {
+    font-size: 56px; font-weight: 800; letter-spacing: -0.03em;
+    color: var(--ink-900); line-height: 1.1; margin-bottom: 20px;
+  }
+  .demo-text .h1 .accent { color: var(--brand-600); }
+  .demo-text .lead {
+    font-size: 24px; color: var(--ink-500); font-weight: 500;
+    line-height: 1.5; margin-bottom: 32px; letter-spacing: -0.02em;
+  }
+  .demo-text .pillrow { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 32px; }
+  .demo-text .pill {
+    padding: 12px 20px; background: var(--brand-50); color: var(--brand-700);
+    border-radius: 999px; font-size: 18px; font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .demo-text .quote {
+    padding: 20px 24px; background: var(--bg); border-left: 4px solid var(--brand-600);
+    border-radius: 8px;
+    font-size: 20px; color: var(--ink-700); line-height: 1.5; font-weight: 500;
+  }
+  .demo-text .quote b { color: var(--brand-700); font-weight: 800; }
+
   /* === Cover / Closing 전용 === */
   .slide.cover, .slide.closing {
     background: linear-gradient(160deg, var(--brand-50) 0%, #fff 50%, var(--brand-100) 100%);
@@ -367,7 +502,7 @@
       </div>
     </div>
   </div>
-  <div class="footer"><span class="logo">보비</span><span>2 / 15</span></div>
+  <div class="footer"><span class="logo">보비</span><span>2 / 20</span></div>
 </section>
 
 <!-- ==================================== -->
@@ -414,7 +549,7 @@
       특허 6건 출원 진행 (`docs/patent/`)
     </div>
   </div>
-  <div class="footer"><span class="logo">보비</span><span>3 / 15</span></div>
+  <div class="footer"><span class="logo">보비</span><span>3 / 20</span></div>
 </section>
 
 <!-- ==================================== -->
@@ -451,7 +586,241 @@
       </div>
     </div>
   </div>
-  <div class="footer"><span class="logo">보비</span><span>4 / 15</span></div>
+  <div class="footer"><span class="logo">보비</span><span>4 / 20</span></div>
+</section>
+
+<!-- ==================================== -->
+<!-- SLIDE 4a — Product Demo: 진료정보 분석 -->
+<!-- ==================================== -->
+<section class="slide" id="s4a">
+  <div class="slide-header">
+    <span class="slide-num">04A · PRODUCT DEMO</span>
+    <h1 class="slide-title">진료정보 분석 — <span class="accent">3시간 → 5분</span></h1>
+  </div>
+  <div class="body">
+    <div class="demo-body">
+      <div class="phone">
+        <div class="phone-screen">
+          <span class="eyebrow-sm">진료정보 분석</span>
+          <div class="h-sm"><span class="accent">5년치 진료내역,</span><br>한 화면에</div>
+          <div class="phone-card">
+            <div class="pc-title">홍길동님 진료내역 요약</div>
+            <div class="pc-sub">조회 기간: 2021~2026 (5년) · 84건</div>
+            <div class="phone-row"><span class="pl">주요 진단</span><span class="pv">고혈압 · 고지혈증</span></div>
+            <div class="phone-row"><span class="pl">총 진료 건수</span><span class="pv">84건</span></div>
+            <div class="phone-row"><span class="pl">복용 약물</span><span class="pv brand">아토르바스타틴 외 3종</span></div>
+            <div class="phone-row"><span class="pl">최근 진료</span><span class="pv">2026.04.18</span></div>
+            <div class="phone-row"><span class="pl">고지 사항 점검</span><span class="pv"><span class="pill-sm warn">2건 확인 필요</span></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="demo-text">
+        <div class="h1">5년치 진료내역,<br><span class="accent">5분에 정리</span></div>
+        <div class="lead">설계사 1명당 분석 시간 <b style="color: var(--brand-700);">3시간 → 5분</b><br>고지 누락 사전 점검으로 청약 거절·보험금 분쟁 사전 차단</div>
+        <div class="pillrow">
+          <span class="pill">HIRA 마이데이터</span>
+          <span class="pill">5년 통합 분석</span>
+          <span class="pill">AI 자동 정리</span>
+        </div>
+        <div class="quote">
+          "고객 한 명당 30분이면 충분. 청약 전에 <b>고지 누락 위험</b>도 미리 잡힙니다."
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span class="logo">보비</span><span>5 / 20</span></div>
+</section>
+
+<!-- ==================================== -->
+<!-- SLIDE 4b — Product Demo: 위험도 리포트 -->
+<!-- ==================================== -->
+<section class="slide" id="s4b">
+  <div class="slide-header">
+    <span class="slide-num">04B · PRODUCT DEMO</span>
+    <h1 class="slide-title">위험도 리포트 — <span class="accent">데이터로 설득</span></h1>
+  </div>
+  <div class="body">
+    <div class="demo-body">
+      <div class="phone">
+        <div class="phone-screen">
+          <span class="eyebrow-sm">위험도 리포트</span>
+          <div class="h-sm">일반인 대비<br><span class="accent">몇 배 위험</span>한지</div>
+          <div class="phone-card">
+            <div class="pc-title">홍길동님 위험도 분석</div>
+            <div class="pc-sub">근거 수준: 높음</div>
+            <div class="phone-bar">
+              <div class="pb-top"><span class="pb-name">심혈관 질환</span><span class="pb-ratio" style="color:#DC2626">3.2배</span></div>
+              <div class="pb-track"><div class="pb-fill pb-fill-r" style="width:90%"></div></div>
+            </div>
+            <div class="phone-bar">
+              <div class="pb-top"><span class="pb-name">당뇨</span><span class="pb-ratio" style="color:#D97706">1.9배</span></div>
+              <div class="pb-track"><div class="pb-fill pb-fill-o" style="width:60%"></div></div>
+            </div>
+            <div class="phone-bar">
+              <div class="pb-top"><span class="pb-name">암 (위)</span><span class="pb-ratio" style="color:#2563EB">1.4배</span></div>
+              <div class="pb-track"><div class="pb-fill pb-fill-b" style="width:40%"></div></div>
+            </div>
+            <div class="phone-bar">
+              <div class="pb-top"><span class="pb-name">뇌혈관 질환</span><span class="pb-ratio" style="color:#2563EB">1.2배</span></div>
+              <div class="pb-track"><div class="pb-fill pb-fill-b" style="width:30%"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="demo-text">
+        <div class="h1">"왜 보험이 필요한가"를<br><span class="accent">데이터로 설명</span></div>
+        <div class="lead">진료 + 건강검진 데이터로 <b style="color: var(--brand-700);">개인화된 질환 위험 배율</b> 자동 산출.<br>설계사 말이 아니라 숫자가 설득합니다.</div>
+        <div class="pillrow">
+          <span class="pill">개인화 모델</span>
+          <span class="pill">진료+건검 통합</span>
+          <span class="pill">근거 수준 표기</span>
+        </div>
+        <div class="quote">
+          "고객님이 <b>심혈관 일반인 대비 3.2배</b>입니다 — 한 마디로 클로징이 빨라집니다."
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span class="logo">보비</span><span>6 / 20</span></div>
+</section>
+
+<!-- ==================================== -->
+<!-- SLIDE 4c — Product Demo: 가상 사고영수증 -->
+<!-- ==================================== -->
+<section class="slide" id="s4c">
+  <div class="slide-header">
+    <span class="slide-num">04C · PRODUCT DEMO</span>
+    <h1 class="slide-title">가상 사고영수증 — <span class="accent">보장 갭 시각화</span></h1>
+  </div>
+  <div class="body">
+    <div class="demo-body">
+      <div class="phone">
+        <div class="phone-screen">
+          <span class="eyebrow-sm">가상 사고영수증</span>
+          <div class="h-sm">보장 갭,<br><span class="accent">숫자로</span> 보여드립니다</div>
+          <div class="phone-card">
+            <div class="pc-title">심근경색 가상영수증</div>
+            <div class="pc-sub">3차 종합병원 · 입원 14일 기준</div>
+            <div class="receipt-row"><span class="rl">예상 총 의료비</span><span class="rr">3,840만원</span></div>
+            <div class="receipt-row"><span class="rl">현재 보장 추정</span><span class="rr" style="color:#2563EB">1,200만원</span></div>
+            <div class="receipt-row"><span class="rl">자기부담 예상</span><span class="rr" style="color:#DC2626">2,640만원</span></div>
+            <div class="gap-pill">
+              <span class="gl">보장 부족분</span>
+              <span class="gv">2,640만</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="demo-text">
+        <div class="h1">"만약 그 질환이 생기면"<br><span class="accent">한 장으로</span> 답한다</div>
+        <div class="lead">예상 의료비 × 현재 보장 추정 × 자기부담 = <b style="color: var(--brand-700);">보장 갭 자동 산출</b>.<br>추가 가입 제안 클로징의 가장 강력한 무기.</div>
+        <div class="pillrow">
+          <span class="pill">의료비 시뮬레이션</span>
+          <span class="pill">약관 매칭</span>
+          <span class="pill">PDF 발송</span>
+        </div>
+        <div class="quote">
+          "<b>2,640만원 부족합니다</b>" — 고객이 추가 가입을 거절할 수 없는 한 장.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span class="logo">보비</span><span>7 / 20</span></div>
+</section>
+
+<!-- ==================================== -->
+<!-- SLIDE 4d — Product Demo: CRM 자동 알림톡 -->
+<!-- ==================================== -->
+<section class="slide" id="s4d">
+  <div class="slide-header">
+    <span class="slide-num">04D · PRODUCT DEMO</span>
+    <h1 class="slide-title">CRM 자동 알림톡 — <span class="accent">영업 기회 0% 미스</span></h1>
+  </div>
+  <div class="body">
+    <div class="demo-body">
+      <div class="phone">
+        <div class="phone-screen">
+          <span class="eyebrow-sm">CRM 자동 알림톡</span>
+          <div class="h-sm">갱신·면책·생일<br><span class="accent">자동으로</span> 보냅니다</div>
+          <div class="phone-card" style="background: transparent; box-shadow: none; padding: 0;">
+            <div class="kakao-msg">
+              <div class="km-from">@바틀 · 알림톡</div>
+              <b>[보비]</b> 박철수님, 실손의료보험 갱신일이 <b>일주일 남았습니다</b>.<br>
+              갱신일: 2026-05-14<br>
+              문의는 설계사 <b>한승수</b>에게 주세요.
+            </div>
+            <div class="kakao-msg">
+              <div class="km-from">@바틀 · 알림톡</div>
+              <b>[보비]</b> 김영희님, 90일 면책 기간이 <b>3일 뒤 종료</b>됩니다.<br>
+              면책 종료: 2026-05-10
+            </div>
+            <div class="kakao-msg">
+              <div class="km-from">@바틀 · 알림톡</div>
+              <b>[보비]</b> 이도경님, <b>생일을 진심으로 축하</b>드립니다. 설계사 한승수 드림
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="demo-text">
+        <div class="h1">한 번 입력 →<br><span class="accent">매일 새벽 자동 발송</span></div>
+        <div class="lead">갱신 D-30/D-7/당일 · 90일 면책 종료 · 1년 감액 종료 · 생일.<br><b style="color: var(--brand-700);">설계사 본인 이름</b>으로 발송 = 자연스러운 브랜딩.</div>
+        <div class="pillrow">
+          <span class="pill">매일 새벽 cron</span>
+          <span class="pill">중복 발송 차단</span>
+          <span class="pill">설계사 브랜딩</span>
+        </div>
+        <div class="quote">
+          "갱신·면책 미스 = 평생 LTV 손실. <b>보비는 0% 미스</b>를 약속합니다."
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span class="logo">보비</span><span>8 / 20</span></div>
+</section>
+
+<!-- ==================================== -->
+<!-- SLIDE 4e — Product Demo: 미래의 나       -->
+<!-- ==================================== -->
+<section class="slide" id="s4e">
+  <div class="slide-header">
+    <span class="slide-num">04E · PRODUCT DEMO</span>
+    <h1 class="slide-title">미래의 나 — <span class="accent">젊은 고객 클로징</span></h1>
+  </div>
+  <div class="body">
+    <div class="demo-body">
+      <div class="phone">
+        <div class="phone-screen">
+          <span class="eyebrow-sm">미래의 나</span>
+          <div class="h-sm">연령대별<br><span class="accent">의료비</span> 변화</div>
+          <div class="phone-card">
+            <div class="pc-title">홍길동님 미래 의료비</div>
+            <div class="pc-sub">연령대별 예상 의료비</div>
+            <div class="age-chart">
+              <div class="age-bar"><div class="ab-bar" style="height: 35%"></div><div class="ab-label">30대</div><div class="ab-val">120만</div></div>
+              <div class="age-bar"><div class="ab-bar" style="height: 55%"></div><div class="ab-label">40대</div><div class="ab-val">280만</div></div>
+              <div class="age-bar"><div class="ab-bar" style="height: 75%"></div><div class="ab-label">50대</div><div class="ab-val">540만</div></div>
+              <div class="age-bar"><div class="ab-bar" style="height: 95%"></div><div class="ab-label">60대</div><div class="ab-val">920만</div></div>
+              <div class="age-bar"><div class="ab-bar" style="height: 100%"></div><div class="ab-label">70대</div><div class="ab-val">1,400만</div></div>
+            </div>
+            <div class="phone-row" style="margin-top: 8px;"><span class="pl">최대 의료비 도달</span><span class="pv brand">70대 · 1,400만/년</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="demo-text">
+        <div class="h1">"지금 가입해야 하는<br><span class="accent">이유</span>"를 보여준다</div>
+        <div class="lead">30대 → 40대 → 50대 → 60대 의료비 곡선 시각화.<br>젊은 고객에게 가장 강력한 <b style="color: var(--brand-700);">설득 무기</b>.</div>
+        <div class="pillrow">
+          <span class="pill">통계청 데이터</span>
+          <span class="pill">연령별 시나리오</span>
+          <span class="pill">고객용 PDF</span>
+        </div>
+        <div class="quote">
+          "<b>30대는 120만 → 70대 1,400만</b>. 지금 가입하지 않을 이유가 없습니다."
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span class="logo">보비</span><span>9 / 20</span></div>
 </section>
 
 <!-- ==================================== -->
@@ -494,7 +863,7 @@
       </div>
     </div>
   </div>
-  <div class="footer"><span class="logo">보비</span><span>5 / 15</span></div>
+  <div class="footer"><span class="logo">보비</span><span>10 / 20</span></div>
 </section>
 
 <!-- ==================================== -->
@@ -540,7 +909,7 @@
       <div class="chip">분석 3시간 → <b>5분</b></div>
     </div>
   </div>
-  <div class="footer"><span class="logo">보비</span><span>6 / 15</span></div>
+  <div class="footer"><span class="logo">보비</span><span>11 / 20</span></div>
 </section>
 
 <!-- ==================================== -->
@@ -593,7 +962,7 @@
       <div class="step"><div class="q">Q4</div><div class="num">10,000</div><div class="desc">전환 집중</div></div>
     </div>
   </div>
-  <div class="footer"><span class="logo">보비</span><span>7 / 15</span></div>
+  <div class="footer"><span class="logo">보비</span><span>12 / 20</span></div>
 </section>
 
 <!-- ==================================== -->
@@ -648,7 +1017,7 @@
       </div>
     </div>
   </div>
-  <div class="footer"><span class="logo">보비</span><span>8 / 15</span></div>
+  <div class="footer"><span class="logo">보비</span><span>13 / 20</span></div>
 </section>
 
 <!-- ==================================== -->
@@ -687,7 +1056,7 @@
       </div>
     </div>
   </div>
-  <div class="footer"><span class="logo">보비</span><span>9 / 15</span></div>
+  <div class="footer"><span class="logo">보비</span><span>14 / 20</span></div>
 </section>
 
 <!-- ==================================== -->
@@ -720,7 +1089,7 @@
       </div>
     </div>
   </div>
-  <div class="footer"><span class="logo">보비</span><span>10 / 15</span></div>
+  <div class="footer"><span class="logo">보비</span><span>15 / 20</span></div>
 </section>
 
 <!-- ==================================== -->
@@ -763,7 +1132,7 @@
       </div>
     </div>
   </div>
-  <div class="footer"><span class="logo">보비</span><span>11 / 15</span></div>
+  <div class="footer"><span class="logo">보비</span><span>16 / 20</span></div>
 </section>
 
 <!-- ==================================== -->
@@ -813,7 +1182,7 @@
       Exit 한화·삼성생명 자회사 GA M&A (5~7년)
     </div>
   </div>
-  <div class="footer"><span class="logo">보비</span><span>12 / 15</span></div>
+  <div class="footer"><span class="logo">보비</span><span>17 / 20</span></div>
 </section>
 
 <!-- ==================================== -->
@@ -861,7 +1230,7 @@
       </div>
     </div>
   </div>
-  <div class="footer"><span class="logo">보비</span><span>13 / 15</span></div>
+  <div class="footer"><span class="logo">보비</span><span>18 / 20</span></div>
 </section>
 
 <!-- ==================================== -->
@@ -910,7 +1279,7 @@
       분기별 KPI 보고서 · 특허 6건 · 재무 모델 풀버전 · 약관·법무 검토 · BD 파이프라인 42개사 · 이종인 채널 디테일
     </div>
   </div>
-  <div class="footer"><span class="logo">보비</span><span>15 / 15</span></div>
+  <div class="footer"><span class="logo">보비</span><span>20 / 20</span></div>
 </section>
 
 </body>

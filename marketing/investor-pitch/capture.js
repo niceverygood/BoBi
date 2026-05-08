@@ -17,7 +17,9 @@ const OUT_DIR = path.join(__dirname, 'out');
 const HTML_PATH = 'file://' + path.join(__dirname, 'templates', 'slides.html');
 
 const SLIDES = [
-    's1', 's2', 's3', 's4', 's5', 's6', 's7', 's8',
+    's1', 's2', 's3', 's4',
+    's4a', 's4b', 's4c', 's4d', 's4e',  // 제품 데모 5장 (폰 모킹)
+    's5', 's6', 's7', 's8',
     's9', 's10', 's11', 's12', 's13', 's14', 's15',
 ];
 const WIDTH = 1920;
