@@ -2,14 +2,12 @@
 //
 // templates/slides.html 의 각 <section> 을 다음 사이즈로 캡처:
 //
-//   App Store  iPhone 6.7"        : 1290 × 2796   (out/ios-67/)
+//   App Store  iPhone 6.7"        : 1284 × 2778   (out/ios-67/)
 //   Google Play Phone (권장)       : 1080 × 1920   (out/android/)
 //   Google Play Feature Graphic    : 1024 ×  500   (out/feature-graphic/)
 //
 // 스토어 정책상 #s1~#s6 = 폰 사이즈, #fg = Feature Graphic.
-// 슬라이드 내부 절대 좌표는 1080×1920 기준으로 디자인 됐고, iOS는 약간 더 커서
-// 슬라이드 자체를 1080×1920 으로 캡처한 뒤 스마트폰 비율(1290:2796 = 9:19.5)과
-// 1080:1920 = 9:16 차이를 흡수하기 위해 iOS는 slide 본체를 1290×2796 로 동적 리사이즈한다.
+// App Store Connect 6.7" 필수 해상도는 1284×2778 (iPhone 14 Pro Max). 1290×2796은 거부됨.
 //
 // 사용:
 //   node marketing/store-screenshots/capture.js
@@ -27,7 +25,7 @@ const PHONE_SLIDES = ['s1', 's2', 's3', 's4', 's5', 's6'];
 const FEATURE_GRAPHIC_ID = 'fg';
 
 const TARGETS = [
-    { name: 'ios-67',          width: 1290, height: 2796, ids: PHONE_SLIDES },
+    { name: 'ios-67',          width: 1284, height: 2778, ids: PHONE_SLIDES },
     { name: 'android',         width: 1080, height: 1920, ids: PHONE_SLIDES },
     { name: 'feature-graphic', width: 1024, height:  500, ids: [FEATURE_GRAPHIC_ID] },
 ];
