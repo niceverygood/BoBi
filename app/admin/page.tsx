@@ -1522,6 +1522,7 @@ function PaymentHistory() {
     const [tab, setTab] = useState<'payments' | 'active' | 'cancelled' | 'analytics'>('payments');
     const [analyticsFilter, setAnalyticsFilter] = useState<keyof AnalyticsBundle['users'] | null>(null);
     const [providerFilter, setProviderFilter] = useState<string>('all');
+    const [paymentTypeFilter, setPaymentTypeFilter] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [cancelling, setCancelling] = useState<string | null>(null);
     const [actionMsg, setActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -1557,6 +1558,30 @@ function PaymentHistory() {
         return <span className="text-xs text-gray-700">{label}</span>;
     };
 
+    // 결제 분류 배지 — payment_type 기반 색상·라벨
+    // 색상 채널은 §11.3 기준: 의미별로 다른 색 (보비 블루는 메인 액션에만)
+    const paymentTypeBadge = (type: unknown) => {
+        const t = String(type || '');
+        const map: Record<string, { label: string; className: string }> = {
+            first_basic:  { label: '신규 베이직', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+            first_pro:    { label: '신규 프로',    className: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+            first_other:  { label: '신규',         className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+            renewal:      { label: '자동 갱신',    className: 'bg-slate-100 text-slate-700 border-slate-300' },
+            upgrade:      { label: '업그레이드',   className: 'bg-violet-100 text-violet-800 border-violet-300' },
+            downgrade:    { label: '다운그레이드', className: 'bg-amber-50 text-amber-800 border-amber-300' },
+            resubscribe:  { label: '재구독',       className: 'bg-sky-50 text-sky-700 border-sky-200' },
+            trial_setup:  { label: '체험 등록',    className: 'bg-gray-50 text-gray-600 border-gray-200' },
+            coupon:       { label: '쿠폰 결제',    className: 'bg-pink-50 text-pink-700 border-pink-200' },
+            cancelled:    { label: '취소·환불',    className: 'bg-gray-100 text-gray-500 border-gray-300 line-through' },
+        };
+        const cfg = map[t] || { label: '미분류', className: 'bg-gray-50 text-gray-500 border-gray-200' };
+        return (
+            <Badge variant="soft" className={`${cfg.className} text-[10px] whitespace-nowrap`}>
+                {cfg.label}
+            </Badge>
+        );
+    };
+
     const matchesSearch = useCallback((row: Record<string, unknown>) => {
         const q = searchQuery.trim().toLowerCase();
         if (!q) return true;
@@ -1564,7 +1589,9 @@ function PaymentHistory() {
         return fields.some(v => String(v ?? '').toLowerCase().includes(q));
     }, [searchQuery]);
 
-    const filteredPayments = payments.filter(matchesSearch);
+    const filteredPayments = payments
+        .filter(matchesSearch)
+        .filter(p => paymentTypeFilter === 'all' ? true : String(p.payment_type) === paymentTypeFilter);
     const filteredSubs = subs.filter(matchesSearch);
     const activeSubs = filteredSubs.filter(s => s.status === 'active');
     const cancelledSubs = filteredSubs.filter(s => s.status === 'cancelled');
@@ -1763,6 +1790,44 @@ function PaymentHistory() {
                         })}
                     </div>
                 )}
+
+                {/* 결제 분류 필터 — 최초/갱신/업그레이드/다운그레이드/재구독 */}
+                {tab === 'payments' && (
+                    <div className="flex gap-1 mt-2 flex-wrap items-center">
+                        <span className="text-[10px] text-gray-400 mr-1">분류</span>
+                        {[
+                            { key: 'all',          label: '전체' },
+                            { key: 'first_basic',  label: '신규 베이직' },
+                            { key: 'first_pro',    label: '신규 프로' },
+                            { key: 'renewal',      label: '자동 갱신' },
+                            { key: 'upgrade',      label: '업그레이드' },
+                            { key: 'downgrade',    label: '다운그레이드' },
+                            { key: 'resubscribe',  label: '재구독' },
+                            { key: 'trial_setup',  label: '체험 등록' },
+                            { key: 'coupon',       label: '쿠폰' },
+                            { key: 'cancelled',    label: '취소·환불' },
+                        ].map(({ key, label }) => {
+                            const active = paymentTypeFilter === key;
+                            const count = key === 'all'
+                                ? payments.filter(matchesSearch).length
+                                : payments.filter(matchesSearch).filter(p => String(p.payment_type) === key).length;
+                            return (
+                                <button
+                                    key={key}
+                                    onClick={() => setPaymentTypeFilter(key)}
+                                    className={`px-2.5 py-1 rounded-md text-[11px] inline-flex items-center gap-1 transition ${
+                                        active
+                                            ? 'bg-gray-900 text-white'
+                                            : 'text-gray-600 hover:bg-gray-100'
+                                    }`}
+                                >
+                                    {label}
+                                    <span className={`text-[10px] ${active ? 'text-gray-300' : 'text-gray-400'}`}>{count}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
             </CardHeader>
             <CardContent>
                 {loading ? <p className="text-sm text-muted-foreground text-center py-8">로딩 중...</p>
@@ -1772,6 +1837,7 @@ function PaymentHistory() {
                     <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b bg-muted/30">
                         <th className="text-left p-2">일시</th><th className="text-left p-2">이메일</th><th className="text-left p-2">이름</th>
                         <th className="text-left p-2">수단</th>
+                        <th className="text-left p-2">분류</th>
                         <th className="text-left p-2">플랜</th><th className="text-left p-2">주기</th><th className="text-right p-2">금액</th>
                         <th className="text-left p-2">상태</th><th className="text-left p-2">결제ID</th>
                         <th className="text-left p-2">가맹점회원ID</th>
@@ -1786,7 +1852,8 @@ function PaymentHistory() {
                             <td className="p-2 text-gray-900">{String(p.user_email || '-')}</td>
                             <td className="p-2 text-gray-700">{String(p.user_name || '-')}</td>
                             <td className="p-2">{providerBadge(p.provider || p.payment_method)}</td>
-                            <td className="p-2"><Badge variant="soft" className="bg-gray-50 text-gray-700 border-gray-200 text-[10px]">{String(p.plan_slug || p.plan_id || '-')}</Badge></td>
+                            <td className="p-2">{paymentTypeBadge(p.payment_type)}</td>
+                            <td className="p-2"><Badge variant="soft" className="bg-gray-50 text-gray-700 border-gray-200 text-[10px]">{String(p.plan_slug || p.plan_inferred || p.plan_id || '-')}</Badge></td>
                             <td className="p-2 text-gray-600">{p.billing_cycle === 'yearly' ? '연간' : '월간'}</td>
                             <td className={`p-2 text-right ${NUMERIC_CLASS} text-gray-900 ${p.status === 'cancelled' ? 'line-through text-gray-400' : ''}`}>{(Number(p.amount) || 0).toLocaleString()}원</td>
                             <td className="p-2">{statusBadge(p.status, p.cancelled_by)}</td>
