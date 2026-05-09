@@ -199,14 +199,111 @@ export async function GET(request: Request) {
             }
         }
 
+        // payment_type 분류 — 결제 1건이 어떤 행위인지 (최초/갱신/업그레이드/다운그레이드/재구독)
+        // 신호 우선순위:
+        //   1) payment_id가 'renewal-' prefix → renewal (cron 자동 갱신)
+        //   2) 같은 user의 이전 paid 결제와 비교:
+        //      - 없으면: 첫 결제 → amount로 first_basic/first_pro/first_other 분류
+        //      - 있으면: plan rank 비교 → upgrade/downgrade/resubscribe(같은 plan 재가입)
+        //   3) amount 0원이면서 coupon_code 있으면: coupon (BOBI-CJ 등)
+        function planFromAmount(amount: number, coupon: string | null): string {
+            if (coupon === 'BOBI-CJ' || amount === 19900 || amount === 19800) return 'basic';
+            if (amount === 39900) return 'pro';
+            if (amount === 29900) return 'pro_promo';      // 프로모션·중간가
+            if (amount === 99000) return 'team_basic';
+            if (amount === 390000) return 'business';
+            if (amount === 890000) return 'enterprise';
+            if (amount === 100) return 'trial';            // 카카오페이 빌링키 100원
+            if (amount === 0) return coupon ? 'coupon' : 'unknown';
+            return 'unknown';
+        }
+        const PAID_STATUSES = new Set(['paid', 'success', 'completed']);
+        // user_id별 paid 결제를 시간순 (오래된 → 최신) 으로 정렬해 두면 인덱스로 이전 결제 찾기 가능
+        const paidByUser = new Map<string, Array<Record<string, any>>>();
+        for (const p of allPayments) {
+            if (!p.user_id) continue;
+            if (!PAID_STATUSES.has(String(p.status))) continue;
+            if (!paidByUser.has(p.user_id)) paidByUser.set(p.user_id, []);
+            paidByUser.get(p.user_id)!.push(p);
+        }
+        for (const arr of paidByUser.values()) {
+            arr.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        }
+
+        function classifyPaymentType(p: Record<string, any>): {
+            payment_type: 'first_basic' | 'first_pro' | 'first_other' | 'renewal' | 'upgrade' | 'downgrade' | 'resubscribe' | 'trial_setup' | 'coupon' | 'cancelled' | 'unknown';
+            plan_inferred: string;
+        } {
+            const amount = Number(p.amount) || 0;
+            const coupon = (p.coupon_code as string | null) || null;
+            const planNow = planFromAmount(amount, coupon);
+            const status = String(p.status || '');
+            const id = String(p.payment_id || '');
+
+            // 취소/환불 상태는 분류 별도 (UI에서 amount 표기와 같이 보이도록)
+            if (status === 'cancelled' || status === 'refunded') {
+                return { payment_type: 'cancelled', plan_inferred: planNow };
+            }
+            // 100원 카카오페이 빌링키 등록 (체험 시작용)
+            if (planNow === 'trial') {
+                return { payment_type: 'trial_setup', plan_inferred: planNow };
+            }
+            // 쿠폰 0원 결제
+            if (planNow === 'coupon') {
+                return { payment_type: 'coupon', plan_inferred: planNow };
+            }
+            // cron 자동 갱신
+            if (id.startsWith('renewal-')) {
+                return { payment_type: 'renewal', plan_inferred: planNow };
+            }
+            // 최초 결제 vs 전환 — 같은 user의 paid 이전 결제 찾기
+            const userPaid = paidByUser.get(p.user_id) || [];
+            const myIdx = userPaid.findIndex(x => x.id === p.id);
+            // 이전 paid 결제 중 trial_setup(100원), coupon(0원) 제외하고 실제 의미 있는 결제 찾기
+            let prev: Record<string, any> | null = null;
+            for (let i = myIdx - 1; i >= 0; i--) {
+                const px = userPaid[i];
+                const pa = Number(px.amount) || 0;
+                const pc = (px.coupon_code as string | null) || null;
+                const pln = planFromAmount(pa, pc);
+                if (pln !== 'trial' && pln !== 'coupon' && pln !== 'unknown') {
+                    prev = px;
+                    break;
+                }
+            }
+            if (!prev) {
+                // 첫 결제 (의미 있는)
+                if (planNow === 'basic' || planNow === 'team_basic') return { payment_type: 'first_basic', plan_inferred: planNow };
+                if (planNow === 'pro' || planNow === 'team_pro' || planNow === 'pro_promo') return { payment_type: 'first_pro', plan_inferred: planNow };
+                return { payment_type: 'first_other', plan_inferred: planNow };
+            }
+            // 이전 결제 plan과 비교
+            const prevAmount = Number(prev.amount) || 0;
+            const prevCoupon = (prev.coupon_code as string | null) || null;
+            const planPrev = planFromAmount(prevAmount, prevCoupon);
+
+            const RANK: Record<string, number> = {
+                basic: 1, team_basic: 1, pro_promo: 1.5, pro: 2, team_pro: 2, business: 3, enterprise: 4,
+            };
+            const a = RANK[planPrev] ?? 0;
+            const b = RANK[planNow] ?? 0;
+            if (b > a) return { payment_type: 'upgrade', plan_inferred: planNow };
+            if (b < a) return { payment_type: 'downgrade', plan_inferred: planNow };
+            // 같은 plan = 재구독 (이전이 cancelled 또는 만료된 후)
+            return { payment_type: 'resubscribe', plan_inferred: planNow };
+        }
+
         let enrichedPayments: Record<string, any>[] = allPayments.map(p => {
             const inferred = p.payment_method || subProviderByUser.get(p.user_id) || 'card';
+            const { payment_type, plan_inferred } = classifyPaymentType(p);
             return {
                 ...p,
                 payment_method: inferred,
                 provider: normalizeProvider({ payment_method: inferred }),
                 user_email: userMap.get(p.user_id)?.email || '-',
                 user_name: userMap.get(p.user_id)?.name || '-',
+                payment_type,
+                plan_inferred,
             };
         });
 
