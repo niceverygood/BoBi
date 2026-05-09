@@ -24,7 +24,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Mic, MicOff, Pause, Play, Upload, FileText, Loader2, Sparkles, AlertCircle, Trash2, Calendar, ChevronDown, ChevronUp, X, Edit3 } from 'lucide-react';
+import { Mic, MicOff, Pause, Play, Upload, FileText, Loader2, Sparkles, AlertCircle, Trash2, Calendar, ChevronDown, ChevronUp, X, Edit3, Crown, Lock } from 'lucide-react';
+import Link from 'next/link';
 
 interface NextAction {
     action: string;
@@ -97,8 +98,17 @@ function pickMimeType(): string {
     return '';
 }
 
+interface Usage {
+    limit: number;     // -1 = 무제한, 0 = 사용 불가, N = 평생 N번
+    used: number;
+    remaining: number;
+    canUse: boolean;
+}
+
 export default function ConsultationMemoCard({ customerId }: Props) {
     const [memos, setMemos] = useState<ConsultationMemo[]>([]);
+    const [usage, setUsage] = useState<Usage | null>(null);
+    const [planSlug, setPlanSlug] = useState<string>('free');
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -128,7 +138,11 @@ export default function ConsultationMemoCard({ customerId }: Props) {
         try {
             const res = await fetch(`/api/customers/${customerId}/consultation`);
             const data = await res.json();
-            if (res.ok) setMemos(data.memos || []);
+            if (res.ok) {
+                setMemos(data.memos || []);
+                if (data.usage) setUsage(data.usage);
+                if (data.planSlug) setPlanSlug(data.planSlug);
+            }
         } catch (err) {
             console.error(err);
         } finally {
@@ -281,6 +295,16 @@ export default function ConsultationMemoCard({ customerId }: Props) {
                 setError(data.error || 'AI 분석 실패');
             } else {
                 setMemos([data.memo, ...memos]);
+                // 사용량 즉시 차감 반영 (Basic 한도 사용자에게 잔여 갱신)
+                if (usage && usage.limit > 0) {
+                    const newUsed = usage.used + 1;
+                    setUsage({
+                        ...usage,
+                        used: newUsed,
+                        remaining: Math.max(0, usage.limit - newUsed),
+                        canUse: usage.limit - newUsed > 0,
+                    });
+                }
                 setRecordedBlob(null);
                 setManualText('');
                 setRecordingDuration(0);
@@ -322,21 +346,104 @@ export default function ConsultationMemoCard({ customerId }: Props) {
     const sizePercent = (recordingBytes / MAX_AUDIO_BYTES) * 100;
     const sizeWarning = sizePercent > 80;
 
+    // 플랜별 안내 라벨
+    const planBadge = usage && (
+        usage.limit === -1 ? (
+            <Badge variant="outline" className="text-[10px] bg-violet-50 text-violet-700 border-violet-200">
+                <Crown className="w-2.5 h-2.5 mr-0.5" /> 프로 · 무제한
+            </Badge>
+        ) : usage.limit > 0 ? (
+            <Badge variant="outline" className={`text-[10px] ${usage.remaining === 0 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                베이직 · {usage.used}/{usage.limit} 사용
+            </Badge>
+        ) : (
+            <Badge variant="outline" className="text-[10px] bg-gray-50 text-gray-600 border-gray-200">
+                <Lock className="w-2.5 h-2.5 mr-0.5" /> 베이직+ 필요
+            </Badge>
+        )
+    );
+
+    // Free 사용자 — 잠금 화면
+    const isLocked = usage?.limit === 0;
+    // Basic 한도 도달
+    const isExhausted = usage && usage.limit > 0 && usage.remaining === 0;
+
     return (
         <Card className="border-0 shadow-sm">
             <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
+                <CardTitle className="text-base flex items-center gap-2 flex-wrap">
                     <Mic className="w-4 h-4 text-primary" />
                     상담 메모
                     <Badge variant="outline" className="text-[10px]">AI 자동 요약</Badge>
+                    {planBadge}
                 </CardTitle>
                 <CardDescription className="text-xs">
                     실시간 녹음 또는 파일 업로드 후 AI가 요약·다음 액션·태그·감정을 자동으로 정리합니다.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
+                {/* === Free 사용자 — 잠금 화면 === */}
+                {!loading && isLocked && (
+                    <div className="rounded-xl border-2 border-dashed border-violet-300 bg-gradient-to-br from-violet-50 to-blue-50 p-5 text-center space-y-3">
+                        <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center mx-auto">
+                            <Lock className="w-5 h-5 text-violet-600" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold text-foreground mb-1">상담 메모는 베이직 플랜 이상에서 이용 가능합니다</h3>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                                AI가 음성을 자동으로 전사·요약하고 다음 액션·태그·감정까지 정리합니다.
+                                <br />
+                                베이직은 평생 3번 체험, 프로는 무제한.
+                            </p>
+                        </div>
+                        <div className="flex gap-2 justify-center flex-wrap">
+                            <Link href="/dashboard/billing">
+                                <Button size="sm" className="bg-violet-600 hover:bg-violet-700">
+                                    <Crown className="w-3.5 h-3.5 mr-1" /> 플랜 업그레이드
+                                </Button>
+                            </Link>
+                            <Link href="/pricing">
+                                <Button size="sm" variant="outline">
+                                    플랜 비교
+                                </Button>
+                            </Link>
+                        </div>
+                    </div>
+                )}
+
+                {/* === Basic 한도 도달 — 프로 업그레이드 안내 === */}
+                {!loading && isExhausted && (
+                    <div className="rounded-xl border-2 border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 p-5 text-center space-y-3">
+                        <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
+                            <Crown className="w-5 h-5 text-amber-600" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold text-foreground mb-1">
+                                베이직 평생 한도 {usage?.limit}회를 모두 사용했어요
+                            </h3>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                                지금까지 작성한 메모는 그대로 열람·삭제 가능합니다.
+                                <br />
+                                프로 플랜으로 업그레이드하면 상담 메모를 무제한으로 작성할 수 있어요.
+                            </p>
+                        </div>
+                        <div className="flex gap-2 justify-center flex-wrap">
+                            <Link href="/dashboard/billing">
+                                <Button size="sm" className="bg-amber-600 hover:bg-amber-700">
+                                    <Crown className="w-3.5 h-3.5 mr-1" /> 프로로 업그레이드
+                                </Button>
+                            </Link>
+                            <Link href="/pricing">
+                                <Button size="sm" variant="outline">
+                                    플랜 비교
+                                </Button>
+                            </Link>
+                        </div>
+                    </div>
+                )}
+
                 {/* === 녹음 중 패널 === */}
-                {isRecording && (
+                {!isLocked && !isExhausted && isRecording && (
                     <div className={`rounded-lg border-2 p-4 ${isPaused ? 'border-amber-300 bg-amber-50' : 'border-rose-300 bg-rose-50'}`}>
                         <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
@@ -393,7 +500,7 @@ export default function ConsultationMemoCard({ customerId }: Props) {
                 )}
 
                 {/* === 녹음 완료 — 미리듣기 + 분석 시작 === */}
-                {recordedBlob && !isRecording && (
+                {!isLocked && !isExhausted && recordedBlob && !isRecording && (
                     <div className="rounded-lg border-2 border-violet-300 bg-violet-50 p-4 space-y-3">
                         <div className="flex items-center justify-between">
                             <div>
@@ -420,7 +527,7 @@ export default function ConsultationMemoCard({ customerId }: Props) {
                 )}
 
                 {/* === 텍스트 입력 모드 === */}
-                {inputMode === 'text' && !isRecording && !recordedBlob && (
+                {!isLocked && !isExhausted && inputMode === 'text' && !isRecording && !recordedBlob && (
                     <div className="rounded-lg border-2 border-gray-300 p-4 space-y-3">
                         <div className="flex items-center justify-between">
                             <span className="text-sm font-semibold flex items-center gap-1.5">
@@ -449,7 +556,7 @@ export default function ConsultationMemoCard({ customerId }: Props) {
                 )}
 
                 {/* === 메인 입력 옵션 (idle 상태) — 두 개 큰 버튼 + 텍스트 옵션 === */}
-                {inputMode === 'idle' && !isRecording && !recordedBlob && (
+                {!isLocked && !isExhausted && inputMode === 'idle' && !isRecording && !recordedBlob && (
                     <div className="space-y-3">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {/* 실시간 녹음 — 가장 강조 */}

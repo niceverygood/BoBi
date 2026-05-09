@@ -31,7 +31,21 @@ export interface PlanFeatures {
     //   crm_full           — Pro 이상. + 면책/감액 종료, 생일, 가입제안서 PDF 자동 파싱
     crm_renewal_notify?: boolean;
     crm_full?: boolean;
+    // 상담 음성 메모 + AI 자동 요약:
+    //   Free  — 사용 불가
+    //   Basic — 평생 3번 (체험용 한도)
+    //   Pro+  — 무제한 (consultation_memo_unlimited=true)
+    consultation_memo_unlimited?: boolean;
 }
+
+// 상담 메모 평생 사용 한도 (slug 기반, features 없을 때 fallback)
+export const CONSULTATION_MEMO_LIMIT_BY_SLUG: Record<string, number> = {
+    free: 0,
+    basic: 3,
+    team_basic: 3,
+    pro: -1,         // -1 = 무제한
+    team_pro: -1,
+};
 
 export interface Subscription {
     id: string;

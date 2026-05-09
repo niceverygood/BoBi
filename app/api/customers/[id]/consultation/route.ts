@@ -18,6 +18,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { transcribeAudio } from '@/lib/ai/whisper';
 import { callClaude } from '@/lib/ai/claude';
+import { getUserPlan, getConsultationMemoUsage } from '@/lib/subscription/access';
 
 interface AnalyzedMemo {
     summary: string;
@@ -51,6 +52,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         }
         if (customer.user_id !== user.id) {
             return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
+        }
+
+        // 플랜 게이트: Free 사용 불가, Basic 평생 3번, Pro+ 무제한
+        const plan = await getUserPlan(supabase, user.id);
+        const usage = await getConsultationMemoUsage(supabase, user.id, plan);
+        if (!usage.canUse) {
+            const upgradeMessage = usage.limit === 0
+                ? '상담 메모는 베이직 플랜 이상에서 이용 가능합니다.'
+                : `베이직 플랜은 평생 ${usage.limit}번까지 사용 가능합니다 (${usage.used}/${usage.limit} 사용). 무제한 사용은 프로 플랜으로 업그레이드해주세요.`;
+            return NextResponse.json({
+                error: upgradeMessage,
+                requiresPlan: usage.limit === 0 ? 'basic' : 'pro',
+                feature: 'consultation_memo',
+                usage,
+            }, { status: 403 });
         }
 
         // 폼에서 음성 파일 + 메타 받기
@@ -242,7 +258,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
             return NextResponse.json({ error: memosErr.message }, { status: 500 });
         }
 
-        return NextResponse.json({ memos: memos || [] });
+        // 플랜·사용량 정보 동봉 (UI에서 잔여 횟수·업그레이드 안내 표시)
+        const plan = await getUserPlan(supabase, user.id);
+        const usage = await getConsultationMemoUsage(supabase, user.id, plan);
+
+        return NextResponse.json({
+            memos: memos || [],
+            usage,
+            planSlug: plan?.slug || 'free',
+        });
     } catch (error) {
         return NextResponse.json({ error: (error as Error).message || '서버 오류' }, { status: 500 });
     }

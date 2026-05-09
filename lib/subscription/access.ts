@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { PlanFeatures } from '@/types/subscription';
+import { CONSULTATION_MEMO_LIMIT_BY_SLUG } from '@/types/subscription';
 
 const PRO_PLAN_SLUGS = new Set(['pro', 'team_pro']);
 
@@ -47,4 +48,51 @@ export function canAccessProFeature(
 export function canAccessCodef(plan: FetchedPlan): boolean {
     if (!plan) return false;
     return plan.slug !== 'free';
+}
+
+/**
+ * 상담 메모 평생 사용 한도.
+ *   Free  → 0   (사용 불가)
+ *   Basic → 3   (체험용)
+ *   Pro+  → -1  (무제한)
+ *
+ * features.consultation_memo_unlimited === true 이면 plan slug와 무관하게 무제한.
+ */
+export function getConsultationMemoLimit(plan: FetchedPlan): number {
+    if (!plan) return 0;
+    const features = (plan.features || {}) as Record<string, boolean | undefined>;
+    if (features.consultation_memo_unlimited === true) return -1;
+    const limit = CONSULTATION_MEMO_LIMIT_BY_SLUG[plan.slug];
+    return limit ?? 0;
+}
+
+/**
+ * 사용자의 상담 메모 사용 가능 여부 + 잔여 횟수 계산.
+ * 클라이언트·서버 양쪽에서 사용. supabase 인스턴스를 받아 user_id로 COUNT.
+ */
+export async function getConsultationMemoUsage(
+    supabase: SupabaseClient,
+    userId: string,
+    plan: FetchedPlan,
+): Promise<{
+    limit: number;     // -1 = 무제한, 0 = 사용 불가, N = 평생 N번
+    used: number;      // 지금까지 사용한 횟수
+    remaining: number; // -1 = 무제한, N = 잔여 (음수 가능 — 한도 초과)
+    canUse: boolean;
+}> {
+    const limit = getConsultationMemoLimit(plan);
+    if (limit === 0) {
+        return { limit: 0, used: 0, remaining: 0, canUse: false };
+    }
+    if (limit === -1) {
+        return { limit: -1, used: 0, remaining: -1, canUse: true };
+    }
+    // 평생 사용 횟수 카운트
+    const { count } = await supabase
+        .from('consultation_memos')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId);
+    const used = count || 0;
+    const remaining = Math.max(0, limit - used);
+    return { limit, used, remaining, canUse: remaining > 0 };
 }
