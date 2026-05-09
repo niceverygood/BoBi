@@ -177,7 +177,7 @@ pptx.layout = 'LAYOUT_WIDE';
             align: 'center',
         });
     });
-    s.addText('주식회사 바틀 · 한승수 대표 · 2026.05 · support@bobi.co.kr', {
+    s.addText('주식회사 바틀 · 한승수 대표 010-8739-9771 · hss@bottlecorp.kr · bobi.co.kr · 2026.05', {
         x: 0, y: 6.95, w: W, h: 0.3,
         fontSize: 10, fontFace: FONT, color: COLOR.ink500,
         align: 'center',
@@ -1247,9 +1247,9 @@ demoSlides.forEach((d) => {
         x: W / 2 - 3.0, y: 5.0, w: 6.0, h: 0.7,
         fill: { color: COLOR.brand600 }, line: { type: 'none' }, rectRadius: 0.35,
     });
-    s.addText('support@bobi.co.kr · bobi.co.kr', {
+    s.addText('한승수 010-8739-9771 · hss@bottlecorp.kr', {
         x: W / 2 - 3.0, y: 5.0, w: 6.0, h: 0.7,
-        fontSize: 18, fontFace: FONT_HEAVY, bold: true, color: COLOR.white,
+        fontSize: 16, fontFace: FONT_HEAVY, bold: true, color: COLOR.white,
         align: 'center', valign: 'middle',
     });
     // 라운드 박스
@@ -1275,6 +1275,11 @@ demoSlides.forEach((d) => {
             fontSize: 22, fontFace: FONT_HEAVY, bold: true, color: COLOR.brand700,
             align: 'center',
         });
+    });
+    s.addText('이종인 영업이사 010-3651-9278 · lji@bottlecorp.kr · 회사 dev@bottlecorp.kr · bobi.co.kr', {
+        x: 0, y: 7.05, w: W, h: 0.3,
+        fontSize: 11, fontFace: FONT, color: COLOR.ink500,
+        align: 'center',
     });
 }
 

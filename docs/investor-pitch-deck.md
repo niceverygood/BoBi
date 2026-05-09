@@ -7,7 +7,7 @@
 > **타깃 VC**: 한화드림플러스 / 삼성벤처투자 / 카카오벤처스 / 본엔젤스 / 캡스톤파트너스
 > **Exit 가설**: 한화·삼성생명 자회사 GA M&A (5~7년) / 코스닥 IPO (2030~2031)
 > **작성일**: 2026-05-07 (v3)
-> **연락**: 한승수 / support@bobi.co.kr / https://www.bobi.co.kr
+> **연락**: 한승수 대표 010-8739-9771 / hss@bottlecorp.kr · 이종인 영업이사 010-3651-9278 / lji@bottlecorp.kr · dev@bottlecorp.kr · https://www.bobi.co.kr
 
 > 📌 **사용 안내**: 슬라이드 15장 텍스트 outline. 디자이너에게 PPT/Keynote/Figma
 > 시각화 의뢰 또는 `marketing/investor-pitch/` 에 HTML 슬라이드로 직접 export.
@@ -394,7 +394,7 @@ Phase 1 (현재)        → Phase 2 (2026.Q4)        → Phase 3 (2027.H1)      
 > 보비가 그걸 만듭니다.
 
 **CTA**:
-- 미팅 요청: **support@bobi.co.kr**
+- 미팅 요청: **dev@bottlecorp.kr**
 - 데모: https://www.bobi.co.kr (3일 무료체험 즉시 가능)
 - Q&A 다음 슬라이드
 

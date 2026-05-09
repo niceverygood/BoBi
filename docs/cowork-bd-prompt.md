@@ -55,7 +55,7 @@
 - **대표**: 한승수 (서울대 MBA, 풀스택 개발자)
 - **외부 영업**: 이종인 영업이사 (13년차, 1,200+ 설계사 채널)
 - **웹**: https://www.bobi.co.kr
-- **대표 메일**: support@bobi.co.kr
+- **대표 메일**: dev@bottlecorp.kr
 
 ### 제품 — 보비 (BoBi)
 "보험 설계사 1인을 위한 AI 보험 컨설팅 도구"
@@ -145,7 +145,7 @@
 
 한승수 드림
 주식회사 바틀 대표 / Bottle Inc. CEO
-support@bobi.co.kr · https://www.bobi.co.kr
+dev@bottlecorp.kr · https://www.bobi.co.kr
 ```
 
 ### 블록 C. 컨택 채널 우선순위
@@ -257,7 +257,7 @@ AI가 분석해 위험도·보장 갭을 산출하는 보험 컨설팅 도구입
 
 한승수 드림
 주식회사 바틀 대표 / Bottle Inc. CEO
-support@bobi.co.kr · https://www.bobi.co.kr
+dev@bottlecorp.kr · https://www.bobi.co.kr
 ```
 
 **블록 C. 컨택 채널 우선순위**

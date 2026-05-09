@@ -150,7 +150,7 @@ export default function RefundPolicyPage() {
                             <li>
                                 <strong className="text-foreground">이메일</strong>
                                 <br />
-                                <a href="mailto:support@bobi.co.kr" className="text-primary underline">support@bobi.co.kr</a> 으로 결제 일자·결제 수단·환불 사유 회신.
+                                <a href="mailto:dev@bottlecorp.kr" className="text-primary underline">dev@bottlecorp.kr</a> 으로 결제 일자·결제 수단·환불 사유 회신.
                             </li>
                             <li>
                                 <strong className="text-foreground">카카오톡 채팅 상담</strong>
@@ -222,7 +222,7 @@ export default function RefundPolicyPage() {
                     <section>
                         <h2 className="text-xl font-bold mb-4">제8조 (분쟁 해결)</h2>
                         <ol className="list-decimal pl-5 space-y-2 text-muted-foreground">
-                            <li>1차: 보비 고객센터 (<a href="mailto:support@bobi.co.kr" className="text-primary underline">support@bobi.co.kr</a>)</li>
+                            <li>1차: 보비 고객센터 (<a href="mailto:dev@bottlecorp.kr" className="text-primary underline">dev@bottlecorp.kr</a>)</li>
                             <li>2차: 한국소비자원 (1372) 또는 전자상거래분쟁조정위원회</li>
                             <li>관할법원: 회사 본점 소재지 관할 법원 (서울중앙지방법원)</li>
                         </ol>
@@ -251,7 +251,7 @@ export default function RefundPolicyPage() {
                     <section className="text-xs text-muted-foreground border-t pt-6">
                         <p><strong>주식회사 바틀</strong></p>
                         <p>대표이사: 한승수</p>
-                        <p>이메일: support@bobi.co.kr</p>
+                        <p>이메일: dev@bottlecorp.kr</p>
                         <p>웹: <a href="https://www.bobi.co.kr" className="underline">www.bobi.co.kr</a></p>
                     </section>
                 </div>
