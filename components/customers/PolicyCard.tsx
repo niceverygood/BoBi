@@ -13,13 +13,13 @@
 //   Basic+        : 갱신일 알림 활성 (D-30 / D-7 / D-Day)
 //   Pro+          : + 면책 / 감액 / 생일 알림
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Shield, Loader2, Save, Crown, BellRing, Calendar, Sparkles } from 'lucide-react';
+import { Shield, Loader2, Save, Crown, BellRing, Calendar, Sparkles, Upload, FileText, AlertCircle, Check, X } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import Link from 'next/link';
 
@@ -63,6 +63,22 @@ export default function PolicyCard({ customerId, customer }: Props) {
     const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+
+    // PDF AI 추출 상태
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiError, setAiError] = useState<string | null>(null);
+    const [aiResult, setAiResult] = useState<{
+        insurer: string;
+        product_name: string;
+        enrollment_date: string;
+        exemption_end_date: string;
+        reduction_end_date: string;
+        renewal_date: string;
+        policy_memo: string;
+        confidence?: 'high' | 'medium' | 'low';
+        notes?: string | null;
+    } | null>(null);
 
     // form state
     const [insurer, setInsurer] = useState(customer.insurer || '');
@@ -113,7 +129,125 @@ export default function PolicyCard({ customerId, customer }: Props) {
         }
     };
 
+    // PDF 업로드 → AI 추출
+    const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setAiLoading(true);
+        setAiError(null);
+        setAiResult(null);
+        try {
+            const fd = new FormData();
+            fd.append('file', file);
+            const res = await fetch(`/api/customers/${customerId}/extract-policy-from-pdf`, {
+                method: 'POST',
+                body: fd,
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                setAiError(data.error || 'AI 분석 실패');
+            } else {
+                setAiResult({
+                    insurer: data.extracted.insurer || '',
+                    product_name: data.extracted.product_name || '',
+                    enrollment_date: data.extracted.enrollment_date || '',
+                    exemption_end_date: data.extracted.exemption_end_date || '',
+                    reduction_end_date: data.extracted.reduction_end_date || '',
+                    renewal_date: data.extracted.renewal_date || '',
+                    policy_memo: data.extracted.policy_memo || '',
+                    confidence: data.extracted.confidence,
+                    notes: data.extracted.notes,
+                });
+                // 편집 모드로 들어가서 사용자가 검수 가능하도록
+                setEditing(true);
+            }
+        } catch (err) {
+            setAiError((err as Error).message || 'AI 분석 실패');
+        } finally {
+            setAiLoading(false);
+            // 같은 파일 재업로드 가능하도록 초기화
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    // AI 추출 결과를 form에 적용 (사용자 클릭 시)
+    const applyAiResult = () => {
+        if (!aiResult) return;
+        if (aiResult.insurer) setInsurer(aiResult.insurer);
+        if (aiResult.product_name) setProductName(aiResult.product_name);
+        if (aiResult.enrollment_date) setEnrollmentDate(aiResult.enrollment_date);
+        if (aiResult.exemption_end_date) setExemptionEnd(aiResult.exemption_end_date);
+        if (aiResult.reduction_end_date) setReductionEnd(aiResult.reduction_end_date);
+        if (aiResult.renewal_date) setRenewalDate(aiResult.renewal_date);
+        if (aiResult.policy_memo) setMemo(aiResult.policy_memo);
+        setMsg({ type: 'ok', text: 'AI 추출 결과가 입력란에 채워졌습니다. 확인하고 저장해주세요.' });
+        setAiResult(null);
+    };
+
     const hasAnyDate = enrollmentDate || renewalDate || exemptionEnd || reductionEnd;
+
+    // 공통 PDF 업로드 input + 검수 알림 (모든 상태에서 렌더)
+    const pdfInput = (
+        <input
+            type="file"
+            ref={fileInputRef}
+            accept="application/pdf"
+            onChange={handlePdfUpload}
+            className="hidden"
+        />
+    );
+
+    const aiAlert = aiResult ? (
+        <div className="rounded-lg border border-violet-200 bg-violet-50/60 dark:bg-violet-950/30 dark:border-violet-900/50 p-3 space-y-2">
+            <div className="flex items-start gap-2">
+                <Sparkles className="w-4 h-4 text-violet-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 text-xs space-y-1">
+                    <p className="font-semibold text-violet-900 dark:text-violet-200">
+                        AI가 PDF에서 추출했습니다
+                        {aiResult.confidence === 'high' && <span className="ml-2 text-[10px] text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">신뢰도 높음</span>}
+                        {aiResult.confidence === 'medium' && <span className="ml-2 text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">일부 추정</span>}
+                        {aiResult.confidence === 'low' && <span className="ml-2 text-[10px] text-red-700 bg-red-100 px-1.5 py-0.5 rounded">검수 필요</span>}
+                    </p>
+                    <ul className="text-violet-800 dark:text-violet-300 space-y-0.5">
+                        {aiResult.insurer && <li>· 보험사: <strong>{aiResult.insurer}</strong></li>}
+                        {aiResult.product_name && <li>· 상품: <strong>{aiResult.product_name}</strong></li>}
+                        {aiResult.enrollment_date && <li>· 가입일: <strong>{aiResult.enrollment_date}</strong></li>}
+                        {aiResult.exemption_end_date && <li>· 면책 종료: <strong>{aiResult.exemption_end_date}</strong></li>}
+                        {aiResult.reduction_end_date && <li>· 감액 종료: <strong>{aiResult.reduction_end_date}</strong></li>}
+                        {aiResult.renewal_date && <li>· 갱신일: <strong>{aiResult.renewal_date}</strong></li>}
+                        {aiResult.policy_memo && <li>· 보장: <span className="text-[11px]">{aiResult.policy_memo}</span></li>}
+                    </ul>
+                    {aiResult.notes && (
+                        <p className="text-[11px] text-violet-700 dark:text-violet-400 mt-1 italic flex items-start gap-1">
+                            <AlertCircle className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                            {aiResult.notes}
+                        </p>
+                    )}
+                </div>
+            </div>
+            <div className="flex gap-2">
+                <Button size="sm" onClick={applyAiResult} className="h-7 text-xs">
+                    <Check className="w-3 h-3 mr-1" /> 입력란에 적용
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setAiResult(null)} className="h-7 text-xs">
+                    <X className="w-3 h-3 mr-1" /> 취소
+                </Button>
+            </div>
+        </div>
+    ) : null;
+
+    const aiErrorAlert = aiError ? (
+        <div className="rounded-lg border border-red-200 bg-red-50/60 dark:bg-red-950/30 p-3 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 text-xs">
+                <p className="font-semibold text-red-900 dark:text-red-200">AI 분석 실패</p>
+                <p className="text-red-700 dark:text-red-300">{aiError}</p>
+            </div>
+            <Button size="sm" variant="ghost" onClick={() => setAiError(null)} className="h-6 px-2">
+                <X className="w-3 h-3" />
+            </Button>
+        </div>
+    ) : null;
 
     if (!editing && !hasAnyDate) {
         // 빈 상태 — 입력 유도
@@ -131,10 +265,28 @@ export default function PolicyCard({ customerId, customer }: Props) {
                         가입일·갱신일을 입력하면 보비가 적절한 시점에 고객에게 자동으로 알림톡을 보냅니다.
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <Button size="sm" onClick={() => setEditing(true)}>
-                        보험 정보 입력하기
-                    </Button>
+                <CardContent className="space-y-3">
+                    {pdfInput}
+                    {aiErrorAlert}
+                    {aiAlert}
+                    <div className="flex flex-wrap gap-2">
+                        <Button size="sm" onClick={() => setEditing(true)}>
+                            <Calendar className="w-3.5 h-3.5 mr-1" /> 직접 입력
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={aiLoading}
+                            className="bg-violet-50 hover:bg-violet-100 text-violet-700 border-violet-200"
+                        >
+                            {aiLoading ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1" />}
+                            가입 제안서 PDF로 자동 채우기
+                        </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <FileText className="w-3 h-3" /> PDF 업로드 시 AI가 보험사·가입일·면책·감액·보장 자동 추출
+                    </p>
                 </CardContent>
             </Card>
         );
@@ -153,12 +305,27 @@ export default function PolicyCard({ customerId, customer }: Props) {
                     </CardDescription>
                 </div>
                 {!editing && (
-                    <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-                        편집
-                    </Button>
+                    <div className="flex flex-col gap-1.5">
+                        <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+                            편집
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={aiLoading}
+                            className="bg-violet-50 hover:bg-violet-100 text-violet-700 border-violet-200"
+                        >
+                            {aiLoading ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1" />}
+                            PDF 자동 채우기
+                        </Button>
+                    </div>
                 )}
             </CardHeader>
             <CardContent className="space-y-4">
+                {pdfInput}
+                {aiErrorAlert}
+                {aiAlert}
                 {editing ? (
                     <>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
