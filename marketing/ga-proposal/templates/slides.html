@@ -121,31 +121,33 @@
 
   /* Pain card */
   .pain-card {
-    background: #fff; border: 2px solid var(--ink-200); border-radius: 20px; padding: 28px;
+    background: #fff; border: 2px solid var(--ink-200); border-radius: 20px; padding: 32px;
   }
   .pain-card .icon-num {
-    width: 48px; height: 48px; border-radius: 50%;
+    width: 56px; height: 56px; border-radius: 50%;
     background: var(--brand-100); color: var(--brand-700);
     display: flex; align-items: center; justify-content: center;
-    font-size: 24px; font-weight: 800; margin-bottom: 16px;
+    font-size: 28px; font-weight: 800; margin-bottom: 20px;
   }
   .pain-card .title {
-    font-size: 22px; font-weight: 800; color: var(--ink-900);
-    margin-bottom: 10px; letter-spacing: -0.02em;
+    font-size: 26px; font-weight: 800; color: var(--ink-900);
+    margin-bottom: 14px; letter-spacing: -0.02em;
   }
-  .pain-card .desc { font-size: 17px; color: var(--ink-500); line-height: 1.5; }
+  .pain-card .desc { font-size: 20px; color: var(--ink-500); line-height: 1.5; }
 
   /* Feature card */
   .feat-card {
     background: linear-gradient(135deg, var(--brand-50), #fff);
     border: 2px solid var(--brand-100);
-    border-radius: 18px; padding: 26px;
+    border-radius: 20px; padding: 32px 28px;
+    min-height: 320px;
+    display: flex; flex-direction: column;
   }
-  .feat-card .name { font-size: 22px; font-weight: 800; color: var(--brand-700); margin-bottom: 10px; }
-  .feat-card .desc { font-size: 16px; color: var(--ink-700); line-height: 1.5; margin-bottom: 14px; }
+  .feat-card .name { font-size: 26px; font-weight: 800; color: var(--brand-700); margin-bottom: 14px; letter-spacing: -0.02em; }
+  .feat-card .desc { font-size: 21px; color: var(--ink-700); line-height: 1.55; margin-bottom: 16px; flex: 1; }
   .feat-card .ga {
-    font-size: 14px; color: var(--brand-700); font-weight: 700;
-    padding-top: 12px; border-top: 1px solid var(--brand-100);
+    font-size: 19px; color: var(--brand-700); font-weight: 700;
+    padding-top: 16px; border-top: 2px solid var(--brand-100);
   }
 
   /* Stage flow */
@@ -182,7 +184,7 @@
   .effect-card:not(.featured) .role .pill { background: var(--brand-100); color: var(--brand-700); }
   .effect-card ul { list-style: none; padding-left: 0; }
   .effect-card li {
-    padding: 8px 0; font-size: 17px; line-height: 1.5;
+    padding: 10px 0; font-size: 20px; line-height: 1.5;
   }
   .effect-card li::before { content: "✓ "; font-weight: 800; }
   .effect-card.featured li::before { color: #fff; }
@@ -460,8 +462,8 @@
       </div>
     </div>
     <div class="card card-dark" style="margin-top: 36px; padding: 28px;">
-      <div style="font-size: 20px; font-weight: 800; margin-bottom: 8px;">+ 카카오 알림톡 통합 발송</div>
-      <div style="font-size: 16px; line-height: 1.6; opacity: 0.9;">
+      <div style="font-size: 24px; font-weight: 800; margin-bottom: 10px;">+ 카카오 알림톡 통합 발송</div>
+      <div style="font-size: 19px; line-height: 1.6; opacity: 0.9;">
         4종 리포트 모두 알림톡 직접 전송 · 발신자 = 설계사 이름 · 12종 검수 통과
       </div>
     </div>
@@ -481,28 +483,28 @@
   <div class="body">
     <div class="grid-5">
       <div class="card card-brand" style="text-align: center; padding: 24px;">
-        <div style="font-size: 64px; margin-bottom: 12px;">🏠</div>
-        <div style="font-size: 18px; font-weight: 800; color: var(--brand-700); margin-bottom: 6px;">홈 대시보드</div>
+        <div style="font-size: 72px; margin-bottom: 16px;">🏠</div>
+        <div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-bottom: 8px;">홈 대시보드</div>
         <div style="font-size: 14px; color: var(--ink-500); line-height: 1.4;">오늘 알림 / 신규 분석 / 영업 다이어리</div>
       </div>
       <div class="card card-brand" style="text-align: center; padding: 24px;">
-        <div style="font-size: 64px; margin-bottom: 12px;">👤</div>
-        <div style="font-size: 18px; font-weight: 800; color: var(--brand-700); margin-bottom: 6px;">고객 카드</div>
+        <div style="font-size: 72px; margin-bottom: 16px;">👤</div>
+        <div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-bottom: 8px;">고객 카드</div>
         <div style="font-size: 14px; color: var(--ink-500); line-height: 1.4;">진료·건강검진·가입 보험 통합</div>
       </div>
       <div class="card card-brand" style="text-align: center; padding: 24px;">
-        <div style="font-size: 64px; margin-bottom: 12px;">📊</div>
-        <div style="font-size: 18px; font-weight: 800; color: var(--brand-700); margin-bottom: 6px;">위험도 리포트</div>
+        <div style="font-size: 72px; margin-bottom: 16px;">📊</div>
+        <div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-bottom: 8px;">위험도 리포트</div>
         <div style="font-size: 14px; color: var(--ink-500); line-height: 1.4;">일반인 대비 N배 위험 바차트</div>
       </div>
       <div class="card card-brand" style="text-align: center; padding: 24px;">
-        <div style="font-size: 64px; margin-bottom: 12px;">🧾</div>
-        <div style="font-size: 18px; font-weight: 800; color: var(--brand-700); margin-bottom: 6px;">가상 사고영수증</div>
+        <div style="font-size: 72px; margin-bottom: 16px;">🧾</div>
+        <div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-bottom: 8px;">가상 사고영수증</div>
         <div style="font-size: 14px; color: var(--ink-500); line-height: 1.4;">보장 갭 PDF (고객 발송용)</div>
       </div>
       <div class="card card-brand" style="text-align: center; padding: 24px;">
-        <div style="font-size: 64px; margin-bottom: 12px;">🔔</div>
-        <div style="font-size: 18px; font-weight: 800; color: var(--brand-700); margin-bottom: 6px;">CRM 알림 미리보기</div>
+        <div style="font-size: 72px; margin-bottom: 16px;">🔔</div>
+        <div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-bottom: 8px;">CRM 알림 미리보기</div>
         <div style="font-size: 14px; color: var(--ink-500); line-height: 1.4;">내일 발송 알림 8건</div>
       </div>
     </div>
@@ -606,8 +608,8 @@
     </table>
     <div class="grid-2" style="margin-top: 32px; gap: 24px;">
       <div class="card card-brand" style="padding: 24px;">
-        <div style="font-size: 18px; font-weight: 800; color: var(--brand-700); margin-bottom: 12px;">무제한 라이선스 포함</div>
-        <ul style="list-style: none; padding-left: 0; font-size: 15px; line-height: 1.8; color: var(--ink-700);">
+        <div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-bottom: 16px;">무제한 라이선스 포함</div>
+        <ul style="list-style: none; padding-left: 0; font-size: 18px; line-height: 1.9; color: var(--ink-700);">
           <li>✓ 진료정보 분석 <b>무제한</b> (개인 베이직 30건/월 한도)</li>
           <li>✓ 위험도·가상영수증·미래의 나 무제한</li>
           <li>✓ CRM 자동 알림톡 (갱신·면책·생일)</li>
@@ -616,8 +618,8 @@
         </ul>
       </div>
       <div class="card card-dark" style="padding: 24px;">
-        <div style="font-size: 18px; font-weight: 800; margin-bottom: 12px;">장기 협력 옵션</div>
-        <ul style="list-style: none; padding-left: 0; font-size: 15px; line-height: 1.8; opacity: 0.95;">
+        <div style="font-size: 22px; font-weight: 800; margin-bottom: 16px;">장기 협력 옵션</div>
+        <ul style="list-style: none; padding-left: 0; font-size: 18px; line-height: 1.9; opacity: 0.95;">
           <li>✓ <b>연간 계약</b>: 추가 10~15% 할인</li>
           <li>✓ <b>3년 계약</b>: 화이트라벨 + 본사 브랜드 커스터마이징</li>
           <li>✓ <b>API 임베드</b>: 본사 앱에 보비 엔진 통합 (Layer 3)</li>
@@ -640,7 +642,7 @@
     <div class="grid-2">
       <div class="card">
         <div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-bottom: 16px;">데이터·법무 안정성</div>
-        <ul style="font-size: 17px; color: var(--ink-700); line-height: 1.8; padding-left: 20px;">
+        <ul style="font-size: 20px; color: var(--ink-700); line-height: 1.9; padding-left: 22px;">
           <li><b>CODEF API 공식 연동</b> (본인 동의 기반)</li>
           <li>약관·법무 사전 검토 (보험업법·개인정보보호법)</li>
           <li>개인정보처리방침 + 환불 정책 공시</li>
@@ -649,7 +651,7 @@
       </div>
       <div class="card">
         <div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-bottom: 16px;">시스템 운영</div>
-        <ul style="font-size: 17px; color: var(--ink-700); line-height: 1.8; padding-left: 20px;">
+        <ul style="font-size: 20px; color: var(--ink-700); line-height: 1.9; padding-left: 22px;">
           <li>Vercel + Supabase (글로벌 표준, 99.9% SLA)</li>
           <li>Sentry 오류 모니터링</li>
           <li>PostHog 사용 분석</li>
@@ -658,7 +660,7 @@
       </div>
       <div class="card">
         <div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-bottom: 16px;">고객 지원</div>
-        <ul style="font-size: 17px; color: var(--ink-700); line-height: 1.8; padding-left: 20px;">
+        <ul style="font-size: 20px; color: var(--ink-700); line-height: 1.9; padding-left: 22px;">
           <li>평일 10:00~18:00 카톡·이메일 지원</li>
           <li>1:1 문의 평균 응답 24시간 이내</li>
           <li>장애 시 일할 환불 + 즉시 알림</li>
@@ -666,7 +668,7 @@
       </div>
       <div class="card">
         <div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-bottom: 16px;">품질 KPI (분기별)</div>
-        <ul style="font-size: 17px; color: var(--ink-700); line-height: 1.8; padding-left: 20px;">
+        <ul style="font-size: 20px; color: var(--ink-700); line-height: 1.9; padding-left: 22px;">
           <li>알림톡 발송 성공률 <b>99%+</b></li>
           <li>시스템 가동률 <b>99.9%</b></li>
           <li>환불률 <b>5% 미만</b></li>
@@ -792,7 +794,7 @@
       </div>
       <div class="card card-brand">
         <div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-bottom: 16px;">핵심 역량</div>
-        <ul style="font-size: 17px; color: var(--ink-700); line-height: 1.8; padding-left: 20px;">
+        <ul style="font-size: 20px; color: var(--ink-700); line-height: 1.9; padding-left: 22px;">
           <li>풀스택 개발 (한승수 대표 직접)</li>
           <li>보험 영업 13년 (이종인 영업이사)</li>
           <li>CODEF API 본인 동의 연동</li>
