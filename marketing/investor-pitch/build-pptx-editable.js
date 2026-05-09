@@ -1243,19 +1243,43 @@ demoSlides.forEach((d) => {
         x: 0, y: 4.2, w: W, h: 0.6,
         fontSize: 24, fontFace: FONT, color: COLOR.ink500, align: 'center',
     });
+    // 컨택 그라디언트 박스 (대표·영업이사 좌우 분리)
+    const cBoxX = W / 2 - 3.5;
+    const cBoxY = 4.85;
     s.addShape('roundRect', {
-        x: W / 2 - 3.0, y: 5.0, w: 6.0, h: 0.7,
-        fill: { color: COLOR.brand600 }, line: { type: 'none' }, rectRadius: 0.35,
+        x: cBoxX, y: cBoxY, w: 7.0, h: 1.05,
+        fill: { color: COLOR.brand700 }, line: { type: 'none' }, rectRadius: 0.18,
     });
-    s.addText('한승수 010-8739-9771 · hss@bottlecorp.kr', {
-        x: W / 2 - 3.0, y: 5.0, w: 6.0, h: 0.7,
-        fontSize: 16, fontFace: FONT_HEAVY, bold: true, color: COLOR.white,
-        align: 'center', valign: 'middle',
+    // 좌측: 대표이사
+    s.addText('대표이사 한승수', {
+        x: cBoxX + 0.3, y: cBoxY + 0.1, w: 3.2, h: 0.25,
+        fontSize: 11, fontFace: FONT, color: 'FFFFFF', transparency: 25, bold: true,
     });
-    // 라운드 박스
-    const boxY = 6.1;
+    s.addText('010-8739-9771', {
+        x: cBoxX + 0.3, y: cBoxY + 0.35, w: 3.2, h: 0.4,
+        fontSize: 20, fontFace: FONT_HEAVY, bold: true, color: COLOR.white,
+    });
+    s.addText('hss@bottlecorp.kr', {
+        x: cBoxX + 0.3, y: cBoxY + 0.75, w: 3.2, h: 0.25,
+        fontSize: 12, fontFace: FONT, color: 'FFFFFF', transparency: 15,
+    });
+    // 우측: 영업이사
+    s.addText('영업이사 이종인', {
+        x: cBoxX + 3.7, y: cBoxY + 0.1, w: 3.0, h: 0.25,
+        fontSize: 11, fontFace: FONT, color: 'FFFFFF', transparency: 25, bold: true,
+    });
+    s.addText('010-3651-9278', {
+        x: cBoxX + 3.7, y: cBoxY + 0.35, w: 3.0, h: 0.4,
+        fontSize: 20, fontFace: FONT_HEAVY, bold: true, color: COLOR.white,
+    });
+    s.addText('lji@bottlecorp.kr', {
+        x: cBoxX + 3.7, y: cBoxY + 0.75, w: 3.0, h: 0.25,
+        fontSize: 12, fontFace: FONT, color: 'FFFFFF', transparency: 15,
+    });
+    // 라운드 박스 (RAISE/PRE-MONEY/RUNWAY)
+    const boxY = 6.15;
     s.addShape('roundRect', {
-        x: W / 2 - 3.5, y: boxY, w: 7.0, h: 0.85,
+        x: W / 2 - 3.5, y: boxY, w: 7.0, h: 0.7,
         fill: { color: COLOR.white }, line: { type: 'none' }, rectRadius: 0.15,
     });
     const items = [
@@ -1266,20 +1290,34 @@ demoSlides.forEach((d) => {
     items.forEach((it, i) => {
         const ix = W / 2 - 3.5 + i * (7.0 / 3);
         s.addText(it.l, {
-            x: ix, y: boxY + 0.1, w: 7.0 / 3, h: 0.25,
-            fontSize: 10, fontFace: FONT, color: COLOR.ink500, bold: true,
+            x: ix, y: boxY + 0.05, w: 7.0 / 3, h: 0.22,
+            fontSize: 9, fontFace: FONT, color: COLOR.ink500, bold: true,
             align: 'center', charSpacing: 2,
         });
         s.addText(it.v, {
-            x: ix, y: boxY + 0.32, w: 7.0 / 3, h: 0.5,
-            fontSize: 22, fontFace: FONT_HEAVY, bold: true, color: COLOR.brand700,
+            x: ix, y: boxY + 0.25, w: 7.0 / 3, h: 0.42,
+            fontSize: 19, fontFace: FONT_HEAVY, bold: true, color: COLOR.brand700,
             align: 'center',
         });
     });
-    s.addText('이종인 영업이사 010-3651-9278 · lji@bottlecorp.kr · 회사 dev@bottlecorp.kr · bobi.co.kr', {
-        x: 0, y: 7.05, w: W, h: 0.3,
-        fontSize: 11, fontFace: FONT, color: COLOR.ink500,
-        align: 'center',
+    // 회사 메일 + 웹사이트 (라벨 명시 분리)
+    s.addText('회사 대표 메일', {
+        x: 1.0, y: 7.0, w: 2.5, h: 0.25,
+        fontSize: 10, fontFace: FONT, color: COLOR.ink400, bold: true,
+        align: 'right',
+    });
+    s.addText('dev@bottlecorp.kr', {
+        x: 3.55, y: 7.0, w: 3.0, h: 0.25,
+        fontSize: 12, fontFace: FONT_HEAVY, bold: true, color: COLOR.ink900,
+    });
+    s.addText('웹사이트', {
+        x: 6.7, y: 7.0, w: 1.6, h: 0.25,
+        fontSize: 10, fontFace: FONT, color: COLOR.ink400, bold: true,
+        align: 'right',
+    });
+    s.addText('https://www.bobi.co.kr', {
+        x: 8.35, y: 7.0, w: 4.0, h: 0.25,
+        fontSize: 12, fontFace: FONT_HEAVY, bold: true, color: COLOR.ink900,
     });
 }
 
