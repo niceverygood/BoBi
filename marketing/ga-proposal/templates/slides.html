@@ -258,7 +258,7 @@
     <span class="accent">5분 안에</span> 끝냅니다
   </div>
   <div class="sub">
-    마이데이터 진료 데이터 분석 + 자동 알림톡 CRM + 보장 갭 시각화<br>
+    본인 동의 진료 데이터 분석 + 자동 알림톡 CRM + 보장 갭 시각화<br>
     한 앱으로, 본인 이름 브랜딩까지.
   </div>
 </section>
@@ -315,9 +315,9 @@
   <div class="body">
     <div class="grid-2" style="gap: 28px;">
       <div class="card card-brand">
-        <div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-bottom: 10px;">1. 마이데이터 + AI</div>
+        <div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-bottom: 10px;">1. 본인 동의 진료 데이터 + AI</div>
         <div style="font-size: 28px; font-weight: 800; color: var(--ink-900); letter-spacing: -0.02em; margin-bottom: 12px;">5년치 진료내역을 5분에</div>
-        <div style="font-size: 17px; color: var(--ink-500);">HIRA 마이데이터 + LLM. 설계사가 일일이 정리할 필요 X</div>
+        <div style="font-size: 17px; color: var(--ink-500);">CODEF API로 본인 동의 후 자동 조회. 설계사가 일일이 정리할 필요 X</div>
       </div>
       <div class="card card-brand">
         <div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-bottom: 10px;">2. 자동 CRM 알림톡</div>
@@ -351,7 +351,7 @@
     <table class="bobi">
       <tr><td class="value" style="width: 30%;">서비스 형태</td><td>SaaS (Web + iOS + Android)</td></tr>
       <tr><td class="value">타깃 사용자</td><td>설계사 1인 (B2C SaaS) + GA 본사 (B2B 라이선스)</td></tr>
-      <tr><td class="value">데이터 인프라</td><td class="brand">마이데이터 인증 사업자 · CODEF API · HIRA 진료내역</td></tr>
+      <tr><td class="value">데이터 인프라</td><td class="brand">CODEF API 본인 동의 연동 · HIRA 진료내역 (마이데이터 사업자 연계는 향후 확장)</td></tr>
       <tr><td class="value">알림 인프라</td><td>ALIGO 카카오 알림톡 (자체 비즈채널 @바틀) — 12종 검수 통과</td></tr>
       <tr><td class="value">AI 엔진</td><td>Claude / GPT-4 (의료 텍스트 분석)</td></tr>
       <tr><td class="value">출시</td><td>2026 정상 서비스 · Seed 1 라운드 완료</td></tr>
@@ -411,7 +411,7 @@
   <div class="body">
     <div class="stage-flow">
       <div class="step"><div class="n">1</div><div class="t">고객 정보 입력 (이름·연락처·생년월일)</div></div>
-      <div class="step"><div class="n">2</div><div class="t">마이데이터 동의 링크 발송 (<b>카카오 알림톡</b>)</div></div>
+      <div class="step"><div class="n">2</div><div class="t">본인인증 동의 링크 발송 (<b>카카오 알림톡</b>)</div></div>
       <div class="step"><div class="n">3</div><div class="t">고객 동의 → CODEF API로 <b>5년치 진료내역 자동 조회</b></div></div>
       <div class="step"><div class="n">4</div><div class="t">AI 분석 (<b>3~5분</b>): 주요 진단·복용 약물·고지 누락 점검</div></div>
       <div class="step"><div class="n">5</div><div class="t">리포트 자동 생성: 진료정보 / 위험도 / 가상영수증 / 미래의 나</div></div>
@@ -641,7 +641,7 @@
       <div class="card">
         <div style="font-size: 22px; font-weight: 800; color: var(--brand-700); margin-bottom: 16px;">데이터·법무 안정성</div>
         <ul style="font-size: 17px; color: var(--ink-700); line-height: 1.8; padding-left: 20px;">
-          <li><b>마이데이터 인증</b> (CODEF 공식 파트너)</li>
+          <li><b>CODEF API 공식 연동</b> (본인 동의 기반)</li>
           <li>약관·법무 사전 검토 (보험업법·개인정보보호법)</li>
           <li>개인정보처리방침 + 환불 정책 공시</li>
           <li>고객 동의 기반 진료 데이터 조회</li>
@@ -684,30 +684,38 @@
 <section class="slide" id="s14">
   <div class="slide-header">
     <span class="slide-num">14 · GROWTH</span>
-    <h1 class="slide-title">성장 전략 및 <span class="accent">확장 가능성</span></h1>
+    <h1 class="slide-title">제품 확장 <span class="accent">로드맵</span></h1>
+    <p class="slide-sub">진료 분석 → 마이데이터 → "내 보험 다 보여" → AI 추천</p>
   </div>
   <div class="body">
     <div class="timeline">
       <div class="step active">
-        <div class="q">단기</div>
-        <div class="num">2026</div>
-        <div class="desc">설계사 1만명 달성<br>알림톡 월 100만건<br>유료 전환율 12%→18%</div>
+        <div class="q">Phase 1 · 현재</div>
+        <div class="num">진료·CRM 분석</div>
+        <div class="desc">CODEF API 본인 동의<br>5대 기능 정상 운영<br>알림톡 12종 검수 통과</div>
       </div>
       <div class="step">
-        <div class="q">중기</div>
-        <div class="num">2027~28</div>
-        <div class="desc">API 라이선싱<br>일본 진출 (100만 시장)<br>화이트라벨 (자체 GA 브랜드)</div>
+        <div class="q">Phase 2 · 2026.Q4</div>
+        <div class="num">마이데이터 연계</div>
+        <div class="desc">마이데이터 사업자 협업<br>보험사 11·은행 24·증권사<br>통합 데이터 확보</div>
       </div>
       <div class="step">
-        <div class="q">장기</div>
-        <div class="num">2029~31</div>
-        <div class="desc">동남아 진출<br>시리즈 A·B<br>코스닥 IPO</div>
+        <div class="q">Phase 3 · 2027.H1</div>
+        <div class="num">"내 보험 다 보여"</div>
+        <div class="desc">보유 보험 통합 조회<br>중복·과다·갭 자동 분석<br>한 화면에서 모두 확인</div>
+      </div>
+      <div class="step">
+        <div class="q">Phase 4 · 2027.H2~</div>
+        <div class="num">AI 보험상품 추천</div>
+        <div class="desc">진료+보험+위험도→AI 추천<br>GA 채널로 청약 연결<br>수수료 모델 (2-Layer 매출)</div>
       </div>
     </div>
-    <div class="card card-dark" style="margin-top: 50px; padding: 32px;">
-      <div style="font-size: 22px; font-weight: 800; margin-bottom: 12px;">GA 본사에 미치는 영향</div>
-      <div style="font-size: 18px; line-height: 1.6; opacity: 0.95;">
-        보비 성장과 함께 <b>GA 단가 협상력 ↑</b> · <b>API 임베드로 자체 앱 강화</b> · <b>글로벌 확장 시 우선 파트너 자격</b>
+    <div class="card card-dark" style="margin-top: 36px; padding: 28px;">
+      <div style="font-size: 20px; font-weight: 800; margin-bottom: 10px;">GA 본사가 얻는 미래 가치</div>
+      <div style="font-size: 16px; line-height: 1.7; opacity: 0.95;">
+        ✓ <b>2026.Q4</b>: 고객 보유 보험 통합 → 중복 보장 사전 발견 + 추가 가입 기회<br>
+        ✓ <b>2027</b>: 보비가 추천한 상품을 <b>GA 채널로 청약 연결</b> → 신규 매출 채널 + 수수료<br>
+        ✓ <b>장기</b>: 보비 데이터 + GA 채널 = 정밀 타게팅 영업 (지금까지 없던 마케팅 도구)
       </div>
     </div>
   </div>
@@ -787,7 +795,7 @@
         <ul style="font-size: 17px; color: var(--ink-700); line-height: 1.8; padding-left: 20px;">
           <li>풀스택 개발 (한승수 대표 직접)</li>
           <li>보험 영업 13년 (이종인 영업이사)</li>
-          <li>마이데이터 인증 사업자 연동</li>
+          <li>CODEF API 본인 동의 연동</li>
           <li>카카오 알림톡 비즈채널 운영 (@바틀)</li>
           <li>특허 출원 6건 진행 중</li>
         </ul>

@@ -233,10 +233,10 @@ pptx.layout = 'LAYOUT_WIDE';
     const s = pptx.addSlide();
     s.background = { color: COLOR.white };
     addHeader(s, '03 · SOLUTION', '진료 데이터 + AI = 5분 컨설팅',
-        '설계사 1인 도구 — 마이데이터 진료내역·AI 위험도·카카오 알림톡 통합');
+        '설계사 1인 도구 — 진료 데이터·AI 위험도·카카오 알림톡 통합');
 
     const feats = [
-        { name: '진료정보 분석', desc: '5년치 진료내역\n자동 정리·고지 누락 점검', tech: 'HIRA 마이데이터 + LLM' },
+        { name: '진료정보 분석', desc: '5년치 진료내역\n자동 정리·고지 누락 점검', tech: 'HIRA 진료 (CODEF) + LLM' },
         { name: '위험도 리포트', desc: '일반인 대비\n개인 질환 위험 배율', tech: '진료+건검 통계 모델' },
         { name: '가상 사고영수증', desc: '"만약 그 질환 생기면"\n보장 갭 시각화', tech: '의료비 시뮬레이션' },
         { name: 'CRM 자동 알림톡', desc: '갱신·면책·생일\n매일 새벽 자동 카톡', tech: 'ALIGO + 자체 cron' },
@@ -277,7 +277,7 @@ pptx.layout = 'LAYOUT_WIDE';
     });
     s.addText([
         { text: '핵심 차별점:  ', options: { color: COLOR.brand700, bold: true } },
-        { text: '마이데이터 인증 사업자 공식 API · 카카오 알림톡 발신자 = 설계사 본인 이름 · 특허 6건 출원 진행', options: { color: COLOR.ink700 } },
+        { text: 'CODEF API 본인 동의 연동 · 카카오 알림톡 발신자 = 설계사 본인 이름 · 특허 6건 출원 (마이데이터 사업자 연계는 Phase 2)', options: { color: COLOR.ink700 } },
     ], {
         x: 0.95, y: 6.0, w: W - 1.9, h: 0.85,
         fontSize: 13, fontFace: FONT, valign: 'middle',
@@ -292,7 +292,7 @@ pptx.layout = 'LAYOUT_WIDE';
     addHeader(s, '04 · WHY NOW', '3가지 변곡점이 동시에 왔다');
 
     const points = [
-        { y: '2022~', n: '마이데이터', d: '진료내역·건강검진\n합법적 조회 가능' },
+        { y: '2022~', n: '진료 데이터', d: '진료내역·건강검진\n합법적 조회 가능' },
         { y: '2023~', n: 'LLM', d: '의료 텍스트 분석\n실용 수준 도달' },
         { y: '2024~', n: '카카오 알림톡', d: '설계사·고객 컨택\n채널 표준화' },
     ];
@@ -332,7 +332,7 @@ pptx.layout = 'LAYOUT_WIDE';
         x: 1.0, y: 5.85, w: W - 2.0, h: 0.4,
         fontSize: 18, fontFace: FONT_HEAVY, bold: true, color: COLOR.white,
     });
-    s.addText('설계사 1인 도구는 빅테크가 외면하는 영역 → 스타트업 기회. 보비 선점 효과: 마이데이터 인증 6-12개월 + 이종인 13년 채널 + 특허 6건.', {
+    s.addText('설계사 1인 도구는 빅테크가 외면하는 영역 → 스타트업 기회. 보비 선점 효과: CODEF 연동·HIRA 통합 6-12개월 + 이종인 13년 채널 + 특허 6건.', {
         x: 1.0, y: 6.25, w: W - 2.0, h: 0.55,
         fontSize: 12, fontFace: FONT, color: COLOR.white,
     });
@@ -354,7 +354,7 @@ const demoSlides = [
         ],
         rightTitle: '5년치 진료내역,\n5분에 정리',
         rightLead: '설계사 1명당 분석 시간 3시간 → 5분.\n고지 누락 사전 점검으로 청약 거절·보험금 분쟁 사전 차단.',
-        chips: ['HIRA 마이데이터', '5년 통합 분석', 'AI 자동 정리'],
+        chips: ['HIRA 진료 (CODEF)', '5년 통합 분석', 'AI 자동 정리'],
         quote: '"고객 한 명당 30분이면 충분. 청약 전에 고지 누락 위험도 미리 잡힙니다."',
     },
     {
@@ -802,7 +802,7 @@ demoSlides.forEach((d) => {
     const cards = [
         { t: '투자 검증 ✓', body: 'Seed 1: 4억 / Pre 40억\n본 라운드 (Seed 2): 10억 / Pre 100억\n2.5x Up Round (기존 + 신규 리드)' },
         { t: '영업 검증 ✓', body: '이종인 영업이사 13년차 · 1,200+ 채널\n4월 누적 4건 24시간 내 반영\nBOBI-CJ 영구 19,900원 Pro 4명' },
-        { t: '제품 검증 ✓', body: '알림톡 10종 카카오 검수 통과\n마이데이터 인증 (CODEF API 연동)\n§11.3 디자인시스템 (정직 톤)' },
+        { t: '제품 검증 ✓', body: '알림톡 12종 카카오 검수 통과\nCODEF API 연동 완료\n§11.3 디자인시스템 (정직 톤)' },
         { t: '파이프라인 ✓', body: '42개 보험사·GA 컨택 정보 정리\nBD 코워크 자동화 시스템\n2026 Q3 GA 무상배포 (4,000명)' },
     ];
     const cardW = 5.7;
@@ -969,7 +969,7 @@ demoSlides.forEach((d) => {
         ['토스인슈어런스', '토스 트래픽·자체 GA', '설계사 도구 미제공', false],
         ['카카오페이손보', '카카오톡 통합', '보험 가입만, 컨설팅 X', false],
         ['CODEF / Owl Pay', '데이터 API 제공', 'B2B 인프라, 직접 도구 X', false],
-        ['★ 보비', '마이데이터 + AI + 알림톡 통합', '설계사 1인 도구 (TAM 60만)', true],
+        ['★ 보비', '진료 데이터 + AI + 알림톡 통합', '설계사 1인 도구 (TAM 60만)', true],
     ];
     const cols = [3.5, 5.0, 4.4];
     let cx = 0.7;
@@ -1163,7 +1163,7 @@ demoSlides.forEach((d) => {
         });
         bx += w;
     });
-    s.addText('Pre 100억 정당화: ARR 2.2억 × 45x · 모트(마이데이터·특허·이종인) · 마진 90%+ · Exit 한화·삼성생명 자회사 GA M&A (5~7년)', {
+    s.addText('Pre 100억 정당화: ARR 2.2억 × 45x · 모트(CODEF·특허·이종인) · 마진 90%+ · Exit 한화·삼성생명 자회사 GA M&A (5~7년)', {
         x: 0.7, y: 6.65, w: W - 1.4, h: 0.4,
         fontSize: 11, fontFace: FONT, color: COLOR.ink500,
     });
@@ -1180,7 +1180,7 @@ demoSlides.forEach((d) => {
     ]);
 
     const moats = [
-        { n: 1, name: '데이터 모트', d: '마이데이터 인증\nCODEF 연동\n6-12개월 인허가' },
+        { n: 1, name: '데이터 모트', d: 'CODEF API 본인 동의\nHIRA 진료 통합\n6-12개월 인허가' },
         { n: 2, name: '영업 모트', d: '이종인 13년\n1,200+ 설계사\n(사람 자산)' },
         { n: 3, name: '제품 모트', d: 'AI 분석\n알림톡 브랜딩\n특허 6건 출원' },
         { n: 4, name: '레귤레이션', d: '금융위 규제 사전\n약관 준수\n법무 검토' },
@@ -1289,7 +1289,7 @@ demoSlides.forEach((d) => {
 
     const qa = [
         ['Pre 100억 근거?', '이전 Seed Pre 40억 + 6개월 검증 · 1,200 채널 · 특허 6건 · Series A Pre 디스카운트'],
-        ['마이데이터 안정성?', 'CODEF 공식 파트너 + 자체 라이선스 진행. 정책 강화 추세 → 신규 진입자에 불리'],
+        ['마이데이터 연계 일정?', 'CODEF로 본인 동의 진료 조회 중. 마이데이터 본허가 또는 인증 사업자 협업 2026.Q4 (Phase 2)'],
         ['보험사가 직접?', '설계사 1인 도구는 빅테크·보험사 외면 영역. 6-12개월 인허가 모트'],
         ['한승수 의존성?', '코어팀 6명 + Seed 2 자금으로 풀스택 2-3명 추가 → CTO 별도 영입'],
         ['이종인이 떠나면?', '보비 시스템 = 설계사가 떠나기 어려운 데이터 자산 (CRM·고객 이력)'],
