@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import PolicyCard from '@/components/customers/PolicyCard';
+import ConsultationMemoCard from '@/components/customers/ConsultationMemoCard';
 import { apiFetch } from '@/lib/api/client';
 import { getRiskBadgeClassByMultiplier } from '@/lib/risk/risk-color';
 
@@ -203,6 +204,9 @@ function CustomerCardContent() {
 
             {/* 보험 가입 정보 + CRM 알림 (Basic+ 갱신만, Pro+ 전체) */}
             <PolicyCard customerId={c.id} customer={c} />
+
+            {/* 상담 메모 (음성·텍스트 + AI 자동 요약) */}
+            <ConsultationMemoCard customerId={c.id} />
 
             {/* 현재 질환 — 회색 베이스 행 + amber dot + amber soft tint 상태 배지 */}
             {s.medicalHistory?.activeDiseases && s.medicalHistory.activeDiseases.length > 0 && (
