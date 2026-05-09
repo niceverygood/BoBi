@@ -625,19 +625,26 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
 
     // HIRA(심평원) 조회 날짜 규칙:
     // - endDate: 오늘이 아닌 어제까지만 (당일 데이터 미반영)
-    // - startDate: 최대 5년 전까지 — HIRA 공식 포털(hira.or.kr 내 진료정보 열람)에서
-    //   "최대 5년 전 진료분까지 확인 가능" 명시. 6개월/9개월/1년/3년/5년 버튼 제공.
-    //   CODEF는 HIRA 래퍼이므로 동일하게 지원.
+    // - startDate: **단건 호출은 최대 1년 한도** (초과 시 CF-13001).
+    //
+    // ⚠️ HIRA 포털(hira.or.kr) UI는 6개월/9개월/1년/3년/5년 버튼이 있지만,
+    //    이는 "포털 UI 옵션"이고, CODEF API의 단건 호출 한도와는 별개다.
+    //    API 단건 호출은 1년이 최대이며, 5년치를 받으려면
+    //    fetchMyMedicalInfoChunked()가 1년씩 5번 분할 호출한다.
+    //
+    // ⚠️ 회귀 주의: PR #14에서 5년→1년 수정 후, PR #18에서
+    //    "공식 포털과 일치"한다며 다시 5년으로 바꾸면 CF-13001 재발.
+    //    포털 ≠ API 한도. default는 반드시 1년.
     const now = new Date();
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     const endDate = params.endDate || yesterday.toISOString().slice(0, 10).replace(/-/g, '');
 
-    const fiveYearsAgo = new Date(yesterday);
-    fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
+    const oneYearAgo = new Date(yesterday);
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
     // setFullYear가 윤년 경계에서 다음달로 넘기는 경우(예: 2/29 → 3/1) 방어 — 하루 더해 안전 마진
-    fiveYearsAgo.setDate(fiveYearsAgo.getDate() + 1);
-    const startDate = params.startDate || fiveYearsAgo.toISOString().slice(0, 10).replace(/-/g, '');
+    oneYearAgo.setDate(oneYearAgo.getDate() + 1);
+    const startDate = params.startDate || oneYearAgo.toISOString().slice(0, 10).replace(/-/g, '');
 
     const isSmsLogin = params.loginType === '2';
 
@@ -839,17 +846,18 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
 }> {
     const token = await getAccessToken();
 
-    // HIRA 자동차보험 진료내역도 본인 진료내역과 동일하게 최대 5년 전까지 조회 가능
-    // (HIRA 공식 포털의 "내 진료정보 열람" 페이지에서 자동차보험 보험종별 동일 5년 정책).
+    // HIRA 자동차보험 진료내역도 본인 진료내역과 동일하게 **단건 호출은 1년 한도**.
+    // 5년치 받으려면 fetchMyCarInsuranceChunked()가 1년씩 분할 호출.
+    // (HIRA 포털 UI는 5년 옵션 제공하지만, API 단건 한도는 별개)
     const now = new Date();
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     const endDate = params.endDate || yesterday.toISOString().slice(0, 10).replace(/-/g, '');
 
-    const fiveYearsAgo = new Date(yesterday);
-    fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
-    fiveYearsAgo.setDate(fiveYearsAgo.getDate() + 1);
-    const startDate = params.startDate || fiveYearsAgo.toISOString().slice(0, 10).replace(/-/g, '');
+    const oneYearAgo = new Date(yesterday);
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    oneYearAgo.setDate(oneYearAgo.getDate() + 1);
+    const startDate = params.startDate || oneYearAgo.toISOString().slice(0, 10).replace(/-/g, '');
 
     const isSmsLogin = params.loginType === '2';
 
