@@ -552,28 +552,10 @@ function MedicalInfoContent() {
                             진료정보 조회
                         </h1>
                         <p className="text-sm text-muted-foreground mt-0.5">
-                            건강보험심사평가원(HIRA) 진료내역 — 본인인증 1회당 1년치 누적 (최대 5년)
+                            건강보험심사평가원(HIRA) 최근 5년치 진료내역
                         </p>
                     </div>
                 </div>
-
-                {/* 첫 진입 안내 — HIRA 정책 명시 (오해 방지) */}
-                {accumulatedLoaded && collectedYears === 0 && (
-                    <Card className="border border-blue-200 bg-blue-50/40 shadow-sm">
-                        <CardContent className="p-3">
-                            <div className="flex items-start gap-2 text-xs">
-                                <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                                <div>
-                                    <p className="font-semibold mb-0.5">심평원 정책 안내</p>
-                                    <p className="text-muted-foreground leading-relaxed">
-                                        심평원 API는 본인인증 1회당 <span className="font-semibold text-foreground">최근 1년치</span>만 응답합니다.
-                                        더 옛날 데이터(최대 5년)는 결과 화면의 <span className="font-semibold text-foreground">"이전 1년 더 받기"</span> 버튼으로 누적해 받아주세요.
-                                    </p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
 
                 {/* 누적 상태 안내 — 이미 받은 데이터가 있으면 진행률 표시 */}
                 {accumulatedLoaded && collectedYears > 0 && (
@@ -586,7 +568,7 @@ function MedicalInfoContent() {
                             <p className="text-xs text-muted-foreground mb-2">
                                 {nextChunk
                                     ? `이번 인증으로 추가될 기간: ${nextChunk.label}`
-                                    : '최대 누적 기간(5년) 도달 — 추가 인증 불필요'}
+                                    : '최대 5년치 모두 수집 — 새로 인증할 필요 없음'}
                             </p>
                             <div className="h-2 bg-white/70 border border-slate-200 rounded-full overflow-hidden">
                                 <div
@@ -929,9 +911,8 @@ function MedicalInfoContent() {
                 </Button>
             </div>
 
-            {/* 누적 진행률 + 이전 1년 더 보기 버튼
-                HIRA(심평원) 정책: 1회 본인인증 = 1년치 응답. 5년치는 인증 5번 누적. */}
-            {accumulatedLoaded && (
+            {/* 누적 진행률 — 5년치 다 모았으면 완료, 부족하면 이전 기간 추가 버튼 */}
+            {accumulatedLoaded && collectedYears > 0 && (
                 <Card className={`border-2 shadow-sm ${nextChunk ? 'border-amber-200 bg-amber-50/60' : 'border-emerald-200 bg-emerald-50/60'}`}>
                     <CardContent className="p-4">
                         <div className="flex items-start gap-3 mb-3">
@@ -940,18 +921,17 @@ function MedicalInfoContent() {
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-bold mb-0.5">
-                                    {collectedYears === 0
-                                        ? '이번 1년치 진료기록을 받았어요'
-                                        : nextChunk
-                                            ? `현재까지 ${collectedYears}년치 누적 — 5년치까지 인증 ${MAX_ACCUMULATION_YEARS - collectedYears}번 더 필요`
-                                            : `5년치 진료기록 모두 누적 완료 ✓`}
+                                    {nextChunk
+                                        ? `현재까지 ${collectedYears}년치 수집 — 추가 누적 가능`
+                                        : `5년치 진료기록 모두 수집 완료 ✓`}
                                 </p>
                                 <p className="text-xs text-muted-foreground leading-relaxed">
-                                    심평원(HIRA) 정책상 본인인증 1회당 1년치만 응답합니다. 더 옛날 데이터는 인증을 반복해 누적해야 5년치를 모을 수 있어요.
+                                    {nextChunk
+                                        ? '이전 기간의 데이터가 더 필요하면 아래 버튼으로 추가 인증해 누적할 수 있어요.'
+                                        : '심평원이 보관하는 최대 5년치 데이터를 모두 받았습니다.'}
                                 </p>
                             </div>
                         </div>
-                        {/* 진행률 바 */}
                         <div className="mb-3">
                             <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
                                 <span>{collectedYears}년 / {MAX_ACCUMULATION_YEARS}년</span>
@@ -964,7 +944,6 @@ function MedicalInfoContent() {
                                 />
                             </div>
                         </div>
-                        {/* 다음 단계 액션 */}
                         {nextChunk ? (
                             <div className="flex items-center justify-between flex-wrap gap-2">
                                 <p className="text-xs">
@@ -983,7 +962,7 @@ function MedicalInfoContent() {
                                     disabled={loading}
                                     className="bg-amber-600 hover:bg-amber-700 text-white"
                                 >
-                                    이전 1년 더 받기 →
+                                    이전 기간 추가 받기 →
                                 </Button>
                             </div>
                         ) : (
