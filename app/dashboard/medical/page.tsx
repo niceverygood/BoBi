@@ -102,6 +102,10 @@ function MedicalInfoContent() {
     };
     const [accumulatedWindows, setAccumulatedWindows] = useState<AccumulatedWindow[]>([]);
     const [accumulatedLoaded, setAccumulatedLoaded] = useState(false);
+    // 마지막 인증 결과의 누적 저장 상태 — 사용자가 "조회안됨" 호소 시 진단 가능하게 노출.
+    type SaveStatusItem = { record_type: string; saved: boolean; count: number; error?: string };
+    const [lastSaveStatus, setLastSaveStatus] = useState<SaveStatusItem[] | null>(null);
+    const [lastSavedPeriod, setLastSavedPeriod] = useState<{ start: string; end: string } | null>(null);
 
     const MAX_ACCUMULATION_YEARS = 5;
 
@@ -307,6 +311,9 @@ function MedicalInfoContent() {
             }
 
             applyResults(data);
+            // 누적 저장 상태를 화면에서 확인 가능하게 — "조회 안 됨" 진단의 첫 단서
+            if (data.saveStatus) setLastSaveStatus(data.saveStatus as SaveStatusItem[]);
+            if (data.savedPeriod) setLastSavedPeriod(data.savedPeriod as { start: string; end: string });
             setStep('results');
             // 새 1년 윈도우가 DB에 저장됐으니 누적 상태 갱신 → "이전 1년 더 보기" 버튼이 다음 윈도우로 갱신됨
             void fetchAccumulated();
@@ -545,24 +552,45 @@ function MedicalInfoContent() {
                             진료정보 조회
                         </h1>
                         <p className="text-sm text-muted-foreground mt-0.5">
-                            건강보험심사평가원(HIRA) 최근 5년치 진료내역 조회
+                            건강보험심사평가원(HIRA) 진료내역 — 본인인증 1회당 1년치 누적 (최대 5년)
                         </p>
                     </div>
                 </div>
 
+                {/* 첫 진입 안내 — HIRA 정책 명시 (오해 방지) */}
+                {accumulatedLoaded && collectedYears === 0 && (
+                    <Card className="border border-blue-200 bg-blue-50/40 shadow-sm">
+                        <CardContent className="p-3">
+                            <div className="flex items-start gap-2 text-xs">
+                                <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="font-semibold mb-0.5">심평원 정책 안내</p>
+                                    <p className="text-muted-foreground leading-relaxed">
+                                        심평원 API는 본인인증 1회당 <span className="font-semibold text-foreground">최근 1년치</span>만 응답합니다.
+                                        더 옛날 데이터(최대 5년)는 결과 화면의 <span className="font-semibold text-foreground">"이전 1년 더 받기"</span> 버튼으로 누적해 받아주세요.
+                                    </p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
                 {/* 누적 상태 안내 — 이미 받은 데이터가 있으면 진행률 표시 */}
                 {accumulatedLoaded && collectedYears > 0 && (
-                    <Card className="border-0 shadow-sm bg-slate-50">
+                    <Card className="border-2 border-amber-200 bg-amber-50/60 shadow-sm">
                         <CardContent className="p-4">
-                            <p className="text-sm font-semibold mb-1">
-                                현재 수집됨: {collectedYears} / {MAX_ACCUMULATION_YEARS}년
+                            <p className="text-sm font-semibold mb-1 flex items-center gap-1.5">
+                                <CheckCircle2 className="w-4 h-4 text-amber-600" />
+                                이미 수집된 진료기록: {collectedYears} / {MAX_ACCUMULATION_YEARS}년
                             </p>
                             <p className="text-xs text-muted-foreground mb-2">
-                                {nextChunk ? `이번 인증으로 추가될 기간: ${nextChunk.label}` : '최대 누적 기간 도달'}
+                                {nextChunk
+                                    ? `이번 인증으로 추가될 기간: ${nextChunk.label}`
+                                    : '최대 누적 기간(5년) 도달 — 추가 인증 불필요'}
                             </p>
-                            <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                            <div className="h-2 bg-white/70 border border-slate-200 rounded-full overflow-hidden">
                                 <div
-                                    className="h-full bg-slate-700 transition-all"
+                                    className="h-full bg-amber-500 transition-all"
                                     style={{ width: `${(collectedYears / MAX_ACCUMULATION_YEARS) * 100}%` }}
                                 />
                             </div>
@@ -901,37 +929,51 @@ function MedicalInfoContent() {
                 </Button>
             </div>
 
-            {/* 누적 진행률 + 이전 1년 더 보기 버튼 — HIRA는 1회 인증당 1년치만 허용,
-                여러 번 인증해 5년치까지 누적 가능 */}
+            {/* 누적 진행률 + 이전 1년 더 보기 버튼
+                HIRA(심평원) 정책: 1회 본인인증 = 1년치 응답. 5년치는 인증 5번 누적. */}
             {accumulatedLoaded && (
-                <Card className="border-0 shadow-sm bg-slate-50">
+                <Card className={`border-2 shadow-sm ${nextChunk ? 'border-amber-200 bg-amber-50/60' : 'border-emerald-200 bg-emerald-50/60'}`}>
                     <CardContent className="p-4">
-                        <div className="flex items-center justify-between flex-wrap gap-3">
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold mb-1">
-                                    수집된 진료기록: {collectedYears} / {MAX_ACCUMULATION_YEARS}년
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                    {collectedYears === 0
-                                        ? '심평원에서 최대 5년 전까지 진료내역을 조회합니다.'
-                                        : nextChunk
-                                        ? `추가 가능 기간: ${nextChunk.label}`
-                                        : '최대 조회 기간(5년)에 도달했습니다.'}
-                                </p>
-                                {/* 진행률 바 */}
-                                <div className="mt-2 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-slate-700 transition-all"
-                                        style={{ width: `${(collectedYears / MAX_ACCUMULATION_YEARS) * 100}%` }}
-                                    />
-                                </div>
+                        <div className="flex items-start gap-3 mb-3">
+                            <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${nextChunk ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                {nextChunk ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
                             </div>
-                            {nextChunk && (
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold mb-0.5">
+                                    {collectedYears === 0
+                                        ? '이번 1년치 진료기록을 받았어요'
+                                        : nextChunk
+                                            ? `현재까지 ${collectedYears}년치 누적 — 5년치까지 인증 ${MAX_ACCUMULATION_YEARS - collectedYears}번 더 필요`
+                                            : `5년치 진료기록 모두 누적 완료 ✓`}
+                                </p>
+                                <p className="text-xs text-muted-foreground leading-relaxed">
+                                    심평원(HIRA) 정책상 본인인증 1회당 1년치만 응답합니다. 더 옛날 데이터는 인증을 반복해 누적해야 5년치를 모을 수 있어요.
+                                </p>
+                            </div>
+                        </div>
+                        {/* 진행률 바 */}
+                        <div className="mb-3">
+                            <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
+                                <span>{collectedYears}년 / {MAX_ACCUMULATION_YEARS}년</span>
+                                <span>{Math.round((collectedYears / MAX_ACCUMULATION_YEARS) * 100)}%</span>
+                            </div>
+                            <div className="h-2 bg-white/70 border border-slate-200 rounded-full overflow-hidden">
+                                <div
+                                    className={`h-full transition-all ${nextChunk ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                                    style={{ width: `${(collectedYears / MAX_ACCUMULATION_YEARS) * 100}%` }}
+                                />
+                            </div>
+                        </div>
+                        {/* 다음 단계 액션 */}
+                        {nextChunk ? (
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                                <p className="text-xs">
+                                    <span className="text-muted-foreground">다음 인증으로 추가될 기간: </span>
+                                    <span className="font-semibold">{nextChunk.label}</span>
+                                </p>
                                 <Button
                                     size="sm"
-                                    variant="default"
                                     onClick={() => {
-                                        // 폼으로 돌아가서 다음 1년 윈도우 인증 진행
                                         setStep('form');
                                         setTwoWayData(null);
                                         setSessionId(null);
@@ -939,10 +981,53 @@ function MedicalInfoContent() {
                                         setError(null);
                                     }}
                                     disabled={loading}
+                                    className="bg-amber-600 hover:bg-amber-700 text-white"
                                 >
-                                    이전 1년 더 보기
+                                    이전 1년 더 받기 →
                                 </Button>
+                            </div>
+                        ) : (
+                            <p className="text-xs text-emerald-700 font-medium">
+                                ✓ 누적 가능한 최대 기간(5년)에 도달했습니다.
+                            </p>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* 누적 저장 진단 — 마지막 인증의 저장 결과를 명시 (이종인 5/10 "조회안됨" 진단 대응) */}
+            {lastSaveStatus && lastSaveStatus.length > 0 && (
+                <Card className={`border shadow-sm ${lastSaveStatus.some(s => !s.saved) ? 'border-red-200 bg-red-50/60' : 'border-blue-200 bg-blue-50/40'}`}>
+                    <CardContent className="p-3">
+                        <div className="flex items-start gap-2 text-xs">
+                            {lastSaveStatus.some(s => !s.saved) ? (
+                                <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                            ) : (
+                                <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
                             )}
+                            <div className="flex-1">
+                                <p className="font-semibold mb-0.5">
+                                    {lastSaveStatus.some(s => !s.saved) ? '⚠️ 누적 저장 일부 실패' : '이번 인증 저장 완료'}
+                                    {lastSavedPeriod && (
+                                        <span className="font-normal text-muted-foreground ml-1">
+                                            ({lastSavedPeriod.start} ~ {lastSavedPeriod.end})
+                                        </span>
+                                    )}
+                                </p>
+                                <ul className="space-y-0.5">
+                                    {lastSaveStatus.map((s, i) => (
+                                        <li key={i} className={s.saved ? 'text-foreground' : 'text-red-700'}>
+                                            {s.saved ? '✓' : '✗'} {s.record_type} — {s.count}건
+                                            {s.error && <span className="ml-1 text-red-700">({s.error})</span>}
+                                        </li>
+                                    ))}
+                                </ul>
+                                {lastSaveStatus.some(s => !s.saved) && (
+                                    <p className="mt-1 text-red-700">
+                                        저장 실패가 반복되면 dev@bottlecorp.kr으로 문의해주세요.
+                                    </p>
+                                )}
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
