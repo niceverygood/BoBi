@@ -5,36 +5,54 @@
 const CODEF_TOKEN_URL = 'https://oauth.codef.io/oauth/token';
 const CODEF_API_URL = process.env.CODEF_API_URL || 'https://api.codef.io';
 
-// ─── 🔒 HIRA 단건 호출 기간 한도 — 회귀 락 ─────────────────────────────
-// HIRA(심평원) API는 단건 호출당 최대 1년치까지만 응답한다 (CF-13001).
-// HIRA 포털(hira.or.kr) UI는 5년치 선택 가능하지만, 그건 포털 UI 옵션이고
-// CODEF API의 단건 호출 한도와는 별개다.
+// ─── HIRA 단건 호출 기간 한도 — 시험 모드 ─────────────────────────────
+// 회귀 사이클 정리 (2026-04 ~ 2026-05):
+//   PR #14 (5→1, e1fca0e): CF-13001 발생을 보고 5년→1년 default로 변경
+//   PR #15 (chunked × 5): 1년 한도 가정으로 5년치 chunk 호출 시도
+//   PR #17 (1년 누적): chunk 자동 호출이 인증 1회로 안 먹혀 N회 인증 누적 정책으로 정착
+//   PR #18 (1→5, "포털과 일치"): 다시 5년 default — CF-13001 재발한다고 판단해 회귀로 분류
+//   PR #19 (5→1, 96b503a): 회귀 수정
 //
-// 5년치를 받으려면 1년 단위로 사용자가 N번 인증해 user_medical_records에 누적해야 한다.
-// 단건 호출에서 이 한도를 넘기면 무조건 CF-13001로 막힌다.
+// 2026-05-11 이종인 영업이사 반박: HIRA 공식 포털(hira.or.kr "내 신료정보 별담")에서
+//   1번 본인인증으로 5년치 조회 가능함을 캡처로 입증. "1회 인증 1년치"는 우리 가정.
 //
-// ⚠️ 회귀 노트 (PR #14, #18, #19):
-//   - PR #14 (5→1): CF-13001 해결
-//   - PR #18 (1→5, "공식 포털과 일치"): 회귀 — HIRA 포털 ≠ API 한도
-//   - PR #19 (5→1, 96b503a): 회귀 수정
-//   이 상수를 늘리는 PR은 PR #18 회귀의 재발입니다. 단건 호출은 1년 ≡ 366일로 고정.
-//   더 옛날 데이터는 누적 시스템으로만 받는다.
-export const MAX_HIRA_RANGE_DAYS = 366;
+// 가설:
+//   ① CODEF API도 5년 가능. PR #14의 CF-13001은 다른 원인(endDate 형식·미래날짜 등).
+//   ② HIRA 포털은 5년 가능, CODEF wrapper는 1년 한도. CODEF가 자체 제한.
+//   ③ CODEF 정책이 그 사이 변경됨.
+//
+// 결정 (옵션 A): 회귀 락 임시 해제 + default 5년 + CF-13001 자동 fallback.
+//   실제로 시도해보고 결과 따라 영구 결정. 5년 응답 오면 가설 ①/③ 확정, CF-13001 또 나오면 가설 ② 확정.
+//
+// MAX_HIRA_RANGE_DAYS를 5년+여유로 풀되, CF-13001 시 자동으로 1년 fallback → 사용자에게 빈 화면 안 보이게.
+export const MAX_HIRA_RANGE_DAYS = 1830;     // 5년 + 여유. 5년 초과 시도는 명시적으로 막음.
+export const HIRA_DEFAULT_YEARS = 5;          // default startDate 계산용. CF-13001 시 1년으로 fallback.
+export const HIRA_FALLBACK_YEARS = 1;         // CF-13001 fallback 범위. 안전한 1년치.
 
-/**
- * HIRA 단건 호출의 startDate/endDate가 최대 기간 한도(MAX_HIRA_RANGE_DAYS) 안인지 검증.
- * 한도 초과 시 사용자가 보기 좋은 메시지로 throw — 서버 콘솔에는 PR 회귀임을 즉시 알림.
- */
 function assertHiraRangeWithinLimit(startDate: string, endDate: string): void {
     if (!/^\d{8}$/.test(startDate) || !/^\d{8}$/.test(endDate)) return;
     const s = new Date(`${startDate.slice(0, 4)}-${startDate.slice(4, 6)}-${startDate.slice(6, 8)}`);
     const e = new Date(`${endDate.slice(0, 4)}-${endDate.slice(4, 6)}-${endDate.slice(6, 8)}`);
     const days = Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24));
     if (days > MAX_HIRA_RANGE_DAYS) {
-        const msg = `[HIRA range guard] 단건 호출 기간이 한도를 초과했습니다 (${days}일 > ${MAX_HIRA_RANGE_DAYS}일). HIRA API는 1회당 1년치만 응답합니다 (CF-13001). 5년치는 누적 시스템(user_medical_records)을 사용하세요. 회귀 노트: lib/codef/client.ts MAX_HIRA_RANGE_DAYS 주석 참조.`;
+        const msg = `[HIRA range guard] 단건 호출 기간이 5년 한도를 초과했습니다 (${days}일 > ${MAX_HIRA_RANGE_DAYS}일). HIRA가 5년 보관이므로 그 이상은 불필요.`;
         console.error(msg, { startDate, endDate, days });
         throw new Error(msg);
     }
+}
+
+/**
+ * yyyy-mm-dd 또는 yyyymmdd 문자열에서 N년을 빼서 yyyymmdd로 반환.
+ * 윤년 경계 방어로 +1일 마진.
+ */
+function subtractYearsFromDate(baseYmd: string, years: number): string {
+    const base = /^\d{8}$/.test(baseYmd)
+        ? new Date(`${baseYmd.slice(0, 4)}-${baseYmd.slice(4, 6)}-${baseYmd.slice(6, 8)}T00:00:00Z`)
+        : new Date(baseYmd + 'T00:00:00Z');
+    const result = new Date(base);
+    result.setUTCFullYear(result.getUTCFullYear() - years);
+    result.setUTCDate(result.getUTCDate() + 1); // 윤년 마진
+    return result.toISOString().slice(0, 10).replace(/-/g, '');
 }
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
@@ -653,33 +671,62 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
     requires2Way?: boolean;
     twoWayData?: Record<string, unknown>;
 }> {
-    const token = await getAccessToken();
-
     // HIRA(심평원) 조회 날짜 규칙:
     // - endDate: 오늘이 아닌 어제까지만 (당일 데이터 미반영)
-    // - startDate: **단건 호출은 최대 1년 한도** (초과 시 CF-13001).
-    //
-    // ⚠️ HIRA 포털(hira.or.kr) UI는 6개월/9개월/1년/3년/5년 버튼이 있지만,
-    //    이는 "포털 UI 옵션"이고, CODEF API의 단건 호출 한도와는 별개다.
-    //    API 단건 호출은 1년이 최대이며, 5년치를 받으려면
-    //    fetchMyMedicalInfoChunked()가 1년씩 5번 분할 호출한다.
-    //
-    // ⚠️ 회귀 주의: PR #14에서 5년→1년 수정 후, PR #18에서
-    //    "공식 포털과 일치"한다며 다시 5년으로 바꾸면 CF-13001 재발.
-    //    포털 ≠ API 한도. default는 반드시 1년.
+    // - startDate: HIRA 포털은 5년치 보관·조회 가능. 이종인 영업이사(2026-05-11) 캡처로 확인됨.
+    //   PR #14 당시 1년 default로 줄였던 이유는 CF-13001 발생이었으나, 그 원인이
+    //   "5년 범위 자체"가 아니라 다른 파라미터일 가능성을 시험 중. CF-13001 발생 시 자동 1년 fallback.
+    return fetchMyMedicalInfoWithFallback(params, HIRA_DEFAULT_YEARS);
+}
+
+/**
+ * fetchMyMedicalInfo의 내부 구현. 지정한 years로 시도하고 CF-13001 발생 시 1년으로 자동 재시도.
+ * 2-Way 인증 흐름에서는 fallback 없음 (이미 인증을 받은 상태에서 기간만 다르게 재호출하면
+ * CODEF 세션 충돌 위험 — 두 번째 호출은 그대로 실패 응답을 caller에게 전달).
+ */
+async function fetchMyMedicalInfoWithFallback(
+    params: HiraMedicalRequest,
+    years: number,
+): Promise<{
+    records: HiraMedicalRecord[];
+    requires2Way?: boolean;
+    twoWayData?: Record<string, unknown>;
+}> {
+    try {
+        return await fetchMyMedicalInfoOnce(params, years);
+    } catch (err) {
+        const msg = (err as Error).message;
+        // CF-13001 — "조회할 수 없는 기간 체크 오류". 5년 시도가 막혔으면 1년으로 한 번 더.
+        // 단, 사용자 인증 토큰이 살아있어야 의미 있으므로 첫 호출(2-Way 트리거 직전)에만 fallback.
+        const is13001 = /CF[\-‐‑–−]?13001/.test(msg);
+        const isFirstCall = !params.is2Way; // 2-Way 완료 시점에는 fallback 안 함
+        if (is13001 && isFirstCall && years > HIRA_FALLBACK_YEARS) {
+            console.warn(`[HIRA] CF-13001 with ${years}년 range — retrying with ${HIRA_FALLBACK_YEARS}년 fallback`);
+            return await fetchMyMedicalInfoOnce(params, HIRA_FALLBACK_YEARS);
+        }
+        throw err;
+    }
+}
+
+async function fetchMyMedicalInfoOnce(params: HiraMedicalRequest, years: number): Promise<{
+    records: HiraMedicalRecord[];
+    requires2Way?: boolean;
+    twoWayData?: Record<string, unknown>;
+}> {
+    const token = await getAccessToken();
+
     const now = new Date();
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     const endDate = params.endDate || yesterday.toISOString().slice(0, 10).replace(/-/g, '');
 
-    const oneYearAgo = new Date(yesterday);
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-    // setFullYear가 윤년 경계에서 다음달로 넘기는 경우(예: 2/29 → 3/1) 방어 — 하루 더해 안전 마진
-    oneYearAgo.setDate(oneYearAgo.getDate() + 1);
-    const startDate = params.startDate || oneYearAgo.toISOString().slice(0, 10).replace(/-/g, '');
+    // params.startDate가 명시되면 그대로, 없으면 years년 전 default.
+    const startDate = params.startDate || subtractYearsFromDate(endDate, years);
 
-    // 🔒 회귀 락: 단건 호출은 무조건 1년 이내. 누가 default를 늘리면 여기서 막힘.
+    // 가드: 5년+여유 초과 시도 차단 (HIRA가 5년 보관이라 그 이상은 무의미).
     assertHiraRangeWithinLimit(startDate, endDate);
+
+    console.log(`[HIRA] fetchMyMedicalInfo 호출: ${startDate} ~ ${endDate} (${years}년 시도, 2-Way=${!!params.is2Way})`);
 
     const isSmsLogin = params.loginType === '2';
 
@@ -879,23 +926,49 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
     requires2Way?: boolean;
     twoWayData?: Record<string, unknown>;
 }> {
+    // 자동차보험도 fetchMyMedicalInfo와 동일한 5년 default + CF-13001 fallback 정책.
+    return fetchMyCarInsuranceWithFallback(params, HIRA_DEFAULT_YEARS);
+}
+
+async function fetchMyCarInsuranceWithFallback(
+    params: HiraMedicalRequest,
+    years: number,
+): Promise<{
+    records: HiraCarInsuranceRecord[];
+    requires2Way?: boolean;
+    twoWayData?: Record<string, unknown>;
+}> {
+    try {
+        return await fetchMyCarInsuranceOnce(params, years);
+    } catch (err) {
+        const msg = (err as Error).message;
+        const is13001 = /CF[\-‐‑–−]?13001/.test(msg);
+        const isFirstCall = !params.is2Way;
+        if (is13001 && isFirstCall && years > HIRA_FALLBACK_YEARS) {
+            console.warn(`[HIRA car] CF-13001 with ${years}년 range — retrying with ${HIRA_FALLBACK_YEARS}년 fallback`);
+            return await fetchMyCarInsuranceOnce(params, HIRA_FALLBACK_YEARS);
+        }
+        throw err;
+    }
+}
+
+async function fetchMyCarInsuranceOnce(params: HiraMedicalRequest, years: number): Promise<{
+    records: HiraCarInsuranceRecord[];
+    requires2Way?: boolean;
+    twoWayData?: Record<string, unknown>;
+}> {
     const token = await getAccessToken();
 
-    // HIRA 자동차보험 진료내역도 본인 진료내역과 동일하게 **단건 호출은 1년 한도**.
-    // 5년치 받으려면 fetchMyCarInsuranceChunked()가 1년씩 분할 호출.
-    // (HIRA 포털 UI는 5년 옵션 제공하지만, API 단건 한도는 별개)
     const now = new Date();
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     const endDate = params.endDate || yesterday.toISOString().slice(0, 10).replace(/-/g, '');
 
-    const oneYearAgo = new Date(yesterday);
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-    oneYearAgo.setDate(oneYearAgo.getDate() + 1);
-    const startDate = params.startDate || oneYearAgo.toISOString().slice(0, 10).replace(/-/g, '');
+    const startDate = params.startDate || subtractYearsFromDate(endDate, years);
 
-    // 🔒 회귀 락: 자동차보험 단건 호출도 1년 이내.
     assertHiraRangeWithinLimit(startDate, endDate);
+
+    console.log(`[HIRA car] fetchMyCarInsurance 호출: ${startDate} ~ ${endDate} (${years}년 시도, 2-Way=${!!params.is2Way})`);
 
     const isSmsLogin = params.loginType === '2';
 
