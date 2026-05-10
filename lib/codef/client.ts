@@ -5,6 +5,38 @@
 const CODEF_TOKEN_URL = 'https://oauth.codef.io/oauth/token';
 const CODEF_API_URL = process.env.CODEF_API_URL || 'https://api.codef.io';
 
+// ─── 🔒 HIRA 단건 호출 기간 한도 — 회귀 락 ─────────────────────────────
+// HIRA(심평원) API는 단건 호출당 최대 1년치까지만 응답한다 (CF-13001).
+// HIRA 포털(hira.or.kr) UI는 5년치 선택 가능하지만, 그건 포털 UI 옵션이고
+// CODEF API의 단건 호출 한도와는 별개다.
+//
+// 5년치를 받으려면 1년 단위로 사용자가 N번 인증해 user_medical_records에 누적해야 한다.
+// 단건 호출에서 이 한도를 넘기면 무조건 CF-13001로 막힌다.
+//
+// ⚠️ 회귀 노트 (PR #14, #18, #19):
+//   - PR #14 (5→1): CF-13001 해결
+//   - PR #18 (1→5, "공식 포털과 일치"): 회귀 — HIRA 포털 ≠ API 한도
+//   - PR #19 (5→1, 96b503a): 회귀 수정
+//   이 상수를 늘리는 PR은 PR #18 회귀의 재발입니다. 단건 호출은 1년 ≡ 366일로 고정.
+//   더 옛날 데이터는 누적 시스템으로만 받는다.
+export const MAX_HIRA_RANGE_DAYS = 366;
+
+/**
+ * HIRA 단건 호출의 startDate/endDate가 최대 기간 한도(MAX_HIRA_RANGE_DAYS) 안인지 검증.
+ * 한도 초과 시 사용자가 보기 좋은 메시지로 throw — 서버 콘솔에는 PR 회귀임을 즉시 알림.
+ */
+function assertHiraRangeWithinLimit(startDate: string, endDate: string): void {
+    if (!/^\d{8}$/.test(startDate) || !/^\d{8}$/.test(endDate)) return;
+    const s = new Date(`${startDate.slice(0, 4)}-${startDate.slice(4, 6)}-${startDate.slice(6, 8)}`);
+    const e = new Date(`${endDate.slice(0, 4)}-${endDate.slice(4, 6)}-${endDate.slice(6, 8)}`);
+    const days = Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24));
+    if (days > MAX_HIRA_RANGE_DAYS) {
+        const msg = `[HIRA range guard] 단건 호출 기간이 한도를 초과했습니다 (${days}일 > ${MAX_HIRA_RANGE_DAYS}일). HIRA API는 1회당 1년치만 응답합니다 (CF-13001). 5년치는 누적 시스템(user_medical_records)을 사용하세요. 회귀 노트: lib/codef/client.ts MAX_HIRA_RANGE_DAYS 주석 참조.`;
+        console.error(msg, { startDate, endDate, days });
+        throw new Error(msg);
+    }
+}
+
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
 // ─── CODEF 응답 파싱 (URL 디코딩 필요) ──────────────
@@ -646,6 +678,9 @@ export async function fetchMyMedicalInfo(params: HiraMedicalRequest): Promise<{
     oneYearAgo.setDate(oneYearAgo.getDate() + 1);
     const startDate = params.startDate || oneYearAgo.toISOString().slice(0, 10).replace(/-/g, '');
 
+    // 🔒 회귀 락: 단건 호출은 무조건 1년 이내. 누가 default를 늘리면 여기서 막힘.
+    assertHiraRangeWithinLimit(startDate, endDate);
+
     const isSmsLogin = params.loginType === '2';
 
     const body: Record<string, unknown> = {
@@ -858,6 +893,9 @@ export async function fetchMyCarInsurance(params: HiraMedicalRequest): Promise<{
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
     oneYearAgo.setDate(oneYearAgo.getDate() + 1);
     const startDate = params.startDate || oneYearAgo.toISOString().slice(0, 10).replace(/-/g, '');
+
+    // 🔒 회귀 락: 자동차보험 단건 호출도 1년 이내.
+    assertHiraRangeWithinLimit(startDate, endDate);
 
     const isSmsLogin = params.loginType === '2';
 

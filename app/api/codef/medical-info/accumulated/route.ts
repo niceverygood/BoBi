@@ -59,6 +59,19 @@ export async function GET() {
         fetched_at: r.fetched_at,
     }));
 
+    // 진단용: 어떤 1년 윈도우들이 누적되어 있는지 콘솔에 명확히 표기.
+    // 이종인 5/10 보고("인증 다시해도 조회안됨") 진단을 위해 추가됨.
+    console.log('[HIRA accumulated] 누적 조회:', {
+        userId: user.id.slice(0, 8) + '...',
+        windowCount: windows.length,
+        byType: ['medical', 'car_insurance', 'medicine'].map(t => {
+            const ws = windows.filter(w => w.record_type === t);
+            return ws.length > 0
+                ? `${t}=${ws.length}윈도우 [${ws.map(w => `${w.period_start}~${w.period_end}(${w.record_count}건)`).join(', ')}]`
+                : `${t}=0`;
+        }).join(' | '),
+    });
+
     return NextResponse.json({
         windows,
         merged: {

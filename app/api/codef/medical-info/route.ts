@@ -257,18 +257,32 @@ export async function POST(request: Request) {
         // 받은 1년치 데이터를 user_medical_records에 영구 저장 — 누적 조회 시스템.
         // 같은 (user, type, period) 조합은 ON CONFLICT로 갱신.
         // params.startDate/endDate가 없으면 fetchMyMedicalInfo가 자동으로 어제 기준 1년 전~어제로 잡음.
+        //
+        // ⚠️ 회귀 진단(이종인 5/10): "인증 다시해도 조회안됨" 호소.
+        //   원인 후보: ① UPSERT 실패 silent catch ② 같은 윈도우로 덮어쓰기 ③ HIRA가 과거 기간 무시.
+        //   대응: 저장 결과를 응답에 saveStatus로 포함 + 실패 시 사용자에게 노출.
+        const periodEnd = computePeriodDate(params.endDate);
+        const periodStart = computePeriodDate(params.startDate, periodEnd, -1);
+        const saveStatus: Array<{ record_type: string; saved: boolean; count: number; error?: string }> = [];
+
         try {
             const svc = await createServiceClient();
-            const periodEnd = computePeriodDate(params.endDate);
-            const periodStart = computePeriodDate(params.startDate, periodEnd, -1);
-
             const rowsToSave: Array<{ record_type: string; records: unknown[] }> = [];
             if (result.medical?.records) rowsToSave.push({ record_type: 'medical', records: result.medical.records });
             if (result.carInsurance?.records) rowsToSave.push({ record_type: 'car_insurance', records: result.carInsurance.records });
             if (result.myMedicine?.records) rowsToSave.push({ record_type: 'medicine', records: result.myMedicine.records });
 
+            console.log('[HIRA] 누적 저장 시도:', {
+                userId: user.id.slice(0, 8) + '...',
+                periodStart,
+                periodEnd,
+                paramsSent: { startDate: params.startDate, endDate: params.endDate },
+                rowCount: rowsToSave.length,
+                recordsByType: rowsToSave.map(r => `${r.record_type}=${r.records.length}건`).join(', '),
+            });
+
             for (const row of rowsToSave) {
-                await svc.from('user_medical_records').upsert({
+                const { error: upsertErr } = await svc.from('user_medical_records').upsert({
                     user_id: user.id,
                     record_type: row.record_type,
                     period_start: periodStart,
@@ -277,15 +291,38 @@ export async function POST(request: Request) {
                     record_count: row.records.length,
                     fetched_at: new Date().toISOString(),
                 }, { onConflict: 'user_id,record_type,period_start,period_end' });
+
+                if (upsertErr) {
+                    console.error(`[HIRA] upsert 실패 (${row.record_type}):`, upsertErr.message, upsertErr.code);
+                    saveStatus.push({ record_type: row.record_type, saved: false, count: row.records.length, error: upsertErr.message });
+                } else {
+                    saveStatus.push({ record_type: row.record_type, saved: true, count: row.records.length });
+                }
             }
         } catch (saveErr) {
-            // DB 저장 실패는 사용자 흐름을 막지 않음 — 받은 데이터는 응답으로 그대로 반환
-            console.error('[HIRA] user_medical_records upsert 실패:', (saveErr as Error).message);
+            // 예외 — 사용자 흐름은 막지 않되, 응답에 명확히 노출.
+            console.error('[HIRA] user_medical_records upsert 예외:', (saveErr as Error).message);
+            saveStatus.push({ record_type: 'unknown', saved: false, count: 0, error: (saveErr as Error).message });
         }
+
+        // 진단용: 받은 응답 + 보낸 기간 요약 로그
+        console.log('[HIRA] 응답 요약:', {
+            queryType,
+            effectiveQueryType,
+            sentRange: `${params.startDate || '(default)'} ~ ${params.endDate || '(default)'}`,
+            savedRange: `${periodStart} ~ ${periodEnd}`,
+            medicalCount: result.medical?.count ?? null,
+            carCount: result.carInsurance?.count ?? null,
+            medicineCount: result.myMedicine?.count ?? null,
+            saveStatus,
+        });
 
         return NextResponse.json({
             success: true,
             ...result,
+            // UI가 누적 저장 결과를 사용자에게 보여주기 위해 동봉.
+            saveStatus,
+            savedPeriod: { start: periodStart, end: periodEnd },
         });
     } catch (error) {
         const errorMessage = (error as Error).message;
