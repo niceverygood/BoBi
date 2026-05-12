@@ -112,43 +112,97 @@ export default function AnalysisResultView({ result }: AnalysisResultProps) {
                 </div>
             )}
 
-            {/* Disease Summary */}
+            {/* Disease Summary — 질병별 치료 요약 (Step 1과 동일 톤으로 강화) */}
             {result.diseaseSummary && result.diseaseSummary.length > 0 && (
-                <Card className="border-0 shadow-sm">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            📊 질병별 치료 요약
-                        </CardTitle>
+                <Card className="border-2 border-primary/20 shadow-md ring-1 ring-primary/5">
+                    <CardHeader className="bg-gradient-to-br from-primary/5 to-transparent border-b border-primary/10">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                            <CardTitle className="text-xl sm:text-2xl flex items-center gap-2.5 font-bold">
+                                <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center text-xl">
+                                    📊
+                                </div>
+                                <span>
+                                    <span className="text-xs font-semibold text-primary/70 block leading-tight mb-0.5">OVERVIEW</span>
+                                    <span>질병별 치료 요약</span>
+                                </span>
+                            </CardTitle>
+                            {/* 요약 카운터 — 현재 치료중 N건 */}
+                            {(() => {
+                                const total = result.diseaseSummary!.length;
+                                const ongoing = result.diseaseSummary!.filter(d => d.status === '현재 치료중').length;
+                                return (
+                                    <div className="flex gap-2">
+                                        {ongoing > 0 && (
+                                            <span className="text-sm font-bold px-3 py-1.5 rounded-full bg-red-50 text-red-700 border border-red-200">
+                                                치료중 {ongoing}건
+                                            </span>
+                                        )}
+                                        <span className="text-sm font-bold px-3 py-1.5 rounded-full bg-gray-50 text-gray-700 border border-gray-200">
+                                            총 {total}건
+                                    </span>
+                                    </div>
+                                );
+                            })()}
+                        </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="pt-5">
                         <div className="grid gap-3 grid-cols-1 md:grid-cols-2">
-                            {result.diseaseSummary.map((d, i) => (
-                                <div key={i} className="rounded-lg border p-4 space-y-2 overflow-hidden">
+                            {result.diseaseSummary.map((d, i) => {
+                                const isOngoing = d.status === '현재 치료중';
+                                return (
+                                <div
+                                    key={i}
+                                    className={`rounded-xl border-2 p-4 space-y-2.5 overflow-hidden transition-all ${
+                                        isOngoing
+                                            ? 'border-l-[6px] border-l-red-500 border-red-200/60 bg-red-50/40 hover:bg-red-50/60'
+                                            : 'border-l-[6px] border-l-slate-300 border-slate-200/80 bg-white hover:bg-slate-50/60'
+                                    }`}
+                                >
                                     {/* Disease Name + Code */}
                                     <div className="flex items-start justify-between gap-2">
-                                        <span className="font-medium text-sm flex items-center gap-1.5 min-w-0">
-                                            <span className="text-base shrink-0" title={d.diseaseCode}>{getBodyPartIcon(d.diseaseCode)}</span>
-                                            <span className="break-words">{d.diseaseName}</span>
+                                        <span className="font-bold text-base flex items-center gap-1.5 min-w-0 text-foreground">
+                                            <span className="text-lg shrink-0" title={d.diseaseCode}>{getBodyPartIcon(d.diseaseCode)}</span>
+                                            <span className="break-words leading-tight">{d.diseaseName}</span>
                                         </span>
-                                        <Badge variant="outline" className="text-[10px] font-mono shrink-0 whitespace-nowrap">{d.diseaseCode}</Badge>
+                                        <Badge variant="outline" className="text-[11px] font-mono font-bold shrink-0 whitespace-nowrap border-slate-300">{d.diseaseCode}</Badge>
                                     </div>
                                     {/* Dates & Visits */}
-                                    <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-                                        <span className="truncate">최초: {d.firstDate}</span>
-                                        <span className="truncate">최근: {d.lastDate}</span>
-                                        <span className="truncate">방문: {String(d.totalVisits).replace(/회$/, '')}회</span>
-                                        <span className="truncate">기간: {d.treatmentPeriod}</span>
+                                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+                                        <div className="flex flex-col">
+                                            <span className="text-[11px] text-muted-foreground font-medium">최초</span>
+                                            <span className="font-semibold text-foreground/80">{d.firstDate}</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[11px] text-muted-foreground font-medium">최근</span>
+                                            <span className="font-semibold text-foreground/80">{d.lastDate}</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[11px] text-muted-foreground font-medium">방문</span>
+                                            <span className="font-bold text-foreground">{String(d.totalVisits).replace(/회$/, '')}회</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[11px] text-muted-foreground font-medium">기간</span>
+                                            <span className="font-semibold text-foreground/80">{d.treatmentPeriod}</span>
+                                        </div>
                                     </div>
                                     {/* Status */}
-                                    <Badge variant={d.status === '현재 치료중' ? 'destructive' : 'secondary'} className="text-xs">
-                                        {d.status}
+                                    <Badge
+                                        variant={isOngoing ? 'destructive' : 'secondary'}
+                                        className={`text-xs font-bold px-2.5 py-0.5 ${
+                                            isOngoing
+                                                ? 'bg-red-600 text-white hover:bg-red-700'
+                                                : 'bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200'
+                                        }`}
+                                    >
+                                        {isOngoing ? '⚠ ' + d.status : '✓ ' + d.status}
                                     </Badge>
                                     {/* Hospitals */}
                                     {d.hospitals && d.hospitals.length > 0 && (
-                                        <p className="text-xs text-muted-foreground break-words line-clamp-2">🏥 {d.hospitals.join(', ')}</p>
+                                        <p className="text-xs text-muted-foreground break-words line-clamp-2 pt-1 border-t border-slate-100">🏥 {d.hospitals.join(', ')}</p>
                                     )}
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </CardContent>
                 </Card>
