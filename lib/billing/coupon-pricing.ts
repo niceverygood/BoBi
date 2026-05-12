@@ -7,6 +7,12 @@
 // 쿠폰 정보의 출처는 subscriptions.coupon_code 컬럼 — 첫 결제를 만든 PG path
 // 들이 동일 코드를 스냅샷으로 저장한다. promo_code_redemptions는 부분
 // 입력으로 NULL 위반을 일으키는 케이스가 있어 신뢰원으로 쓰지 않는다.
+//
+// ⚠️ 무기한 쿠폰 금지 (이종인 5/11):
+//    duration_months <= 0 또는 -1 은 더 이상 받지 않는다 (DB CHECK 제약으로 차단).
+//    각 사용자별로 redemption.starts_at + duration_months 가 진짜 만료일.
+//    promo_codes.expires_at 은 쿠폰 발급 기한이고, redemption 시점이 그 이후이면
+//    그 사용자는 그 쿠폰을 못 쓰는 게 정상.
 
 import { getPlanPrice, type BillingCycle } from '@/lib/utils/pricing';
 
@@ -49,6 +55,8 @@ export async function getRenewalPrice(
         billingCycle: BillingCycle;
         couponCode: string | null | undefined;
         periodStart: Date;
+        /** 갱신 대상 사용자 ID — redemption.starts_at 조회용 (사용자별 만료일 계산) */
+        userId?: string;
     },
 ): Promise<RenewalPriceResult> {
     const fullPrice = getPlanPrice(args.planSlug, args.billingCycle);
@@ -59,11 +67,11 @@ export async function getRenewalPrice(
 
     const { data: couponData } = await supabase
         .from('promo_codes')
-        .select('code, plan_slug, price_override, discount_type, discount_value, duration_months, expires_at, active')
+        .select('id, code, plan_slug, price_override, discount_type, discount_value, duration_months, expires_at, active')
         .eq('code', args.couponCode.toUpperCase().trim())
         .eq('active', true)
         .maybeSingle();
-    const coupon = couponData as PromoCodeRow | null;
+    const coupon = couponData as (PromoCodeRow & { id: string }) | null;
 
     if (!coupon) {
         return { amount: fullPrice, couponApplied: false, couponCode: args.couponCode, reason: 'coupon_not_found' };
@@ -72,17 +80,36 @@ export async function getRenewalPrice(
         return { amount: fullPrice, couponApplied: false, couponCode: args.couponCode, reason: 'coupon_inactive' };
     }
 
-    // 쿠폰 자체의 만료
+    // 쿠폰 자체의 발급 만료 (쿠폰을 새로 쓸 수 있는 기한)
     if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) {
         return { amount: fullPrice, couponApplied: false, couponCode: args.couponCode, reason: 'coupon_expired' };
     }
 
-    // duration_months 체크: -1이면 무기한, 그 외엔 첫 적용일로부터 N개월간만 유효.
-    // 첫 적용일은 정확히 알기 어렵지만 갱신 cron 입장에선 periodStart가 다음
-    // 주기의 시작이므로, "이번 주기가 시작될 때 쿠폰의 사용자별 만료일을 넘겼는가"를
-    // 보고 적용 여부를 결정한다. 사용자별 만료일은 redemptions에 저장되지만
-    // 누락된 사례가 있어 promo_codes 자체의 expires_at만 본다.
-    // 무기한(-1)이면 항상 적용, 양수 N이면 promo_codes.expires_at에 의존.
+    // ─── 사용자별 만료일 계산 ───────────────────────────────────────────
+    // 이종인 5/11 정책: 무기한 쿠폰 금지. duration_months 는 반드시 양수.
+    // redemption.starts_at + duration_months 가 진짜 사용자별 만료일.
+    // 갱신 시점(periodStart)이 그 만료일을 넘었으면 쿠폰 적용 안 함 → 정상가.
+    //
+    // redemption 이 없는 케이스 (legacy 결제, NULL 위반 회피)는 fallback 으로
+    // promo_codes.expires_at 만 보고 만료 처리한다.
+    if (coupon.duration_months && coupon.duration_months > 0 && args.userId) {
+        const { data: redemptionData } = await supabase
+            .from('promo_code_redemptions')
+            .select('starts_at')
+            .eq('promo_code_id', coupon.id)
+            .eq('user_id', args.userId)
+            .maybeSingle();
+        const redemption = redemptionData as { starts_at: string } | null;
+        if (redemption?.starts_at) {
+            const startsAt = new Date(redemption.starts_at);
+            const userExpiry = new Date(startsAt);
+            userExpiry.setMonth(userExpiry.getMonth() + coupon.duration_months);
+            if (args.periodStart >= userExpiry) {
+                return { amount: fullPrice, couponApplied: false, couponCode: args.couponCode, reason: 'coupon_expired' };
+            }
+        }
+    }
+    // ────────────────────────────────────────────────────────────────────
 
     if (coupon.plan_slug && coupon.plan_slug !== 'all') {
         const couponPlans = coupon.plan_slug.split(',').map((s) => s.trim());

@@ -98,6 +98,7 @@ export async function GET(request: Request) {
                         billingCycle: sub.billing_cycle,
                         couponCode: sub.coupon_code,
                         periodStart: new Date(sub.current_period_end),
+                        userId: sub.user_id,  // 사용자별 만료일 계산 (이종인 5/11 정책)
                     });
                     amount = priced.amount;
                 } catch {
@@ -366,6 +367,7 @@ export async function GET(request: Request) {
                             billingCycle: sub.billing_cycle,
                             couponCode: sub.coupon_code,
                             periodStart: new Date(sub.current_period_end),
+                            userId: sub.user_id,  // 사용자별 만료일 (이종인 5/11)
                         });
                         retryAmount = priced.amount;
                     } catch { continue; }
