@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>보비 광고 카드뉴스 (인스타 1080×1080)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --blue: #2563eb;
+    --blue-dark: #1e40af;
+    --blue-deep: #1e3a8a;
+    --ink: #0f172a;
+    --ink-2: #334155;
+    --mute: #64748b;
+    --bg: #f8fafc;
+    --paper: #ffffff;
+    --line: #e2e8f0;
+    --amber: #f59e0b;
+    --rose: #ef4444;
+    --emerald: #10b981;
+    --violet: #7c3aed;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #ddd; font-family: 'Pretendard', -apple-system, sans-serif; -webkit-font-smoothing: antialiased; color: var(--ink); }
+  body { padding: 40px; display: flex; flex-direction: column; gap: 40px; align-items: center; }
+  .slide {
+    width: 1080px; height: 1080px;
+    background: var(--paper);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    box-shadow: 0 4px 24px rgba(0,0,0,.06);
+  }
+  .pad { padding: 88px; width: 100%; height: 100%; display: flex; flex-direction: column; }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand-mark {
+    width: 56px; height: 56px; border-radius: 14px;
+    background: linear-gradient(135deg, #3b82f6, #1e40af);
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 32px; letter-spacing: -1px;
+  }
+  .brand-name { font-weight: 800; font-size: 24px; letter-spacing: -.5px; }
+  .brand-tag { color: var(--mute); font-size: 16px; margin-top: 2px; }
+  .num { font-weight: 800; font-size: 18px; color: var(--mute); letter-spacing: 2px; }
+  .footer-row {
+    margin-top: auto;
+    display: flex; justify-content: space-between; align-items: center;
+    border-top: 1px solid var(--line);
+    padding-top: 28px;
+  }
+  .footer-url { font-weight: 700; color: var(--ink); font-size: 18px; }
+  .footer-handle { color: var(--mute); font-size: 16px; }
+
+  /* ─────────────────────── s1 표지 ─────────────────────── */
+  #s1 { background: linear-gradient(160deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%); }
+  #s1 .pad { color: #fff; }
+  #s1 .brand-mark { background: #fff; color: var(--blue-deep); }
+  #s1 .brand-name { color: #fff; }
+  #s1 .hook { margin-top: 80px; }
+  #s1 .hook .pre { color: rgba(255,255,255,.65); font-size: 22px; font-weight: 600; letter-spacing: 1px; }
+  #s1 .hook .big {
+    font-size: 96px; font-weight: 900; letter-spacing: -3px; line-height: 1.08;
+    margin-top: 24px;
+  }
+  #s1 .hook .accent { color: #fbbf24; }
+  #s1 .source {
+    margin-top: 48px;
+    padding: 16px 28px;
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.25);
+    border-radius: 100px;
+    color: rgba(255,255,255,.95);
+    font-size: 18px;
+    font-weight: 600;
+    display: inline-flex;
+    align-self: flex-start;
+    align-items: center;
+    gap: 8px;
+  }
+  #s1 .footer-row { border-top-color: rgba(255,255,255,.2); color: #fff; }
+  #s1 .footer-url { color: #fff; }
+  #s1 .footer-handle { color: rgba(255,255,255,.7); }
+
+  /* ─────────────────────── s2 문제 ① ─────────────────────── */
+  #s2 { background: var(--paper); }
+  #s2 .pad { padding: 88px; }
+  #s2 .head { font-size: 24px; font-weight: 700; color: var(--blue); letter-spacing: .5px; }
+  #s2 .title {
+    margin-top: 24px;
+    font-size: 86px; font-weight: 900; letter-spacing: -3px; line-height: 1.1;
+    color: var(--ink);
+  }
+  #s2 .title .accent { color: var(--rose); }
+  #s2 .desc {
+    margin-top: 56px;
+    font-size: 28px; font-weight: 500; line-height: 1.5;
+    color: var(--ink-2);
+  }
+  #s2 .punch {
+    margin-top: 56px;
+    padding: 32px 36px;
+    background: #fef2f2;
+    border-left: 8px solid var(--rose);
+    border-radius: 8px;
+    font-size: 30px; font-weight: 800;
+    color: var(--ink);
+  }
+
+  /* ─────────────────────── s3 문제 ② ─────────────────────── */
+  #s3 .pad { padding: 88px; }
+  #s3 .head { font-size: 24px; font-weight: 700; color: var(--blue); letter-spacing: .5px; }
+  #s3 .title {
+    margin-top: 24px;
+    font-size: 76px; font-weight: 900; letter-spacing: -3px; line-height: 1.1;
+    color: var(--ink);
+  }
+  #s3 .list { margin-top: 48px; display: flex; flex-direction: column; gap: 20px; }
+  #s3 .item {
+    display: flex; align-items: flex-start; gap: 20px;
+    padding: 24px 28px;
+    background: #f8fafc;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+  }
+  #s3 .item .x {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--rose); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 20px; flex-shrink: 0;
+  }
+  #s3 .item .t { font-size: 26px; font-weight: 600; color: var(--ink); line-height: 1.45; }
+  #s3 .lost {
+    margin-top: 48px;
+    padding: 28px 36px;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border-radius: 16px;
+    text-align: center;
+  }
+  #s3 .lost .l1 { font-size: 20px; color: var(--ink-2); font-weight: 600; }
+  #s3 .lost .l2 { font-size: 44px; font-weight: 900; color: var(--ink); margin-top: 6px; letter-spacing: -1px; }
+
+  /* ─────────────────────── s4 해결 ① ─────────────────────── */
+  #s4 .pad { padding: 88px; }
+  #s4 .badge {
+    display: inline-flex; align-self: flex-start; align-items: center; gap: 8px;
+    padding: 10px 20px; background: var(--blue); color: #fff;
+    font-size: 18px; font-weight: 700; border-radius: 100px;
+    letter-spacing: .5px;
+  }
+  #s4 .icon-emoji { font-size: 64px; margin-top: 36px; }
+  #s4 .title { margin-top: 16px; font-size: 64px; font-weight: 900; letter-spacing: -2px; line-height: 1.15; color: var(--ink); }
+  #s4 .title .accent { color: var(--blue); }
+  #s4 .subtitle { margin-top: 20px; font-size: 24px; color: var(--mute); font-weight: 500; }
+  #s4 .pills { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  #s4 .pill {
+    background: #eff6ff; border: 1.5px solid #bfdbfe; padding: 24px;
+    border-radius: 16px; display: flex; align-items: center; gap: 14px;
+  }
+  #s4 .pill .ck { width: 32px; height: 32px; border-radius: 50%; background: var(--emerald); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 900; flex-shrink: 0; }
+  #s4 .pill .lbl { font-size: 22px; font-weight: 700; color: var(--ink); }
+  #s4 .stamp {
+    margin-top: 40px; padding: 24px 32px;
+    background: var(--ink); color: #fff;
+    border-radius: 16px;
+    font-size: 28px; font-weight: 800;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  #s4 .stamp .ar { color: #fbbf24; font-size: 32px; }
+
+  /* ─────────────────────── s5 해결 ② ─────────────────────── */
+  #s5 .pad { padding: 88px; }
+  #s5 .badge { display: inline-flex; align-self: flex-start; align-items: center; gap: 8px; padding: 10px 20px; background: var(--blue); color: #fff; font-size: 18px; font-weight: 700; border-radius: 100px; letter-spacing: .5px; }
+  #s5 .icon-emoji { font-size: 64px; margin-top: 36px; }
+  #s5 .title { margin-top: 16px; font-size: 64px; font-weight: 900; letter-spacing: -2px; line-height: 1.15; color: var(--ink); }
+  #s5 .title .accent { color: var(--blue); }
+  #s5 .meta { margin-top: 24px; padding: 20px 28px; background: #f1f5f9; border-radius: 12px; font-size: 22px; font-weight: 600; color: var(--ink-2); }
+  #s5 .arrow { margin: 32px 0; text-align: center; font-size: 32px; color: var(--mute); }
+  #s5 .result-box {
+    padding: 36px;
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    border: 2px solid var(--emerald);
+    border-radius: 20px;
+  }
+  #s5 .result-box .quote-mark { font-size: 56px; color: var(--emerald); font-weight: 900; line-height: 1; }
+  #s5 .result-box .quote { font-size: 38px; font-weight: 900; color: var(--ink); letter-spacing: -1px; line-height: 1.3; }
+  #s5 .result-box .speed { margin-top: 18px; font-size: 22px; font-weight: 700; color: var(--emerald); }
+
+  /* ─────────────────────── s6 해결 ③ ─────────────────────── */
+  #s6 .pad { padding: 88px; }
+  #s6 .badge { display: inline-flex; align-self: flex-start; align-items: center; gap: 8px; padding: 10px 20px; background: var(--blue); color: #fff; font-size: 18px; font-weight: 700; border-radius: 100px; letter-spacing: .5px; }
+  #s6 .icon-emoji { font-size: 64px; margin-top: 36px; }
+  #s6 .title { margin-top: 16px; font-size: 56px; font-weight: 900; letter-spacing: -2px; line-height: 1.15; color: var(--ink); }
+  #s6 .title .accent { color: var(--blue); }
+  #s6 .alarms { margin-top: 36px; display: flex; flex-direction: column; gap: 14px; }
+  #s6 .alarm {
+    padding: 22px 28px;
+    background: #fff;
+    border: 1.5px solid var(--line);
+    border-radius: 14px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  #s6 .alarm .b { font-size: 28px; flex-shrink: 0; }
+  #s6 .alarm .t { font-size: 24px; font-weight: 600; color: var(--ink); }
+  #s6 .alarm .pri { background: linear-gradient(135deg, #eff6ff, #dbeafe); border-color: #93c5fd; }
+  #s6 .feel {
+    margin-top: 40px; padding: 28px;
+    background: var(--ink); color: #fff;
+    border-radius: 16px; text-align: center;
+    font-size: 28px; font-weight: 800; letter-spacing: -.5px;
+    font-style: italic;
+  }
+  #s6 .feel .who { display: block; font-size: 16px; font-weight: 600; color: rgba(255,255,255,.6); margin-top: 8px; font-style: normal; }
+
+  /* ─────────────────────── s7 증명 ─────────────────────── */
+  #s7 { background: linear-gradient(160deg, #f8fafc 0%, #eff6ff 100%); }
+  #s7 .pad { padding: 88px; }
+  #s7 .big-num {
+    font-size: 180px; font-weight: 900; letter-spacing: -8px; line-height: 1;
+    background: linear-gradient(135deg, var(--blue), var(--blue-deep));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-top: 40px;
+  }
+  #s7 .label { margin-top: 8px; font-size: 32px; font-weight: 700; color: var(--ink); letter-spacing: -1px; }
+  #s7 .stars { margin-top: 16px; font-size: 28px; color: #fbbf24; letter-spacing: 4px; }
+  #s7 .reviews { margin-top: 40px; display: flex; flex-direction: column; gap: 16px; }
+  #s7 .review {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 24px 28px;
+  }
+  #s7 .review .q { font-size: 26px; font-weight: 800; color: var(--ink); letter-spacing: -.5px; line-height: 1.4; }
+  #s7 .review .who { margin-top: 12px; font-size: 16px; color: var(--mute); font-weight: 600; }
+
+  /* ─────────────────────── s8 CTA ─────────────────────── */
+  #s8 { background: linear-gradient(160deg, #1e3a8a 0%, #1e40af 60%, #2563eb 100%); }
+  #s8 .pad { color: #fff; padding: 88px; align-items: center; text-align: center; }
+  #s8 .brand-mark { background: #fff; color: var(--blue-deep); }
+  #s8 .brand-name { color: #fff; }
+  #s8 .brand { margin: 0 auto; }
+  #s8 .pre { margin-top: 64px; color: rgba(255,255,255,.7); font-size: 22px; font-weight: 600; letter-spacing: 2px; }
+  #s8 .big { margin-top: 16px; font-size: 96px; font-weight: 900; letter-spacing: -3px; line-height: 1.05; }
+  #s8 .big .accent { color: #fbbf24; }
+  #s8 .sub { margin-top: 20px; font-size: 24px; font-weight: 600; color: rgba(255,255,255,.85); }
+  #s8 .stores { margin-top: 56px; display: flex; gap: 16px; justify-content: center; }
+  #s8 .store {
+    background: rgba(0,0,0,.45);
+    border: 1px solid rgba(255,255,255,.2);
+    padding: 18px 28px;
+    border-radius: 16px;
+    display: flex; align-items: center; gap: 14px;
+    color: #fff;
+  }
+  #s8 .store .ico { font-size: 36px; }
+  #s8 .store .t { text-align: left; }
+  #s8 .store .small { font-size: 12px; color: rgba(255,255,255,.7); }
+  #s8 .store .big-label { font-size: 22px; font-weight: 800; }
+  #s8 .url-pill {
+    margin-top: 40px;
+    padding: 14px 28px;
+    background: rgba(255,255,255,.15);
+    border: 1px solid rgba(255,255,255,.3);
+    border-radius: 100px;
+    font-size: 20px; font-weight: 700;
+    display: inline-flex; align-self: center;
+    align-items: center; gap: 8px;
+  }
+</style>
+</head>
+<body>
+
+<!-- s1 표지 -->
+<div class="slide" id="s1">
+  <div class="pad">
+    <div class="brand">
+      <div class="brand-mark">B</div>
+      <div>
+        <div class="brand-name">보비 · BoBi</div>
+        <div class="brand-tag" style="color: rgba(255,255,255,.7);">보험 설계사 전용 AI 비서</div>
+      </div>
+    </div>
+
+    <div class="hook">
+      <div class="pre">설계사 1,200명 실측 결과</div>
+      <div class="big">설계사 1명이<br/>한 달에 <span class="accent">30시간</span>을<br/>이걸로 버린다.</div>
+    </div>
+
+    <div class="source">📊 보비 사용자 활동 로그 분석 · 2026</div>
+
+    <div class="footer-row">
+      <div class="footer-url">bobi.co.kr</div>
+      <div class="footer-handle">@bobi.kr</div>
+    </div>
+  </div>
+</div>
+
+<!-- s2 문제 ① -->
+<div class="slide" id="s2">
+  <div class="pad">
+    <div class="brand">
+      <div class="brand-mark">B</div>
+      <div><div class="brand-name">보비 · BoBi</div></div>
+    </div>
+    <div style="margin-top: 56px;">
+      <div class="head">문제 ① · 시간 압박</div>
+      <div class="title">상담 1건 준비<br/>평균 <span class="accent">2시간</span></div>
+      <div class="desc">
+        약관 뒤지고, 보장 비교하고,<br/>
+        진료기록 받으러 가라 안내하고…
+      </div>
+      <div class="punch">그러는 동안 영업할 시간은요?</div>
+    </div>
+    <div class="footer-row">
+      <div class="footer-url">bobi.co.kr</div>
+      <div class="num">02 / 08</div>
+    </div>
+  </div>
+</div>
+
+<!-- s3 문제 ② -->
+<div class="slide" id="s3">
+  <div class="pad">
+    <div class="brand">
+      <div class="brand-mark">B</div>
+      <div><div class="brand-name">보비 · BoBi</div></div>
+    </div>
+    <div style="margin-top: 48px;">
+      <div class="head">문제 ② · 놓치는 영업 기회</div>
+      <div class="title">엑셀로 고객 50명<br/>관리하다 보면…</div>
+      <div class="list">
+        <div class="item"><div class="x">✕</div><div class="t">갱신일 까먹어 다른 설계사한테 뺏김</div></div>
+        <div class="item"><div class="x">✕</div><div class="t">면책 종료일 놓쳐 보장 공백 발생</div></div>
+        <div class="item"><div class="x">✕</div><div class="t">생일 까먹고 어색해진 단골 고객</div></div>
+      </div>
+      <div class="lost">
+        <div class="l1">놓친 영업 기회</div>
+        <div class="l2">월 평균 200만원</div>
+      </div>
+    </div>
+    <div class="footer-row">
+      <div class="footer-url">bobi.co.kr</div>
+      <div class="num">03 / 08</div>
+    </div>
+  </div>
+</div>
+
+<!-- s4 해결 ① -->
+<div class="slide" id="s4">
+  <div class="pad">
+    <div class="brand">
+      <div class="brand-mark">B</div>
+      <div><div class="brand-name">보비 · BoBi</div></div>
+    </div>
+    <div class="badge" style="margin-top: 40px;">SOLUTION 01</div>
+    <div class="icon-emoji">🎙️</div>
+    <div class="title">상담 통화 녹음만<br/>해두세요. <span class="accent">나머지는 AI.</span></div>
+    <div class="pills">
+      <div class="pill"><div class="ck">✓</div><div class="lbl">핵심 요약</div></div>
+      <div class="pill"><div class="ck">✓</div><div class="lbl">다음 액션·일정</div></div>
+      <div class="pill"><div class="ck">✓</div><div class="lbl">키워드 태그</div></div>
+      <div class="pill"><div class="ck">✓</div><div class="lbl">고객 분위기</div></div>
+    </div>
+    <div class="stamp"><span>통화 3분 → 정리 0초</span><span class="ar">→</span></div>
+    <div class="footer-row">
+      <div class="footer-url">bobi.co.kr</div>
+      <div class="num">04 / 08</div>
+    </div>
+  </div>
+</div>
+
+<!-- s5 해결 ② -->
+<div class="slide" id="s5">
+  <div class="pad">
+    <div class="brand">
+      <div class="brand-mark">B</div>
+      <div><div class="brand-name">보비 · BoBi</div></div>
+    </div>
+    <div class="badge" style="margin-top: 40px;">SOLUTION 02</div>
+    <div class="icon-emoji">🏥</div>
+    <div class="title">진료정보 <span class="accent">5년치</span><br/>본인 인증 한 번이면 끝.</div>
+    <div class="meta">심평원(HIRA) + 건강보험공단 · CODEF 본인 동의 연동</div>
+    <div class="arrow">▼</div>
+    <div class="result-box">
+      <div class="quote-mark">"</div>
+      <div class="quote">이 고객 가입 가능합니다.</div>
+      <div class="speed">⚡ AI 고지의무 분석 — 3초</div>
+    </div>
+    <div class="footer-row">
+      <div class="footer-url">bobi.co.kr</div>
+      <div class="num">05 / 08</div>
+    </div>
+  </div>
+</div>
+
+<!-- s6 해결 ③ -->
+<div class="slide" id="s6">
+  <div class="pad">
+    <div class="brand">
+      <div class="brand-mark">B</div>
+      <div><div class="brand-name">보비 · BoBi</div></div>
+    </div>
+    <div class="badge" style="margin-top: 40px;">SOLUTION 03</div>
+    <div class="icon-emoji">📅</div>
+    <div class="title">까먹을 일 없는<br/>자동 알림 시스템</div>
+    <div class="alarms">
+      <div class="alarm pri"><span class="b">🔔</span><div class="t">고객 보험 <b>갱신 30일 전</b> 자동 알림</div></div>
+      <div class="alarm"><span class="b">🔔</span><div class="t">면책·감액 <b>종료일</b> 자동 캐치</div></div>
+      <div class="alarm"><span class="b">🎂</span><div class="t">고객 <b>생일 D-3</b> 푸시</div></div>
+      <div class="alarm"><span class="b">🎁</span><div class="t">가입 <b>1주년</b> — 추가 보장 제안 타이밍</div></div>
+    </div>
+    <div class="feel">
+      "내 영업 비서가 한 명 더 생긴 느낌이에요"
+      <span class="who">— 7년차 GA 설계사 박OO</span>
+    </div>
+    <div class="footer-row">
+      <div class="footer-url">bobi.co.kr</div>
+      <div class="num">06 / 08</div>
+    </div>
+  </div>
+</div>
+
+<!-- s7 증명 -->
+<div class="slide" id="s7">
+  <div class="pad">
+    <div class="brand">
+      <div class="brand-mark">B</div>
+      <div><div class="brand-name">보비 · BoBi</div></div>
+    </div>
+    <div class="big-num">1,200+</div>
+    <div class="label">전국 보험 설계사가 보비로 일합니다</div>
+    <div class="stars">★★★★★ 4.8/5.0</div>
+    <div class="reviews">
+      <div class="review">
+        <div class="q">"퇴근 시간이 2시간 빨라졌어요."</div>
+        <div class="who">이종인 · 13년차 영업이사</div>
+      </div>
+      <div class="review">
+        <div class="q">"엑셀이랑 카톡 메모, 다 버렸어요."</div>
+        <div class="who">김OO · 5년차 손해보험 설계사</div>
+      </div>
+    </div>
+    <div class="footer-row">
+      <div class="footer-url">bobi.co.kr</div>
+      <div class="num">07 / 08</div>
+    </div>
+  </div>
+</div>
+
+<!-- s8 CTA -->
+<div class="slide" id="s8">
+  <div class="pad">
+    <div class="brand">
+      <div class="brand-mark">B</div>
+      <div>
+        <div class="brand-name">보비 · BoBi</div>
+        <div class="brand-tag" style="color: rgba(255,255,255,.7);">보험 설계사 전용 AI 비서</div>
+      </div>
+    </div>
+    <div class="pre">FREE TRIAL</div>
+    <div class="big"><span class="accent">3일 무료</span> 체험<br/>카드 등록 없이.</div>
+    <div class="sub">지금 다운로드 → 오늘 통화부터 정리됩니다</div>
+    <div class="stores">
+      <div class="store">
+        <div class="ico"></div>
+        <div class="t">
+          <div class="small">Download on the</div>
+          <div class="big-label">App Store</div>
+        </div>
+      </div>
+      <div class="store">
+        <div class="ico">▶</div>
+        <div class="t">
+          <div class="small">GET IT ON</div>
+          <div class="big-label">Google Play</div>
+        </div>
+      </div>
+    </div>
+    <div class="url-pill">🌐 bobi.co.kr</div>
+  </div>
+</div>
+
+</body>
+</html>
