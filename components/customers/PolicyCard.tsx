@@ -130,9 +130,29 @@ export default function PolicyCard({ customerId, customer }: Props) {
     };
 
     // PDF 업로드 → AI 추출
+    //
+    // ⚠️ 회귀 노트 (이종인 5/11): Vercel 서버리스 함수는 요청 body 4.5MB 한도가 있어
+    //    그 초과 시 우리 라우트가 실행되기 전에 인프라가 "Request Entity Too Large" HTML 응답.
+    //    그러면 res.json() 실패 → "Unexpected token 'R'..." 에러가 사용자에게 그대로 노출됨.
+    //    해결: ① 클라이언트에서 사전 사이즈 검증 (4MB 권장 한도) ② JSON 파싱 안전화.
+    //    근본 해결: Supabase Storage 우회 업로드 (후속 PR).
+    const PDF_SOFT_LIMIT_BYTES = 4 * 1024 * 1024;   // Vercel body 한도 안쪽 안전 마진
     const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+
+        // ① 사전 사이즈 검증 — Vercel 4.5MB 한도 도달 전에 친절히 차단
+        if (file.size > PDF_SOFT_LIMIT_BYTES) {
+            const mb = (file.size / 1024 / 1024).toFixed(1);
+            setAiError(
+                `PDF 크기가 ${mb}MB로 한도(4MB)를 초과했습니다. ` +
+                `가입 제안서 PDF를 압축하시거나, 직접 입력 버튼으로 보험 정보를 입력해주세요. ` +
+                `(더 큰 파일을 지원하는 업로드 기능은 곧 추가됩니다.)`,
+            );
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            return;
+        }
+
         setAiLoading(true);
         setAiError(null);
         setAiResult(null);
@@ -143,26 +163,54 @@ export default function PolicyCard({ customerId, customer }: Props) {
                 method: 'POST',
                 body: fd,
             });
-            const data = await res.json();
+
+            // ② JSON 파싱 안전화 — 응답이 JSON 아니면(인프라 에러 응답 등) 친절한 메시지로 변환
+            let data: { error?: string; extracted?: Record<string, unknown> } = {};
+            const contentType = res.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                try { data = await res.json(); } catch { /* fallthrough */ }
+            } else {
+                const text = await res.text();
+                // Vercel 인프라 에러 응답 매핑
+                if (res.status === 413 || /entity too large/i.test(text)) {
+                    setAiError('PDF가 너무 큽니다. 4MB 이하 PDF로 다시 시도해주세요.');
+                    return;
+                }
+                if (res.status === 504 || /timeout/i.test(text)) {
+                    setAiError('AI 분석이 시간 내에 끝나지 않았습니다. 페이지 수가 많은 PDF는 일부만 잘라 업로드해보세요.');
+                    return;
+                }
+                setAiError(`서버 오류 (${res.status}): 잠시 후 다시 시도해주세요.`);
+                return;
+            }
+
             if (!res.ok) {
                 setAiError(data.error || 'AI 분석 실패');
-            } else {
+            } else if (data.extracted) {
+                const ex = data.extracted as Record<string, unknown>;
                 setAiResult({
-                    insurer: data.extracted.insurer || '',
-                    product_name: data.extracted.product_name || '',
-                    enrollment_date: data.extracted.enrollment_date || '',
-                    exemption_end_date: data.extracted.exemption_end_date || '',
-                    reduction_end_date: data.extracted.reduction_end_date || '',
-                    renewal_date: data.extracted.renewal_date || '',
-                    policy_memo: data.extracted.policy_memo || '',
-                    confidence: data.extracted.confidence,
-                    notes: data.extracted.notes,
+                    insurer: (ex.insurer as string) || '',
+                    product_name: (ex.product_name as string) || '',
+                    enrollment_date: (ex.enrollment_date as string) || '',
+                    exemption_end_date: (ex.exemption_end_date as string) || '',
+                    reduction_end_date: (ex.reduction_end_date as string) || '',
+                    renewal_date: (ex.renewal_date as string) || '',
+                    policy_memo: (ex.policy_memo as string) || '',
+                    confidence: ex.confidence as 'high' | 'medium' | 'low' | undefined,
+                    notes: ex.notes as string | undefined,
                 });
                 // 편집 모드로 들어가서 사용자가 검수 가능하도록
                 setEditing(true);
+            } else {
+                setAiError('AI 분석 결과가 비어 있습니다.');
             }
         } catch (err) {
-            setAiError((err as Error).message || 'AI 분석 실패');
+            // 네트워크 단계 실패 (서버 도달 전)
+            setAiError(
+                /unexpected token/i.test((err as Error).message)
+                    ? 'PDF 업로드에 실패했습니다. 파일 크기가 너무 크거나 형식이 올바르지 않을 수 있습니다.'
+                    : ((err as Error).message || 'AI 분석 실패'),
+            );
         } finally {
             setAiLoading(false);
             // 같은 파일 재업로드 가능하도록 초기화
@@ -285,7 +333,7 @@ export default function PolicyCard({ customerId, customer }: Props) {
                         </Button>
                     </div>
                     <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                        <FileText className="w-3 h-3" /> PDF 업로드 시 AI가 보험사·가입일·면책·감액·보장 자동 추출
+                        <FileText className="w-3 h-3" /> PDF 업로드 시 AI가 보험사·가입일·면책·감액·보장 자동 추출 · 4MB 이하
                     </p>
                 </CardContent>
             </Card>
