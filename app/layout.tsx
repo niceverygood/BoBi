@@ -3,7 +3,10 @@ import { Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import ChatBot from "@/components/chat/ChatBot";
 import PostHogProvider from "@/components/analytics/PostHogProvider";
+import MetaPixel from "@/components/analytics/MetaPixel";
 import "./globals.css";
+
+const FB_DOMAIN_VERIFICATION = process.env.NEXT_PUBLIC_FB_DOMAIN_VERIFICATION || '';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -34,11 +37,19 @@ export default function RootLayout({
     <html lang="ko" suppressHydrationWarning>
       <head>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+        {/* Meta 도메인 인증 — 비즈니스 매니저 도메인 등록 시 발급되는 코드. ENV 비어있으면 안 박힘. */}
+        {FB_DOMAIN_VERIFICATION && (
+          <meta name="facebook-domain-verification" content={FB_DOMAIN_VERIFICATION} />
+        )}
       </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
         {/* PostHog 분석 초기화 + pageview 자동 캡처 (useSearchParams 때문에 Suspense 필요) */}
         <Suspense fallback={null}>
           <PostHogProvider />
+        </Suspense>
+        {/* Meta Pixel — NEXT_PUBLIC_FB_PIXEL_ID 환경변수 있을 때만 스크립트 박힘 */}
+        <Suspense fallback={null}>
+          <MetaPixel />
         </Suspense>
         {children}
         <Toaster position="top-right" richColors />

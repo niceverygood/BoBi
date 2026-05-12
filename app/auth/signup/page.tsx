@@ -11,6 +11,7 @@ import { Shield, ArrowLeft, Loader2 } from 'lucide-react';
 import { KakaoIcon } from '@/components/icons/KakaoIcon';
 import Link from 'next/link';
 import { track } from '@/lib/analytics/events';
+import { trackConversion } from '@/lib/analytics/fb-pixel';
 
 export default function SignupPage() {
     const [email, setEmail] = useState('');
@@ -46,6 +47,13 @@ export default function SignupPage() {
             setLoading(false);
         } else {
             track('user_signup', { method: 'email', has_company: !!company });
+            // Meta Pixel + CAPI — 광고 전환 추적
+            void trackConversion('CompleteRegistration', {
+                eventId: `signup-${email}-${Date.now()}`,
+                email,
+                method: 'email',
+                has_company: !!company,
+            });
             setSuccess(true);
             setLoading(false);
         }
@@ -56,6 +64,11 @@ export default function SignupPage() {
         setError(null);
 
         track('user_signup', { method: 'kakao_oauth', has_company: false });
+        // 카카오 OAuth는 redirect 후 callback에서 최종 완료되지만, 이 시점에서 의도 신호로 전환 발행.
+        void trackConversion('CompleteRegistration', {
+            eventId: `signup-kakao-${Date.now()}`,
+            method: 'kakao_oauth',
+        });
 
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'kakao',

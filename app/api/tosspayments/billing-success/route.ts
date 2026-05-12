@@ -361,6 +361,37 @@ export async function GET(request: Request) {
             // ignore
         }
 
+        // Meta Conversions API — 광고 전환 추적 (서버 사이드).
+        // trial 시작이면 StartTrial(value=0), 즉시 결제면 Subscribe(value=amount).
+        try {
+            const { sendFbCapiEvent } = await import('@/lib/analytics/fb-capi');
+            // 사용자 이메일 — 매칭 정확도 향상 (있으면 SHA256 해시되어 전달)
+            let userEmail: string | undefined;
+            try {
+                const { data: userRow } = await svc.auth.admin.getUserById(pending.user_id);
+                userEmail = userRow.user?.email || undefined;
+            } catch { /* email 없어도 진행 */ }
+
+            await sendFbCapiEvent({
+                event: isTrial ? 'StartTrial' : 'Subscribe',
+                // subscription.id 기반 멱등 ID — 재시도해도 dedup 처리됨
+                eventId: `${isTrial ? 'trial' : 'sub'}-${subscription.id}`,
+                value: isTrial ? 0 : amount,
+                currency: 'KRW',
+                email: userEmail,
+                userId: pending.user_id,
+                eventSourceUrl: `${origin}/dashboard/subscribe`,
+                customData: {
+                    plan_slug: actualPlan.slug,
+                    billing_cycle: pending.billing_cycle,
+                    payment_provider: 'tosspayments',
+                    ...(validatedCouponId ? { coupon_used: true } : {}),
+                },
+            });
+        } catch (capiErr) {
+            console.warn('[toss/success] CAPI 발사 실패:', (capiErr as Error).message);
+        }
+
         return NextResponse.redirect(
             buildRedirect(origin, {
                 toss_status: 'success',

@@ -321,6 +321,34 @@ export async function POST(request: Request) {
             // ignore
         }
 
+        // Meta CAPI — Subscribe 이벤트 (이니시스는 즉시 결제 only)
+        try {
+            const { sendFbCapiEvent } = await import('@/lib/analytics/fb-capi');
+            let userEmail: string | undefined;
+            try {
+                const { data: userRow } = await svc.auth.admin.getUserById(pending.user_id);
+                userEmail = userRow.user?.email || undefined;
+            } catch { /* email 없어도 진행 */ }
+
+            await sendFbCapiEvent({
+                event: 'Subscribe',
+                eventId: `sub-${subscription.id}`,
+                value: amount,
+                currency: 'KRW',
+                email: userEmail,
+                userId: pending.user_id,
+                eventSourceUrl: `${origin}/dashboard/subscribe`,
+                customData: {
+                    plan_slug: actualPlan.slug,
+                    billing_cycle: pending.billing_cycle,
+                    payment_provider: 'inicis',
+                    ...(validatedCouponId ? { coupon_used: true } : {}),
+                },
+            });
+        } catch (capiErr) {
+            console.warn('[inicis/return] CAPI 발사 실패:', (capiErr as Error).message);
+        }
+
         // 성공 리다이렉트
         return NextResponse.redirect(
             buildRedirect(origin, {
