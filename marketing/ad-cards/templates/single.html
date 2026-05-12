@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>보비 단일 광고 이미지 (설계사 공감 훅)</title>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --blue: #2563eb;
+    --blue-dark: #1e40af;
+    --blue-deep: #1e3a8a;
+    --ink: #0f172a;
+    --ink-2: #334155;
+    --mute: #64748b;
+    --paper: #ffffff;
+    --line: #e2e8f0;
+    --amber: #fbbf24;
+    --rose: #ef4444;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #ddd; font-family: 'Pretendard', -apple-system, sans-serif; -webkit-font-smoothing: antialiased; color: var(--ink); }
+  body { padding: 40px; display: flex; flex-direction: column; gap: 40px; align-items: center; }
+
+  .ad {
+    background: linear-gradient(160deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%);
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,.1);
+  }
+
+  /* 데코 — 큰 따옴표 */
+  .ad::before {
+    content: '"';
+    position: absolute;
+    top: -120px;
+    right: -80px;
+    font-size: 700px;
+    color: rgba(255,255,255,.06);
+    font-weight: 900;
+    line-height: 1;
+    font-family: Georgia, serif;
+    pointer-events: none;
+  }
+
+  .ad .inner { position: relative; z-index: 1; display: flex; flex-direction: column; height: 100%; width: 100%; }
+
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand-mark {
+    width: 52px; height: 52px; border-radius: 13px;
+    background: #fff; color: var(--blue-deep);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 30px; letter-spacing: -1px;
+  }
+  .brand-name { font-weight: 800; font-size: 22px; letter-spacing: -.5px; }
+  .brand-tag { color: rgba(255,255,255,.7); font-size: 14px; margin-top: 2px; }
+
+  .pre {
+    color: rgba(255,255,255,.65);
+    font-size: 18px; font-weight: 600; letter-spacing: 1.5px;
+  }
+
+  .hook {
+    font-weight: 900; letter-spacing: -2px; line-height: 1.1;
+    color: #fff;
+  }
+  .hook .em { color: var(--amber); }
+
+  .answer {
+    background: rgba(0,0,0,.3);
+    border-left: 4px solid var(--amber);
+    border-radius: 10px;
+    padding: 22px 26px;
+  }
+  .answer .a-label {
+    font-size: 14px; font-weight: 700; color: var(--amber); letter-spacing: 1.5px;
+  }
+  .answer .a-text {
+    margin-top: 8px;
+    font-size: 22px; font-weight: 700; color: #fff; letter-spacing: -.5px; line-height: 1.4;
+  }
+  .answer .a-text b { color: var(--amber); }
+
+  .cta-row {
+    margin-top: auto;
+    display: flex; align-items: center; justify-content: space-between;
+    border-top: 1px solid rgba(255,255,255,.18);
+    padding-top: 24px;
+  }
+  .cta-left { display: flex; flex-direction: column; }
+  .cta-tag { color: rgba(255,255,255,.65); font-size: 12px; font-weight: 600; letter-spacing: 1px; }
+  .cta-text { font-weight: 800; font-size: 20px; margin-top: 2px; }
+  .cta-text .free { color: var(--amber); }
+  .cta-url-pill {
+    padding: 10px 20px;
+    background: rgba(255,255,255,.14);
+    border: 1px solid rgba(255,255,255,.28);
+    border-radius: 100px;
+    font-size: 15px; font-weight: 700;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+
+  /* ─────────────────────── 1080×1080 정사각형 (피드·릴스) ─────────────────────── */
+  #square { width: 1080px; height: 1080px; }
+  #square .inner { padding: 80px; }
+  #square .top-row { display: flex; align-items: center; justify-content: space-between; }
+  #square .pre { margin-top: 60px; }
+  #square .hook { margin-top: 18px; font-size: 88px; }
+  #square .answer { margin-top: 48px; }
+
+  /* ─────────────────────── 1080×1920 세로 (스토리·릴스·앱) ─────────────────────── */
+  #vertical { width: 1080px; height: 1920px; }
+  #vertical .inner { padding: 100px 80px; }
+  #vertical .top-row { display: flex; align-items: center; justify-content: space-between; }
+  #vertical .pre { margin-top: 140px; }
+  #vertical .hook { margin-top: 24px; font-size: 110px; }
+  #vertical .answer { margin-top: 80px; padding: 32px 36px; }
+  #vertical .answer .a-label { font-size: 18px; }
+  #vertical .answer .a-text { font-size: 30px; margin-top: 12px; }
+  #vertical .cta-row { padding-top: 32px; }
+  #vertical .cta-text { font-size: 26px; }
+  #vertical .cta-url-pill { padding: 14px 24px; font-size: 18px; }
+
+  /* ─────────────────────── 1200×628 가로 (오른쪽 칼럼·외부) ─────────────────────── */
+  #wide { width: 1200px; height: 628px; }
+  #wide .inner { padding: 56px 64px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+  #wide .left { display: flex; flex-direction: column; height: 100%; }
+  #wide .pre { margin-top: 0; font-size: 14px; letter-spacing: 1.2px; }
+  #wide .hook { margin-top: 12px; font-size: 50px; letter-spacing: -1.5px; }
+  #wide .cta-row { margin-top: auto; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.18); }
+  #wide .cta-text { font-size: 16px; }
+  #wide .cta-tag { font-size: 10px; }
+  #wide .cta-url-pill { padding: 8px 14px; font-size: 13px; }
+  #wide .right { display: flex; flex-direction: column; gap: 16px; }
+  #wide .right .brand { align-self: flex-end; margin-bottom: 8px; }
+  #wide .answer { padding: 18px 22px; }
+  #wide .answer .a-label { font-size: 11px; }
+  #wide .answer .a-text { font-size: 18px; margin-top: 6px; }
+
+  /* 가로 변형은 데코 따옴표 작게 */
+  #wide::before { font-size: 400px; top: -80px; right: -40px; }
+</style>
+</head>
+<body>
+
+<!-- 1080×1080 정사각형 — 피드·릴스 인스트림용 -->
+<div class="ad" id="square">
+  <div class="inner">
+    <div class="top-row">
+      <div class="brand">
+        <div class="brand-mark">B</div>
+        <div>
+          <div class="brand-name">보비 · BoBi</div>
+          <div class="brand-tag">보험 설계사 전용 AI 비서</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pre">설계사라면 한 번쯤…</div>
+    <div class="hook">
+      "어제 그 고객,<br/>
+      무슨 얘기<br/>
+      <span class="em">했더라?</span>"
+    </div>
+
+    <div class="answer">
+      <div class="a-label">▷ 보비의 답</div>
+      <div class="a-text">통화 녹음만 해두세요.<br/>AI가 <b>핵심·다음 액션·태그</b>까지 자동 정리합니다.</div>
+    </div>
+
+    <div class="cta-row">
+      <div class="cta-left">
+        <div class="cta-tag">FREE TRIAL</div>
+        <div class="cta-text"><span class="free">3일 무료</span> · 카드 등록 X</div>
+      </div>
+      <div class="cta-url-pill">🌐 bobi.co.kr</div>
+    </div>
+  </div>
+</div>
+
+<!-- 1080×1920 세로 — 스토리·릴스용 -->
+<div class="ad" id="vertical">
+  <div class="inner">
+    <div class="top-row">
+      <div class="brand">
+        <div class="brand-mark">B</div>
+        <div>
+          <div class="brand-name">보비 · BoBi</div>
+          <div class="brand-tag">보험 설계사 전용 AI 비서</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pre">설계사라면 한 번쯤…</div>
+    <div class="hook">
+      "어제<br/>
+      그 고객,<br/>
+      무슨 얘기<br/>
+      <span class="em">했더라?</span>"
+    </div>
+
+    <div class="answer">
+      <div class="a-label">▷ 보비의 답</div>
+      <div class="a-text">통화 녹음만 해두세요.<br/>AI가 <b>핵심·다음 액션·태그</b>까지 자동 정리합니다.</div>
+    </div>
+
+    <div class="cta-row">
+      <div class="cta-left">
+        <div class="cta-tag">FREE TRIAL</div>
+        <div class="cta-text"><span class="free">3일 무료</span> · 카드 등록 X</div>
+      </div>
+      <div class="cta-url-pill">🌐 bobi.co.kr</div>
+    </div>
+  </div>
+</div>
+
+<!-- 1200×628 가로 — 오른쪽 칼럼·외부 노출 -->
+<div class="ad" id="wide">
+  <div class="inner">
+    <div class="left">
+      <div class="pre">설계사라면 한 번쯤…</div>
+      <div class="hook">
+        "어제 그 고객,<br/>
+        무슨 얘기 <span class="em">했더라?</span>"
+      </div>
+      <div class="cta-row">
+        <div class="cta-left">
+          <div class="cta-tag">FREE TRIAL</div>
+          <div class="cta-text"><span class="free">3일 무료</span> 체험</div>
+        </div>
+        <div class="cta-url-pill">bobi.co.kr</div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="brand">
+        <div class="brand-mark">B</div>
+        <div>
+          <div class="brand-name">보비 · BoBi</div>
+          <div class="brand-tag">설계사 AI 비서</div>
+        </div>
+      </div>
+      <div class="answer">
+        <div class="a-label">▷ 보비의 답</div>
+        <div class="a-text">통화 녹음만 해두세요.<br/>AI가 <b>핵심·액션</b>까지 자동 정리.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
