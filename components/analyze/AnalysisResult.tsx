@@ -154,42 +154,83 @@ export default function AnalysisResultView({ result }: AnalysisResultProps) {
                 </Card>
             )}
 
-            {/* Analysis Items Accordion */}
-            <Card className="border-0 shadow-sm">
-                <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                        <Info className="w-5 h-5 text-primary" />
-                        항목별 고지사항 분석
-                    </CardTitle>
+            {/* Analysis Items Accordion — Step 1: 항목별 고지사항 분석 (가장 핵심 섹션, 시각적 비중 ↑) */}
+            <Card className="border-2 border-primary/20 shadow-md ring-1 ring-primary/5">
+                <CardHeader className="bg-gradient-to-br from-primary/5 to-transparent border-b border-primary/10">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                        <CardTitle className="text-xl sm:text-2xl flex items-center gap-2.5 font-bold">
+                            <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center">
+                                <Info className="w-5 h-5 text-primary" />
+                            </div>
+                            <span>
+                                <span className="text-xs font-semibold text-primary/70 block leading-tight mb-0.5">STEP 1</span>
+                                <span>항목별 고지사항 분석</span>
+                            </span>
+                        </CardTitle>
+                        {/* 요약 카운터 — 해당 N건 한눈에 */}
+                        {(() => {
+                            const groups = groupItemsForDisplay(result.items);
+                            const applicableCount = groups.filter(g =>
+                                g.type === 'single' ? g.items[0].applicable : g.items.some(i => i.applicable)
+                            ).length;
+                            return (
+                                <div className="flex gap-2">
+                                    <span className={`text-sm font-bold px-3 py-1.5 rounded-full ${applicableCount > 0 ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+                                        해당 {applicableCount}건
+                                    </span>
+                                    <span className="text-sm font-bold px-3 py-1.5 rounded-full bg-gray-50 text-gray-700 border border-gray-200">
+                                        총 {groups.length}건
+                                    </span>
+                                </div>
+                            );
+                        })()}
+                    </div>
                 </CardHeader>
-                <CardContent>
-                    <Accordion className="space-y-2">
+                <CardContent className="pt-5">
+                    <Accordion className="space-y-3">
                         {groupItemsForDisplay(result.items).map((group, gIndex) => {
                             if (group.type === 'single') {
                                 const item = group.items[0];
                                 return (
-                            <AccordionItem key={gIndex} value={`item-${gIndex}`} className="border rounded-lg px-4">
-                                <AccordionTrigger className="hover:no-underline py-4">
-                                    <div className="flex items-center gap-3 text-left">
+                            <AccordionItem
+                                key={gIndex}
+                                value={`item-${gIndex}`}
+                                className={`border-2 rounded-xl px-5 transition-all ${
+                                    item.applicable
+                                        ? 'border-l-[6px] border-l-red-500 border-red-200/60 bg-red-50/40 hover:bg-red-50/60'
+                                        : 'border-l-[6px] border-l-emerald-500 border-emerald-200/60 bg-emerald-50/30 hover:bg-emerald-50/50'
+                                }`}
+                            >
+                                <AccordionTrigger className="hover:no-underline py-5">
+                                    <div className="flex items-center gap-4 text-left">
                                         {item.applicable ? (
-                                            <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
-                                                <XCircle className="w-5 h-5 text-red-500" />
+                                            <div className="w-11 h-11 rounded-full bg-red-500/15 flex items-center justify-center shrink-0 ring-2 ring-red-500/20">
+                                                <XCircle className="w-6 h-6 text-red-600" />
                                             </div>
                                         ) : (
-                                            <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
-                                                <CheckCircle2 className="w-5 h-5 text-green-500" />
+                                            <div className="w-11 h-11 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0 ring-2 ring-emerald-500/20">
+                                                <CheckCircle2 className="w-6 h-6 text-emerald-600" />
                                             </div>
                                         )}
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-0.5">
-                                                <span className="font-medium text-sm">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                                <span className="font-bold text-base sm:text-lg text-foreground">
                                                     {getCategoryLabel(item.category)}
                                                 </span>
-                                                <Badge variant={item.applicable ? 'destructive' : 'secondary'} className="text-xs">
-                                                    {item.applicable ? '해당' : '해당없음'}
+                                                <Badge
+                                                    variant={item.applicable ? 'destructive' : 'secondary'}
+                                                    className={`text-xs font-bold px-2.5 py-0.5 ${
+                                                        item.applicable
+                                                            ? 'bg-red-600 text-white hover:bg-red-700'
+                                                            : 'bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200'
+                                                    }`}
+                                                >
+                                                    {item.applicable ? '⚠ 해당' : '✓ 해당없음'}
                                                 </Badge>
                                             </div>
-                                            <p className="text-xs text-muted-foreground">{item.summary}</p>
+                                            <p className={`text-sm leading-relaxed ${item.applicable ? 'text-foreground/80 font-medium' : 'text-muted-foreground'}`}>
+                                                {item.summary}
+                                            </p>
                                         </div>
                                     </div>
                                 </AccordionTrigger>
@@ -280,29 +321,47 @@ export default function AnalysisResultView({ result }: AnalysisResultProps) {
                             // 년수별 그룹 (입원/수술/7회이상통원 통합)
                             const anyApplicable = group.items.some(i => i.applicable);
                             return (
-                            <AccordionItem key={gIndex} value={`item-${gIndex}`} className="border rounded-lg px-4">
-                                <AccordionTrigger className="hover:no-underline py-4">
-                                    <div className="flex items-center gap-3 text-left">
+                            <AccordionItem
+                                key={gIndex}
+                                value={`item-${gIndex}`}
+                                className={`border-2 rounded-xl px-5 transition-all ${
+                                    anyApplicable
+                                        ? 'border-l-[6px] border-l-red-500 border-red-200/60 bg-red-50/40 hover:bg-red-50/60'
+                                        : 'border-l-[6px] border-l-emerald-500 border-emerald-200/60 bg-emerald-50/30 hover:bg-emerald-50/50'
+                                }`}
+                            >
+                                <AccordionTrigger className="hover:no-underline py-5">
+                                    <div className="flex items-center gap-4 text-left">
                                         {anyApplicable ? (
-                                            <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
-                                                <XCircle className="w-5 h-5 text-red-500" />
+                                            <div className="w-11 h-11 rounded-full bg-red-500/15 flex items-center justify-center shrink-0 ring-2 ring-red-500/20">
+                                                <XCircle className="w-6 h-6 text-red-600" />
                                             </div>
                                         ) : (
-                                            <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
-                                                <CheckCircle2 className="w-5 h-5 text-green-500" />
+                                            <div className="w-11 h-11 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0 ring-2 ring-emerald-500/20">
+                                                <CheckCircle2 className="w-6 h-6 text-emerald-600" />
                                             </div>
                                         )}
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                                                <span className="font-medium text-sm">{group.label}</span>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                                <span className="font-bold text-base sm:text-lg text-foreground">{group.label}</span>
+                                            </div>
+                                            <div className="flex flex-wrap gap-1.5 mb-1.5">
                                                 {group.items.map((sub) => (
-                                                    <Badge key={sub.category} variant={sub.applicable ? 'destructive' : 'secondary'} className="text-[10px]">
+                                                    <Badge
+                                                        key={sub.category}
+                                                        variant={sub.applicable ? 'destructive' : 'secondary'}
+                                                        className={`text-xs font-bold px-2.5 py-0.5 ${
+                                                            sub.applicable
+                                                                ? 'bg-red-600 text-white hover:bg-red-700'
+                                                                : 'bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200'
+                                                        }`}
+                                                    >
                                                         {sub.category.includes('hospitalization') ? '입원' : sub.category.includes('surgery') ? '수술' : '7회통원'}
                                                         {sub.applicable ? ' 해당' : ' 없음'}
                                                     </Badge>
                                                 ))}
                                             </div>
-                                            <p className="text-xs text-muted-foreground">
+                                            <p className={`text-sm leading-relaxed ${anyApplicable ? 'text-foreground/80 font-medium' : 'text-muted-foreground'}`}>
                                                 {group.items.filter(i => i.applicable).map(i => i.summary).join(' / ') || '해당 기간 내 해당사항 없음'}
                                             </p>
                                         </div>
