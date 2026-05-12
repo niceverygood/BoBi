@@ -2,17 +2,21 @@
 -- 프로모션 코드 시스템 테이블
 
 -- 1. 프로모션 코드 테이블
+-- ⚠️ 회귀 락 (이종인 5/11): 무기한 쿠폰 금지.
+--    duration_months >= 1 (-1 영구 금지), expires_at NOT NULL.
+--    DB 차원에서 차단해 어드민/시드/마이그레이션 어디서도 우회 불가.
+--    스키마 변경은 scripts/migrate_remove_unlimited_coupons.sql 참조.
 CREATE TABLE IF NOT EXISTS promo_codes (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     code TEXT NOT NULL UNIQUE,
     description TEXT DEFAULT '',
     plan_slug TEXT NOT NULL DEFAULT 'pro',
     price_override INTEGER NOT NULL DEFAULT 0,
-    duration_months INTEGER NOT NULL DEFAULT 3,
+    duration_months INTEGER NOT NULL DEFAULT 3 CHECK (duration_months >= 1),
     max_uses INTEGER NOT NULL DEFAULT -1,
     used_count INTEGER NOT NULL DEFAULT 0,
     active BOOLEAN NOT NULL DEFAULT true,
-    expires_at TIMESTAMP WITH TIME ZONE,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
     created_by UUID REFERENCES auth.users(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -51,11 +55,12 @@ CREATE POLICY "Allow authenticated access to promo_codes" ON promo_codes
 CREATE POLICY "Allow authenticated access to promo_code_redemptions" ON promo_code_redemptions
     FOR ALL USING (auth.role() = 'authenticated');
 
--- 5. 기본 프로모 코드 삽입 (3개월 무료 이용)
-INSERT INTO promo_codes (code, description, plan_slug, price_override, duration_months, max_uses)
+-- 5. 기본 프로모 코드 삽입
+--    ⚠️ 무기한 금지 — duration_months >= 1, expires_at NOT NULL (이종인 5/11)
+INSERT INTO promo_codes (code, description, plan_slug, price_override, duration_months, max_uses, expires_at)
 VALUES
-    ('BOBI-FREE-3M', '보비 3개월 무료 이용 (프로 플랜)', 'pro', 0, 3, -1),
-    ('WONFIN2026', '원금융서비스 직원 전용 (베이직 월 10,000원)', 'basic', 10000, -1, -1),
-    ('JONGIN-FREE', '이종인 팀 무료 사용', 'pro', 0, -1, -1),
-    ('BOBI-ALL', 'BoBi 종합분석 프로모션 (프로 월 60,000원)', 'pro', 60000, -1, -1)
+    ('BOBI-FREE-3M', '보비 3개월 무료 이용 (프로 플랜)',                 'pro',   0,    3,  -1, NOW() + INTERVAL '12 months'),
+    ('WONFIN2026',   '원금융서비스 직원 (베이직 월 10,000원, 12개월)',     'basic', 10000, 12, -1, NOW() + INTERVAL '12 months'),
+    ('JONGIN-FREE',  '이종인 팀 무료 사용 (12개월)',                       'pro',   0,    12, -1, NOW() + INTERVAL '12 months'),
+    ('BOBI-ALL',     'BoBi 종합분석 프로모션 (프로 월 60,000원, 12개월)',  'pro',   60000, 12, -1, NOW() + INTERVAL '12 months')
 ON CONFLICT (code) DO NOTHING;

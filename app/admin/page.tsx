@@ -1009,14 +1009,25 @@ function PromoCodeManager() {
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
     // New code form
+    //
+    // ⚠️ 이종인 5/11 정책: 무기한 쿠폰 금지.
+    //    newDuration 기본값을 3으로(예전 -1이었음), expires_at 도 필수 입력.
+    //    UI 차원에서 0/음수 입력 차단 + DB CHECK 제약으로 이중 가드.
     const [newCode, setNewCode] = useState('');
     const [newDesc, setNewDesc] = useState('');
     const [newPlan, setNewPlan] = useState('all');
     const [newDiscountType, setNewDiscountType] = useState<'percent' | 'fixed' | 'price_override'>('percent');
     const [newDiscountValue, setNewDiscountValue] = useState(10);
     const [newPrice, setNewPrice] = useState(0);
-    const [newDuration, setNewDuration] = useState(-1);
+    const [newDuration, setNewDuration] = useState(3);
     const [newMaxUses, setNewMaxUses] = useState(-1);
+    // 쿠폰 발급 만료일 — 사용자가 이 코드로 등록할 수 있는 기한 (예: 강의 후 7일).
+    // 기본 12개월 후. 사용자가 직접 입력 가능.
+    const [newExpiresAt, setNewExpiresAt] = useState(() => {
+        const d = new Date();
+        d.setMonth(d.getMonth() + 12);
+        return d.toISOString().slice(0, 10);  // YYYY-MM-DD
+    });
 
     const fetchCodes = useCallback(async () => {
         try {
@@ -1038,6 +1049,20 @@ function PromoCodeManager() {
             setMessage({ type: 'error', text: '코드를 입력해주세요.' });
             return;
         }
+        // ⚠️ 이종인 5/11 정책: 무기한 쿠폰 금지.
+        if (!Number.isFinite(newDuration) || newDuration < 1) {
+            setMessage({ type: 'error', text: '유효 기간은 1개월 이상이어야 합니다. 무기한 쿠폰은 발급할 수 없습니다.' });
+            return;
+        }
+        if (!newExpiresAt) {
+            setMessage({ type: 'error', text: '발급 만료일(expires_at)을 입력해주세요.' });
+            return;
+        }
+        const expiresDate = new Date(newExpiresAt + 'T23:59:59');
+        if (expiresDate <= new Date()) {
+            setMessage({ type: 'error', text: '발급 만료일은 미래 날짜여야 합니다.' });
+            return;
+        }
         setCreating(true);
         setMessage(null);
         try {
@@ -1052,6 +1077,7 @@ function PromoCodeManager() {
                     price_override: newDiscountType === 'price_override' ? newPrice : 0,
                     duration_months: newDuration,
                     max_uses: newMaxUses,
+                    expires_at: expiresDate.toISOString(),
                 },
             });
             setMessage({ type: 'success', text: `코드 "${newCode.toUpperCase()}" 생성 완료!` });
@@ -1242,8 +1268,26 @@ function PromoCodeManager() {
                             </select>
                         </div>
                         <div>
-                            <label className="text-xs font-medium mb-1 block">유효 기간 (개월, -1=무제한)</label>
-                            <input type="number" className="w-full px-3 py-2 border rounded-lg text-sm bg-background" value={newDuration} onChange={e => setNewDuration(Number(e.target.value))} />
+                            <label className="text-xs font-medium mb-1 block">유효 기간 (개월) — 최소 1</label>
+                            <input
+                                type="number"
+                                min={1}
+                                max={60}
+                                className="w-full px-3 py-2 border rounded-lg text-sm bg-background"
+                                value={newDuration}
+                                onChange={e => setNewDuration(Math.max(1, Number(e.target.value)))}
+                            />
+                            <p className="text-[10px] text-muted-foreground mt-0.5">무기한 쿠폰 금지 (정책). 사용자는 갱신 시 이 기간만 할인가가 유지됩니다.</p>
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium mb-1 block">발급 만료일 (이 날짜까지 등록 가능)</label>
+                            <input
+                                type="date"
+                                className="w-full px-3 py-2 border rounded-lg text-sm bg-background"
+                                value={newExpiresAt}
+                                onChange={e => setNewExpiresAt(e.target.value)}
+                            />
+                            <p className="text-[10px] text-muted-foreground mt-0.5">예: 강의 후 7일, 캠페인 종료일 등. 이 날짜 이후엔 코드 입력 불가.</p>
                         </div>
                         <div>
                             <label className="text-xs font-medium mb-1 block">최대 사용 횟수 (-1=무제한)</label>
@@ -1309,7 +1353,9 @@ function PromoCodeManager() {
                                                 ? DISCOUNT_LABELS[c.discount_type](c.discount_type === 'price_override' ? c.price_override : c.discount_value)
                                                 : (c.price_override === 0 ? '무료' : `월 ${c.price_override.toLocaleString()}원`)}
                                         </Badge>
-                                        <span>{c.duration_months === -1 ? '무기한' : `${c.duration_months}개월`}</span>
+                                        <span className={c.duration_months === -1 ? 'text-red-600 font-bold' : ''}>
+                                            {c.duration_months === -1 ? '⚠ 무기한 (정책 위반 - 마이그레이션 필요)' : `${c.duration_months}개월`}
+                                        </span>
                                         <span>·</span>
                                         <span>사용 {c.used_count}{c.max_uses === -1 ? '회' : `/${c.max_uses}회`}</span>
                                     </div>

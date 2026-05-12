@@ -91,6 +91,26 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: '코드와 플랜을 입력해주세요.' }, { status: 400 });
     }
 
+    // ⚠️ 이종인 5/11 정책: 무기한 쿠폰 금지. 서버 차원에서도 이중 가드.
+    //    DB CHECK 제약(duration_months >= 1, expires_at NOT NULL)이 최종 방어선이지만
+    //    여기서 친절한 에러 메시지로 클라이언트에 알린다.
+    const durationMonthsValue = Number(duration_months);
+    if (!Number.isFinite(durationMonthsValue) || durationMonthsValue < 1) {
+        return NextResponse.json({
+            error: '유효 기간(duration_months)은 1개월 이상이어야 합니다. 무기한 쿠폰은 발급할 수 없습니다.',
+        }, { status: 400 });
+    }
+    if (!expires_at) {
+        return NextResponse.json({
+            error: '발급 만료일(expires_at)이 필요합니다. 무기한 쿠폰 금지 정책.',
+        }, { status: 400 });
+    }
+    if (new Date(expires_at) <= new Date()) {
+        return NextResponse.json({
+            error: '발급 만료일은 미래 날짜여야 합니다.',
+        }, { status: 400 });
+    }
+
     const { data, error } = await supabase
         .from('promo_codes')
         .insert({
@@ -100,9 +120,9 @@ export async function POST(request: Request) {
             price_override: price_override ?? 0,
             discount_type: discount_type || 'price_override',
             discount_value: discount_value ?? 0,
-            duration_months: duration_months ?? -1,
+            duration_months: durationMonthsValue,
             max_uses: max_uses ?? -1,
-            expires_at: expires_at || null,
+            expires_at,
             created_by: userId,
         })
         .select()
@@ -145,6 +165,21 @@ export async function PUT(request: Request) {
         if (!existing || existing.created_by !== userId) {
             return NextResponse.json({ error: '본인이 생성한 코드만 수정할 수 있습니다.' }, { status: 403 });
         }
+    }
+
+    // ⚠️ 이종인 5/11 정책: 수정으로 무기한 우회 차단.
+    if (updates.duration_months !== undefined) {
+        const v = Number(updates.duration_months);
+        if (!Number.isFinite(v) || v < 1) {
+            return NextResponse.json({
+                error: '유효 기간을 1개월 미만으로 변경할 수 없습니다 (무기한 금지).',
+            }, { status: 400 });
+        }
+    }
+    if (updates.expires_at === null) {
+        return NextResponse.json({
+            error: '발급 만료일을 NULL로 설정할 수 없습니다 (무기한 금지).',
+        }, { status: 400 });
     }
 
     const { error } = await supabase
