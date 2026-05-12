@@ -58,8 +58,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         if (!file.type.includes('pdf')) {
             return NextResponse.json({ error: 'PDF 파일만 업로드 가능합니다.' }, { status: 400 });
         }
-        if (file.size > 20 * 1024 * 1024) {
-            return NextResponse.json({ error: 'PDF 크기는 20MB 이하여야 합니다.' }, { status: 400 });
+        // ⚠️ Vercel 서버리스 함수의 요청 body 한도는 4.5MB. 우리 라우트가 검증하기 전에
+        //    인프라가 "Request Entity Too Large" HTML을 반환하면 클라이언트 JSON.parse 실패.
+        //    그래서 client·server 모두 4MB로 통일. 더 큰 파일은 Storage 우회(후속 PR) 필요.
+        if (file.size > 4 * 1024 * 1024) {
+            return NextResponse.json({ error: 'PDF 크기는 4MB 이하여야 합니다.' }, { status: 400 });
         }
 
         // PDF 텍스트 추출
