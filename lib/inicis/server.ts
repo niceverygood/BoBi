@@ -97,6 +97,15 @@ export function buildBillingKeyForm(input: BuildBillingKeyFormInput): InicisBill
     // 계약이 안 된 결제수단은 파라미터를 넣어도 무시됨.
     // KG이니시스 담당자에게 MID(MOIbobi998)에 각 결제수단 계약 여부 확인 필요.
     //
+    // ⚠️⚠️ 회귀 락 (이종인 5/13 V023 보고):
+    //   이니시스 acceptmethod 의 허용 특수문자는 ( ) - : ^ _ #  *6종만*.
+    //   `=`, `,`, `;`, `=`, `[]`, `{}` 등 일체 금지. 잘못 넣으면 V023 즉시 거부.
+    //   예전에 `quotabase(Y=0)` 으로 등호 넣었다가 모든 카드 결제 차단 사고 발생.
+    //   기존 사례:
+    //     - 할부 기본 일시불 의도 → `quotabase(Y=0)` (✗ 잘못된 문법)
+    //     - 올바른 문법         → `quotabase(Y)`     (✓ Y/N 만 가능)
+    //   값 안에 `=` 같은 비허용 문자를 넣으면 절대 안 됨. 새 파라미터 추가 전 매뉴얼 재확인 필수.
+    //
     // 고객층(주부/중장년)에 맞춰 공동인증서(centerCd) 노출 최소화:
     //   - nointerest(Y): 무이자 할부 숨김
     //   - onlycardcode: 특정 카드사만 노출 가능
@@ -107,8 +116,18 @@ export function buildBillingKeyForm(input: BuildBillingKeyFormInput): InicisBill
     if (input.enableEasyPay !== false) acceptParts.push('noeasypay(N)');     // 간편결제 (네이버페이/토스페이/페이코)
     // 공동인증서 인증 숨김 요청 (결제창 기본 인증을 ISP로 유도)
     acceptParts.push('centerCd(Y)');        // 센터 인증 활성화 (인증서 직접 노출 줄이는 효과)
-    acceptParts.push('quotabase(Y=0)');     // 할부 기본 일시불
+    acceptParts.push('quotabase(Y)');       // 할부 기본 일시불 (Y/N 만 가능 — 등호 등 비허용 문자 절대 X)
     const acceptmethod = acceptParts.join(':');
+
+    // 회귀 락 가드: acceptmethod 안에 허용 외 특수문자 있으면 빌드 단계에서 즉시 throw.
+    // 허용: A-Z, a-z, 0-9, 공백 X, ( ) - : ^ _ #
+    if (!/^[A-Za-z0-9()\-:^_#]+$/.test(acceptmethod)) {
+        throw new Error(
+            `[INICIS] acceptmethod 에 허용 안 된 특수문자가 있습니다. ` +
+            `허용: ( ) - : ^ _ # 만 가능. 값: "${acceptmethod}". ` +
+            `lib/inicis/server.ts 회귀 노트 참조.`,
+        );
+    }
 
     return {
         version: '1.0',
