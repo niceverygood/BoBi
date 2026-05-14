@@ -9,9 +9,9 @@
 
 import { NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
-import { sendAlimtalk, isValidKoreanPhone, normalizePhone } from '@/lib/aligo/client';
+import { sendAlimtalk, isValidKoreanPhone, normalizePhone } from '@/lib/solapi/client';
 import { issueShareToken } from '@/lib/share/token';
-import { getTemplateCode, isTemplateApproved } from '@/lib/aligo/templates';
+import { getTemplateId, isTemplateApproved } from '@/lib/solapi/templates';
 import type { AccidentReceipt } from '@/types/accident-receipt';
 
 export type SendTemplate = 'LINK' | 'SUMMARY';
@@ -60,9 +60,10 @@ function buildSummaryMessage(receipt: AccidentReceipt, customerName: string, age
     ].join('\n');
 }
 
-function isAligoTemplateNotApprovedError(msg: string): boolean {
+function isSolapiTemplateNotApprovedError(msg: string): boolean {
     const m = msg.toLowerCase();
-    return m.includes('template') && (m.includes('not') || m.includes('미') || m.includes('승인') || m.includes('검수'));
+    return (m.includes('template') || m.includes('템플릿') || m.includes('tpl'))
+        && (m.includes('not') || m.includes('미') || m.includes('승인') || m.includes('검수') || m.includes('미설정'));
 }
 
 export async function POST(request: Request) {
@@ -137,7 +138,7 @@ export async function POST(request: Request) {
         }
 
         if (template === 'LINK') {
-            const tplCode = getTemplateCode('receipt_link');
+            const templateId = getTemplateId('receipt_link');
             const ttlSec = Math.max(1, Math.min(30, Number(ttlDays) || 7)) * 24 * 60 * 60;
             const token = issueShareToken({
                 kind: 'accident-receipt', resourceId: saved.id, userId: user.id, ttlSec,
@@ -150,21 +151,19 @@ export async function POST(request: Request) {
             const message = buildLinkMessage(finalCustomerName, agentName, receipt.diseaseName);
 
             try {
-                const aligoResult = await sendAlimtalk({
-                    templateCode: tplCode,
+                const solapiResult = await sendAlimtalk({
+                    templateId,
                     receiverPhone: targetPhone,
-                    receiverName,
-                    subject: `${finalCustomerName}님 가상영수증`,
-                    message,
+                    smsFallbackSubject: `${finalCustomerName}님 가상영수증`,
+                    smsFallbackText: message,
                     buttons: [
-                        { name: '영수증 보기', linkType: 'WL', linkM: shareUrl, linkP: shareUrl },
+                        { buttonName: '영수증 보기', buttonType: 'WL', linkMo: shareUrl, linkPc: shareUrl },
                     ],
-                    failoverToSms: true,
                 });
-                return NextResponse.json({ ok: true, template, shareUrl, aligo: aligoResult });
+                return NextResponse.json({ ok: true, template, shareUrl, solapi: solapiResult });
             } catch (err) {
                 const msg = (err as Error).message || '';
-                if (isAligoTemplateNotApprovedError(msg)) {
+                if (isSolapiTemplateNotApprovedError(msg)) {
                     return NextResponse.json({
                         ok: false, template, pending: true,
                         pendingMessage: '템플릿이 아직 카카오 검수를 통과하지 않아 발송할 수 없습니다.',
@@ -175,21 +174,19 @@ export async function POST(request: Request) {
         }
 
         // SUMMARY
-        const tplCode = getTemplateCode('receipt_summary');
+        const templateId = getTemplateId('receipt_summary');
         const message = buildSummaryMessage(receipt, finalCustomerName, agentName);
         try {
-            const aligoResult = await sendAlimtalk({
-                templateCode: tplCode,
+            const solapiResult = await sendAlimtalk({
+                templateId,
                 receiverPhone: targetPhone,
-                receiverName,
-                subject: `${finalCustomerName}님 가상영수증 요약`,
-                message,
-                failoverToSms: true,
+                smsFallbackSubject: `${finalCustomerName}님 가상영수증 요약`,
+                smsFallbackText: message,
             });
-            return NextResponse.json({ ok: true, template, aligo: aligoResult });
+            return NextResponse.json({ ok: true, template, solapi: solapiResult });
         } catch (err) {
             const msg = (err as Error).message || '';
-            if (isAligoTemplateNotApprovedError(msg)) {
+            if (isSolapiTemplateNotApprovedError(msg)) {
                 return NextResponse.json({
                     ok: false, template, pending: true,
                     pendingMessage: '템플릿이 아직 카카오 검수를 통과하지 않아 발송할 수 없습니다.',
@@ -203,7 +200,7 @@ export async function POST(request: Request) {
         captureError(err, {
             area: 'alimtalk',
             level: 'error',
-            tags: { provider: 'aligo', kind: 'accident-receipt' },
+            tags: { provider: 'solapi', kind: 'accident-receipt' },
         });
         return NextResponse.json({ error: `알림톡 발송 실패: ${msg}` }, { status: 500 });
     }

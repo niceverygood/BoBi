@@ -7,7 +7,8 @@
 
 import { NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
-import { sendAlimtalk, isValidKoreanPhone, normalizePhone } from '@/lib/aligo/client';
+import { sendAlimtalk, isValidKoreanPhone, normalizePhone } from '@/lib/solapi/client';
+import { getTemplateId } from '@/lib/solapi/templates';
 import { issueShareToken } from '@/lib/future-me/share-token';
 import type { FutureMeResult } from '@/types/future-me';
 
@@ -159,9 +160,9 @@ export async function POST(request: Request) {
             (user.email || '').split('@')[0] ||
             '담당 설계사';
 
-        // 템플릿 분기
+        // 템플릿 분기 (솔라피 마이그레이션, 이종인 5/13)
         if (template === 'A_LINK') {
-            const tplCode = process.env.ALIGO_TPL_FUTURE_ME_LINK || 'UH_0933';
+            const templateId = getTemplateId('future_me_link');
 
             const ttlSec = Math.max(1, Math.min(30, Number(ttlDays) || 7)) * 24 * 60 * 60;
             const token = issueShareToken(reportId, user.id, ttlSec);
@@ -173,42 +174,38 @@ export async function POST(request: Request) {
 
             const message = buildLinkMessage(customerName, agentName);
 
-            const aligoResult = await sendAlimtalk({
-                templateCode: tplCode,
+            const solapiResult = await sendAlimtalk({
+                templateId,
                 receiverPhone: targetPhone,
-                receiverName,
-                subject: `${customerName}님 미래의 나 리포트`,
-                message,
+                smsFallbackSubject: `${customerName}님 미래의 나 리포트`,
+                smsFallbackText: message,
                 buttons: [
-                    { name: '리포트 보기', linkType: 'WL', linkM: shareUrl, linkP: shareUrl },
+                    { buttonName: '리포트 보기', buttonType: 'WL', linkMo: shareUrl, linkPc: shareUrl },
                 ],
-                failoverToSms: true,
             });
 
-            return NextResponse.json({ ok: true, template, shareUrl, aligo: aligoResult });
+            return NextResponse.json({ ok: true, template, shareUrl, solapi: solapiResult });
         }
 
         // D_SUMMARY
-        const tplCode = process.env.ALIGO_TPL_FUTURE_ME_SUMMARY || 'UH_0934';
+        const templateId = getTemplateId('future_me_summary');
         const message = buildSummaryMessage(result, customerName, agentName);
 
-        const aligoResult = await sendAlimtalk({
-            templateCode: tplCode,
+        const solapiResult = await sendAlimtalk({
+            templateId,
             receiverPhone: targetPhone,
-            receiverName,
-            subject: `${customerName}님 리포트 요약`,
-            message,
-            failoverToSms: true,
+            smsFallbackSubject: `${customerName}님 리포트 요약`,
+            smsFallbackText: message,
         });
 
-        return NextResponse.json({ ok: true, template, aligo: aligoResult });
+        return NextResponse.json({ ok: true, template, solapi: solapiResult });
     } catch (err) {
         const msg = (err as Error).message || '';
         const { captureError } = await import('@/lib/monitoring/sentry-helpers');
         captureError(err, {
             area: 'alimtalk',
             level: 'error',
-            tags: { provider: 'aligo' },
+            tags: { provider: 'solapi' },
         });
         return NextResponse.json(
             { error: `알림톡 발송 실패: ${msg}` },
