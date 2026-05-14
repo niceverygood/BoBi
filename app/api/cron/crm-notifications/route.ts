@@ -13,12 +13,12 @@
 // 같은 트리거가 같은 고객에게 한 번만 발송됨. 사용자가 날짜를 수정해도 동일 라벨이면 1회.
 //
 // 알림톡 템플릿 4종이 검수 통과 전이면 ALIGO가 거절 → notification 로그에는 실패 기록만.
-// 통과 후 ENV (ALIGO_TPL_CRM_*) 설정 + 재배포하면 자동 활성화.
+// 통과 후 ENV (SOLAPI_TPL_CRM_*) 설정 + 재배포하면 자동 활성화.
 
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
-import { sendAlimtalk, isValidKoreanPhone, normalizePhone } from '@/lib/aligo/client';
-import { getTemplateCode, isTemplateApproved, type TemplateKind } from '@/lib/aligo/templates';
+import { sendAlimtalk, isValidKoreanPhone, normalizePhone } from '@/lib/solapi/client';
+import { getTemplateId, isTemplateApproved, type TemplateKind } from '@/lib/solapi/templates';
 
 // CRM feature gate. plan.features 키가 명시되어 있으면 그 값을 우선,
 // 없으면 slug 기반 fallback (Basic+ → renewal_notify, Pro+ → full).
@@ -238,21 +238,21 @@ export async function GET(request: Request) {
             const message = buildMessage(t, c, agentName);
             try {
                 const r = await sendAlimtalk({
-                    templateCode: getTemplateCode(t.templateKind as TemplateKind),
+                    templateId: getTemplateId(t.templateKind as TemplateKind),
                     receiverPhone: phone,
-                    receiverName: c.name,
-                    subject: t.kind === 'birthday' ? `${c.name}님 생일축하` : `${c.name}님 보험 알림`,
-                    message,
-                    failoverToSms: true,
+                    smsFallbackSubject: t.kind === 'birthday' ? `${c.name}님 생일축하` : `${c.name}님 보험 알림`,
+                    smsFallbackText: message,
                 });
+                // 솔라피 마이그레이션 후에도 aligo_* 컬럼명을 유지하면 DB 마이그레이션 비용 발생.
+                // 기존 컬럼에 솔라피 ID/상태를 그대로 저장 (호환).
                 await svc.from('crm_notifications').insert({
                     user_id: c.user_id,
                     customer_id: c.id,
                     kind: t.kind,
                     trigger_label: t.label,
                     target_phone: phone,
-                    aligo_message_id: r.info?.mid ?? null,
-                    aligo_status: String(r.code),
+                    aligo_message_id: r.messageId,
+                    aligo_status: r.statusCode,
                 });
                 results.sent++;
             } catch (err) {
